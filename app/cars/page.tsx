@@ -1,0 +1,99 @@
+'use client'
+
+import { useState, useMemo } from 'react'
+import { Navbar } from '@/components/layout/navbar'
+import { Footer } from '@/components/layout/footer'
+import { CarCard } from '@/components/cars/car-card'
+import { CarFilters, FilterState } from '@/components/cars/car-filters'
+import { EmptyState } from '@/components/common/empty-state'
+import { mockCars } from '@/lib/mock-data'
+import { Car } from 'lucide-react'
+
+export default function CarsPage() {
+  const [filters, setFilters] = useState<FilterState>({
+    priceMin: 0,
+    priceMax: 300,
+    carType: [],
+    transmission: [],
+    fuel: [],
+    search: '',
+  })
+
+  const filteredCars = useMemo(() => {
+    return mockCars.filter((car) => {
+      // Search filter
+      if (filters.search && !car.name.toLowerCase().includes(filters.search.toLowerCase()) && !car.model.toLowerCase().includes(filters.search.toLowerCase())) {
+        return false
+      }
+
+      // Price filter
+      if (car.price < filters.priceMin || car.price > filters.priceMax) {
+        return false
+      }
+
+      // Car type filter
+      if (filters.carType.length > 0 && !filters.carType.includes(car.type)) {
+        return false
+      }
+
+      // Transmission filter
+      if (filters.transmission.length > 0 && !filters.transmission.includes(car.transmission)) {
+        return false
+      }
+
+      // Fuel filter
+      if (filters.fuel.length > 0 && !filters.fuel.includes(car.fuel)) {
+        return false
+      }
+
+      return true
+    })
+  }, [filters])
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <Navbar />
+
+      <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-foreground mb-2">Browse Our Fleet</h1>
+          <p className="text-muted-foreground">
+            Choose from {mockCars.length} premium vehicles for your next journey
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Filters Sidebar */}
+          <div className="lg:col-span-1">
+            <CarFilters onFilterChange={setFilters} />
+          </div>
+
+          {/* Cars Grid */}
+          <div className="lg:col-span-3">
+            {filteredCars.length > 0 ? (
+              <>
+                <div className="mb-4 text-sm text-muted-foreground">
+                  Showing {filteredCars.length} of {mockCars.length} vehicles
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {filteredCars.map((car) => (
+                    <CarCard key={car.id} car={car} />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <EmptyState
+                icon={Car}
+                title="No Vehicles Found"
+                description="Try adjusting your filters to find the perfect car for your journey."
+                action={{ label: 'Clear Filters', href: '/cars' }}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <Footer />
+    </div>
+  )
+}

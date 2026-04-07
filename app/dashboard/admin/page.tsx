@@ -1,0 +1,273 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+import { Navbar } from '@/components/layout/navbar'
+import { Footer } from '@/components/layout/footer'
+import { DashboardSidebar } from '@/components/dashboard/sidebar'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { BadgeStatus } from '@/components/common/badge-status'
+import { Input } from '@/components/ui/input'
+import { mockUsers, mockBookings, mockCars } from '@/lib/mock-data'
+import { Users, DollarSign, Calendar, Car as CarIcon, TrendingUp, Search, Filter, Plus, Edit, Trash2 } from 'lucide-react'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
+export default function AdminDashboardPage() {
+  // Mock current admin user
+  const currentUser = mockUsers.find((u) => u.role === 'super_admin')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('')
+
+  // Calculate stats
+  const totalBookings = mockBookings.length
+  const totalRevenue = mockBookings.reduce((sum, b) => sum + b.totalPrice, 0)
+  const totalUsers = mockUsers.filter((u) => u.role === 'customer').length
+  const totalCars = mockCars.length
+
+  // Filter bookings
+  const filteredBookings = mockBookings.filter((booking) => {
+    const matchesSearch =
+      booking.carName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.id.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const matchesStatus = !statusFilter || booking.status === statusFilter
+
+    return matchesSearch && matchesStatus
+  })
+
+  return (
+    <div className="flex h-screen bg-background">
+      <DashboardSidebar userRole="super_admin" userName={currentUser?.name} />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Navbar />
+
+        <div className="flex-1 overflow-auto">
+          <main className="p-6 md:p-8">
+            <div className="max-w-7xl mx-auto space-y-8">
+              {/* Header */}
+              <div>
+                <h1 className="text-3xl font-bold text-foreground">Super Admin Dashboard</h1>
+                <p className="text-muted-foreground mt-2">
+                  Manage cars, users, bookings, and view analytics
+                </p>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {[
+                  { icon: Calendar, label: 'Total Bookings', value: totalBookings, color: 'text-blue-500' },
+                  { icon: DollarSign, label: 'Total Revenue', value: `$${totalRevenue.toLocaleString()}`, color: 'text-green-500' },
+                  { icon: CarIcon, label: 'Fleet Size', value: totalCars, color: 'text-purple-500' },
+                  { icon: Users, label: 'Active Users', value: totalUsers, color: 'text-orange-500' },
+                ].map((stat, i) => {
+                  const Icon = stat.icon
+                  return (
+                    <Card key={i} className="p-6 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
+                          <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                        </div>
+                        <Icon className={`w-8 h-8 opacity-20 ${stat.color}`} />
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+
+              {/* Bookings Management */}
+              <Card className="p-6 shadow-sm">
+                <div className="mb-6">
+                  <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <h2 className="text-lg font-semibold text-foreground">Manage Bookings</h2>
+                    <Button className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2">
+                      <Plus className="h-4 w-4" />
+                      New Booking
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-4 mb-6">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by car, customer, or booking ID..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 transition-all duration-200 focus:ring-2 focus:ring-accent/50"
+                    />
+                  </div>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="px-3 py-2 border border-input rounded-md bg-background text-foreground transition-all duration-200 hover:border-border focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  >
+                    <option value="">All Status</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="font-semibold">ID</TableHead>
+                        <TableHead className="font-semibold">Vehicle</TableHead>
+                        <TableHead className="font-semibold">Customer</TableHead>
+                        <TableHead className="font-semibold">Pickup Date</TableHead>
+                        <TableHead className="font-semibold">Return Date</TableHead>
+                        <TableHead className="font-semibold">Amount</TableHead>
+                        <TableHead className="font-semibold">Status</TableHead>
+                        <TableHead className="font-semibold">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredBookings.length > 0 ? (
+                        filteredBookings.map((booking) => (
+                          <TableRow key={booking.id} className="border-border hover:bg-muted/50 transition-colors">
+                            <TableCell className="font-medium text-foreground">
+                              #{booking.id.slice(0, 8).toUpperCase()}
+                            </TableCell>
+                            <TableCell className="text-foreground">{booking.carName}</TableCell>
+                            <TableCell className="text-foreground">{booking.userName}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {new Date(booking.pickupDate).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {new Date(booking.returnDate).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="font-semibold text-accent">${booking.totalPrice}</TableCell>
+                            <TableCell>
+                              <BadgeStatus status={booking.status} />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive/80">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                            No bookings found matching your criteria
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+
+              {/* User Management */}
+              <Card className="p-6 shadow-sm">
+                <div className="mb-6 flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-foreground">User Management</h2>
+                  <Button className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add User
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {mockUsers
+                    .slice(0, 4)
+                    .map((user) => (
+                      <div key={user.id} className="border border-border rounded-lg p-4 flex items-center gap-4 transition-all duration-200 hover:shadow-md">
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-accent/10 flex items-center justify-center">
+                          {user.profileImage ? (
+                            <Image src={user.profileImage} alt={user.name} fill className="object-cover" />
+                          ) : (
+                            <Users className="h-6 w-6 text-accent" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-foreground">{user.name}</h3>
+                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs capitalize">
+                              {user.role.replace(/_/g, ' ')}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">{user.totalBookings} bookings</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive/80">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </Card>
+
+              {/* Cars Management */}
+              <Card className="p-6 shadow-sm">
+                <div className="mb-6 flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-foreground">Fleet Management</h2>
+                  <Button className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Car
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {mockCars.slice(0, 6).map((car) => (
+                    <div key={car.id} className="border border-border rounded-lg overflow-hidden transition-all duration-200 hover:shadow-md">
+                      <img src={car.image} alt={car.name} className="w-full h-40 object-cover" />
+                      <div className="p-4">
+                        <h3 className="font-semibold text-foreground">{car.name}</h3>
+                        <p className="text-xs text-muted-foreground">{car.model}</p>
+                        <div className="mt-3 flex items-center justify-between">
+                          <span className="text-sm font-medium text-foreground">${car.price}/day</span>
+                          <Badge variant={car.available ? 'default' : 'secondary'} className="text-xs">
+                            {car.available ? 'Available' : 'In Use'}
+                          </Badge>
+                        </div>
+                        <div className="mt-4 flex gap-2">
+                          <Button variant="outline" size="sm" className="flex-1">
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                          <Button variant="outline" size="sm" className="flex-1 text-destructive hover:text-destructive/80">
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </main>
+        </div>
+
+        <Footer />
+      </div>
+    </div>
+  )
+}

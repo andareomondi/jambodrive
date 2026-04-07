@@ -1,0 +1,107 @@
+'use client'
+
+import Link from 'next/link'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { HelpSupportModal } from '@/components/modals/help-support-modal'
+import { Menu, X, Car, HelpCircle } from 'lucide-react'
+
+export function Navbar() {
+  const [isOpen, setIsOpen] = useState(false)
+  const [helpModalOpen, setHelpModalOpen] = useState(false)
+
+  const toggleMenu = () => setIsOpen(!isOpen)
+
+  const navLinks = [
+    { href: '/', label: 'Home' },
+    { href: '/cars', label: 'Browse Cars' },
+    { href: '/dashboard', label: 'Dashboard' },
+  ]
+
+  return (
+    <nav className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <Car className="w-8 h-8 text-accent" />
+            <span className="font-bold text-xl hidden sm:inline text-foreground">JamboDrive</span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-8">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-foreground hover:text-accent transition-colors font-medium"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Desktop Help & Auth Buttons */}
+          <div className="hidden md:flex gap-3">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setHelpModalOpen(true)}
+              className="gap-2"
+            >
+              <HelpCircle className="h-4 w-4" />
+              Help
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/auth/login">Sign In</Link>
+            </Button>
+            <Button asChild className="bg-accent hover:bg-accent/90">
+              <Link href="/auth/register">Sign Up</Link>
+            </Button>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={toggleMenu}
+            className="md:hidden p-2 hover:bg-secondary rounded-md transition-colors"
+            aria-label="Toggle menu"
+          >
+            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+
+        {/* Mobile Navigation */}
+        {isOpen && (
+          <div className="md:hidden pb-4 border-t border-border">
+            <div className="flex flex-col gap-3 pt-4">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="px-3 py-2 text-foreground hover:bg-secondary rounded-md transition-colors"
+                  onClick={() => setIsOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <div className="pt-2 border-t border-border flex gap-2">
+                <Button variant="outline" asChild className="flex-1">
+                  <Link href="/auth/login">Sign In</Link>
+                </Button>
+                <Button asChild className="flex-1 bg-accent hover:bg-accent/90">
+                  <Link href="/auth/register">Sign Up</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Help Support Modal */}
+      <HelpSupportModal 
+        open={helpModalOpen}
+        onOpenChange={setHelpModalOpen}
+      />
+    </nav>
+  )
+}
