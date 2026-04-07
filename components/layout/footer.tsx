@@ -1,8 +1,9 @@
-import Link from 'next/link'
-import { Car, Mail, Phone, MapPin } from 'lucide-react'
+import Link from "next/link";
+import { Car, Mail, Phone, MapPin } from "lucide-react";
+import BackgroundSlider from "react-background-slider";
 
 export function Footer() {
-  const currentYear = new Date().getFullYear()
+  const currentYear = new Date().getFullYear();
 
   return (
     <footer className="bg-secondary border-t border-border">
@@ -12,10 +13,13 @@ export function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Car className="w-6 h-6 text-accent" />
-              <span className="font-bold text-lg text-foreground">JamboDrive</span>
+              <span className="font-bold text-lg text-foreground">
+                JamboDrive
+              </span>
             </div>
             <p className="text-muted-foreground text-sm">
-              Premium car rental service offering luxury and affordable vehicles for your journey.
+              Premium car rental service offering luxury and affordable vehicles
+              for your journey.
             </p>
           </div>
 
@@ -24,17 +28,26 @@ export function Footer() {
             <h3 className="font-semibold text-foreground mb-4">Quick Links</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/" className="text-muted-foreground hover:text-accent transition-colors">
+                <Link
+                  href="/"
+                  className="text-muted-foreground hover:text-accent transition-colors"
+                >
                   Home
                 </Link>
               </li>
               <li>
-                <Link href="/cars" className="text-muted-foreground hover:text-accent transition-colors">
+                <Link
+                  href="/cars"
+                  className="text-muted-foreground hover:text-accent transition-colors"
+                >
                   Browse Cars
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard" className="text-muted-foreground hover:text-accent transition-colors">
+                <Link
+                  href="/dashboard"
+                  className="text-muted-foreground hover:text-accent transition-colors"
+                >
                   Dashboard
                 </Link>
               </li>
@@ -46,17 +59,26 @@ export function Footer() {
             <h3 className="font-semibold text-foreground mb-4">Support</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-accent transition-colors">
+                <Link
+                  href="#"
+                  className="text-muted-foreground hover:text-accent transition-colors"
+                >
                   Contact Us
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-accent transition-colors">
+                <Link
+                  href="#"
+                  className="text-muted-foreground hover:text-accent transition-colors"
+                >
                   FAQ
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-accent transition-colors">
+                <Link
+                  href="#"
+                  className="text-muted-foreground hover:text-accent transition-colors"
+                >
                   Terms & Conditions
                 </Link>
               </li>
@@ -99,5 +121,5 @@ export function Footer() {
         </div>
       </div>
     </footer>
-  )
+  );
 }
