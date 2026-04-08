@@ -47,6 +47,8 @@ export default function RootLayout({
     <html lang="en">
       <body className="font-sans antialiased">
         {children}
+        <Analytics />
+
         <Toaster position="top-right" />
       </body>
     </html>

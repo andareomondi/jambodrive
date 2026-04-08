@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpCircle } from 'lucide-react'
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/layout/navbar";
@@ -7,16 +8,19 @@ import { Footer } from "@/components/layout/footer";
 import { CarCard } from "@/components/cars/car-card";
 import { mockCars } from "@/lib/mock-data";
 import { ArrowRight, Check, Shield, Clock, MapPin } from "lucide-react";
+import { HelpSupportModal } from "@/components/modals/help-support-modal";
+import { useState } from "react";
+
 
 export default function Home() {
   const featuredCars = mockCars.slice(0, 3);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-
       {/* Hero Section */}
-      <section className="relative px-4 sm:px-6 lg:px-8 overflow-hidden h-screen justify-center items-center flex bg-[url('/hero/car8.jpg')] bg-cover bg-center">
+      <section className="relative px-4 sm:px-6 lg:px-8 overflow-hidden h-screen justify-center items-center flex bg-[url('/hero/car10.jpeg')] bg-cover bg-center">
         <div className="max-w-7xl mx-auto text-center">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 text-balance text-orange-500">
@@ -158,6 +162,18 @@ export default function Home() {
             <Link href="/cars">Explore Our Fleet</Link>
           </Button>
         </div>
+<Button 
+              variant="primary" 
+              size="md"
+              onClick={() => setHelpModalOpen(true)}
+              className="fixed bottom-4 right-4 bg-accent hover:bg-accent/90 text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-110 text-md">
+              <HelpCircle className="h-4 w-4" />
+              Help
+            </Button>
+      <HelpSupportModal 
+        open={helpModalOpen}
+        onOpenChange={setHelpModalOpen}
+      />
       </section>
 
       <Footer />

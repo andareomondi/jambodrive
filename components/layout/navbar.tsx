@@ -3,12 +3,10 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { HelpSupportModal } from '@/components/modals/help-support-modal'
-import { Menu, X, Car, HelpCircle } from 'lucide-react'
+import { Menu, X, Car } from 'lucide-react'
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
-  const [helpModalOpen, setHelpModalOpen] = useState(false)
 
   const toggleMenu = () => setIsOpen(!isOpen)
 
@@ -43,15 +41,6 @@ export function Navbar() {
 
           {/* Desktop Help & Auth Buttons */}
           <div className="hidden md:flex gap-3">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setHelpModalOpen(true)}
-              className="gap-2"
-            >
-              <HelpCircle className="h-4 w-4" />
-              Help
-            </Button>
             <Button variant="outline" asChild>
               <Link href="/auth/login">Sign In</Link>
             </Button>
@@ -97,11 +86,7 @@ export function Navbar() {
         )}
       </div>
 
-      {/* Help Support Modal */}
-      <HelpSupportModal 
-        open={helpModalOpen}
-        onOpenChange={setHelpModalOpen}
-      />
+
     </nav>
   )
 }
