@@ -13,8 +13,10 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { FieldGroup, FieldLabel } from '@/components/ui/field'
 import { toast } from 'sonner'
 import { Car } from 'lucide-react'
+import { createClient } from '@/lib/supabase-client'
 
 export default function RegisterPage() {
+  const supabase = createClient()
   const router = useRouter()
   const [formData, setFormData] = useState({
     fullName: '',
@@ -59,10 +61,21 @@ export default function RegisterPage() {
 
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+          },
+        },
+      })
 
-      // Mock registration
+      if (error) {
+        toast.error(error.message)
+        return
+      }
+
       toast.success('Account created successfully! Redirecting...')
       setTimeout(() => {
         router.push('/dashboard')

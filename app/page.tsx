@@ -10,9 +10,11 @@ import { mockCars } from "@/lib/mock-data";
 import { ArrowRight, Check, Shield, Clock, MapPin } from "lucide-react";
 import { HelpSupportModal } from "@/components/modals/help-support-modal";
 import { useState } from "react";
+import { createClient } from "@/lib/supabase-client";
 
 
 export default function Home() {
+  const supabase = createClient();
   const featuredCars = mockCars.slice(0, 3);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
 

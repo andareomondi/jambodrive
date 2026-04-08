@@ -13,9 +13,11 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { FieldGroup, FieldLabel } from '@/components/ui/field'
 import { toast } from 'sonner'
 import { Car } from 'lucide-react'
+import { createClient } from '@/lib/supabase-client'
 
 export default function LoginPage() {
   const router = useRouter()
+  const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
@@ -31,11 +33,18 @@ export default function LoginPage() {
 
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-      // Mock authentication - redirect to dashboard
-      toast.success(`Welcome back! Logging in as ${email}`)
+      if (error) {
+        toast.error(error.message)
+        return
+      }
+
+      toast.success('Logged in successfully!')
+
       setTimeout(() => {
         router.push('/dashboard')
       }, 500)
