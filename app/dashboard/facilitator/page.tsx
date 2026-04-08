@@ -62,11 +62,10 @@ export default function FacilitatorDashboardPage() {
       booking.id.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesSearch
   })
+// <DashboardSidebar userRole="facilitator" userName={currentUser?.name} />
 
   return (
-    <SidebarProvider>
     <div className="flex h-screen bg-background">
-      <DashboardSidebar userRole="facilitator" userName={currentUser?.name} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar />
@@ -291,9 +290,8 @@ export default function FacilitatorDashboardPage() {
           </main>
         </div>
 
-        <Footer />
       </div>
     </div>
-    </SidebarProvider>
+
   )
 }

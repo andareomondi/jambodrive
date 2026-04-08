@@ -159,14 +159,10 @@ export default function RegisterPage() {
                   }
                 />
                 <Label htmlFor="agreeTerms" className="text-sm cursor-pointer">
-                  I agree to the{' '}
-                  <Link href="#" className="text-accent hover:text-accent/80 transition-colors">
+                  I agree to the
                     Terms & Conditions
-                  </Link>{' '}
-                  and{' '}
-                  <Link href="#" className="text-accent hover:text-accent/80 transition-colors">
+                  and
                     Privacy Policy
-                  </Link>
                 </Label>
               </div>
             </FieldGroup>

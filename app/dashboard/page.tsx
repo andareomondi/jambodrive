@@ -97,7 +97,6 @@ export default function DashboardPage() {
             Logout
           </Button>
         </div>
-      </div>
 
       {/* Profile Card */}
       <Card className="p-6 shadow-sm mb-8">
@@ -257,6 +256,7 @@ export default function DashboardPage() {
             </p>
           </Card>
         )}
+      </div>
       </div>
     </div>
   );

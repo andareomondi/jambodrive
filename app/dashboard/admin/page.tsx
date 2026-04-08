@@ -47,10 +47,9 @@ export default function AdminDashboardPage() {
     return matchesSearch && matchesStatus
   })
 
+      // <DashboardSidebar userRole="super_admin" userName={currentUser?.name} />
   return (
-    <SidebarProvider>
     <div className="flex h-screen bg-background">
-      <DashboardSidebar userRole="super_admin" userName={currentUser?.name} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar />
@@ -268,9 +267,7 @@ export default function AdminDashboardPage() {
           </main>
         </div>
 
-        <Footer />
       </div>
     </div>
-    </SidebarProvider>
   )
 }
