@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { Navbar } from '@/components/layout/navbar'
 import { Footer } from '@/components/layout/footer'
 import { DashboardSidebar } from '@/components/dashboard/sidebar'
+import { SidebarProvider } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -63,6 +64,7 @@ export default function FacilitatorDashboardPage() {
   })
 
   return (
+    <SidebarProvider>
     <div className="flex h-screen bg-background">
       <DashboardSidebar userRole="facilitator" userName={currentUser?.name} />
 
@@ -292,5 +294,6 @@ export default function FacilitatorDashboardPage() {
         <Footer />
       </div>
     </div>
+    </SidebarProvider>
   )
 }
