@@ -68,6 +68,7 @@ export default function RegisterPage() {
           data: {
             full_name: formData.fullName,
           },
+          emailRedirectTo: `${window.location.origin}/auth/login`,
         },
       })
 
@@ -76,9 +77,9 @@ export default function RegisterPage() {
         return
       }
 
-      toast.success('Account created successfully! Redirecting...')
+      toast.success('Account created successfully! Please check your email to confirm your account.')
       setTimeout(() => {
-        router.push('/dashboard')
+        router.push('/auth/login')
       }, 500)
     } catch (error) {
       toast.error('Failed to create account. Please try again.')
