@@ -37,26 +37,10 @@ export default function LoginPage() {
         email,
         password,
       })
-      code = error.code || 'Unknown error'
-      // console.log('Login response:', { code })
-
-      if (code === 'invalid_credentials') {
-        toast.error('Invalid email or password. Please try again.')
+      if ( error ) {
+        toast.error(error.message)
         return
       }
-      if (code === 'user_not_found') {
-        toast.error('No account found with that email. Please register first.')
-        return
-      }
-      if (code === 'email_not_confirmed') {
-        toast.error('Please confirm your email before logging in.')
-        return
-      }
-      if (error) {
-        toast.error('An unexpected error occurred. Please try again later.')
-        return
-      }
-
       toast.success('Logged in successfully!')
 
       setTimeout(() => {

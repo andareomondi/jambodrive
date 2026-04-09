@@ -11,7 +11,7 @@ import { Lock, LogIn } from "lucide-react"
 import Link from "next/link"
 import type { User } from "@supabase/supabase-js"
 
-const publicRoutes = ["/", "/about", "/contact", "/login", "/signup", "/auth/callback", "/forgot-password", "/reset-password", "/cars", "/cars/[id]"]
+const publicRoutes = ["/", "/about", "/contact", "/auth/login", "/auth/register", "/auth/callback", "/forgot-password", "/reset-password", "/cars", "/cars/[id]"]
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)

@@ -14,8 +14,6 @@ import { BadgeStatus } from "@/components/common/badge-status";
 import { EmptyState } from "@/components/common/empty-state";
 import { mockUsers, mockBookings } from "@/lib/mock-data";
 import {
-  LogOut,
-  Settings,
   Calendar,
   MapPin,
   DollarSign,
@@ -23,16 +21,24 @@ import {
   Plus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase-client";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const supabase = createClient();
 
-  // Mock current user - user U001
-  const currentUser = mockUsers[0];
+  const currentUser = supabase.auth.getSession().then(({ data: { session } }) => {
+    if (!session) {
+      router.push("/auth/login");
+      return null;
+    }
+    const userEmail = session.user.email;
+    return mockUsers.find((u) => u.email === userEmail) || null;
+  });
 
-  // Get bookings for current user
+   // Get bookings for current user
   const userBookings = mockBookings.filter((b) => b.userId === currentUser.id);
   const activeBookings = userBookings.filter(
     (b) => b.status === "confirmed" || b.status === "pending",
@@ -41,16 +47,6 @@ export default function DashboardPage() {
     (b) => b.status === "completed" || b.status === "cancelled",
   );
 
-  const handleLogout = async () => {
-    setIsLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      toast.success("Logged out successfully");
-      router.push("/");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -79,25 +75,6 @@ export default function DashboardPage() {
           open={depositModalOpen}
           onOpenChange={setDepositModalOpen}
         />
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="#" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Settings
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLogout}
-            disabled={isLoading}
-            className="flex items-center gap-2"
-          >
-            <LogOut className="w-4 h-4" />
-            Logout
-          </Button>
-        </div>
-
       {/* Profile Card */}
       <Card className="p-6 shadow-sm mb-8">
         <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
