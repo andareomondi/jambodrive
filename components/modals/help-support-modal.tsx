@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { HelpCircle, Send } from 'lucide-react'
+import { createClient } from '@/lib/supabase-client'
 
 interface HelpSupportModalProps {
   open: boolean
@@ -43,6 +44,7 @@ const categoryLabels: Record<string, string> = {
 }
 
 export function HelpSupportModal({ open, onOpenChange }: HelpSupportModalProps) {
+  const supabase = createClient()
   const [isLoading, setIsLoading] = useState(false)
   const { register, handleSubmit, reset, formState: { errors }, watch } = useForm<HelpFormData>({
     defaultValues: {
@@ -58,8 +60,16 @@ export function HelpSupportModal({ open, onOpenChange }: HelpSupportModalProps) 
   const onSubmit = async (data: HelpFormData) => {
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const { error } = await supabase.from('support_requests').insert({
+        subject: data.subject,
+        category: data.category,
+        message: data.message,
+      })
+
+      if (error) {
+        toast.error(error.message || 'An error occurred while submitting your request.')
+        return
+      }
       
       toast.success('Support request submitted successfully! Our team will respond within 24 hours.')
       
