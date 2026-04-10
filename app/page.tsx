@@ -24,34 +24,39 @@ export default function Home() {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative px-4 sm:px-6 lg:px-8 py-12 md:py-20 overflow-hidden bg-gradient-to-r from-red-600 to-red-500 bg-[url('/hero/car10.jpeg')] bg-cover bg-center before:absolute before:inset-0 before:bg-black/50">
+      <section className="relative px-4 sm:px-6 lg:px-8 py-16 md:py-28 overflow-hidden bg-gradient-to-br from-red-600 via-red-500 to-red-700 bg-[url('/hero/car10.jpeg')] bg-cover bg-center">
+        <div className="absolute inset-0 bg-black/55 backdrop-blur-[1px]"></div>
+        
         <div className="max-w-7xl mx-auto w-full relative z-10">
           {/* Hero Text */}
-          <div className="mb-12">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 text-balance leading-tight">
-              Search Your <br />
+          <div className="mb-16 max-w-2xl">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-black text-white mb-8 text-balance leading-tight tracking-tight drop-shadow-lg">
+              Search Your <br className="hidden md:block" />
               Best Cars <br />
               Here.
             </h1>
+            <p className="text-lg md:text-xl text-white/90 max-w-xl text-balance drop-shadow-md font-medium">
+              Find your perfect rental in seconds. Premium vehicles, flexible terms, instant booking.
+            </p>
           </div>
 
           {/* Booking Form */}
-          <div className="mb-12">
+          <div className="mb-16 max-w-6xl">
             <HeroBookingForm />
           </div>
 
           {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-4 md:gap-8">
+          <div className="grid grid-cols-3 gap-4 md:gap-8 max-w-2xl">
             {[
               { number: "500+", label: "Premium Vehicles" },
               { number: "50K+", label: "Happy Customers" },
               { number: "24/7", label: "Support" },
             ].map((stat, i) => (
-              <div key={i} className="text-left">
-                <p className="text-2xl md:text-3xl font-bold text-yellow-400">
+              <div key={i} className="text-left group hover:scale-105 transition-transform duration-300">
+                <p className="text-3xl md:text-4xl font-black text-yellow-400 drop-shadow-lg">
                   {stat.number}
                 </p>
-                <p className="mt-1 text-white/80 text-sm md:text-base">{stat.label}</p>
+                <p className="mt-2 text-white/90 text-sm md:text-base font-medium drop-shadow-md">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -59,11 +64,16 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-secondary">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-secondary to-background">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-12 text-balance">
-            Why Choose Us?
-          </h2>
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-black text-foreground text-balance leading-tight mb-4">
+              Why Choose Us?
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Experience the difference with our premium service
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
@@ -96,13 +106,15 @@ export default function Home() {
               return (
                 <div
                   key={i}
-                  className="p-6 bg-background rounded-lg shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1"
+                  className="p-8 bg-white dark:bg-slate-800 rounded-xl shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-2 border border-gray-100 dark:border-slate-700 group"
                 >
-                  <Icon className="w-8 h-8 text-red-500 mb-4" />
-                  <h3 className="font-semibold text-foreground mb-2">
+                  <div className="mb-4 inline-flex p-3 bg-red-100 dark:bg-red-900/30 rounded-lg group-hover:bg-red-200 dark:group-hover:bg-red-800/40 transition-colors duration-300">
+                    <Icon className="w-6 h-6 text-red-600 dark:text-red-400" />
+                  </div>
+                  <h3 className="font-bold text-lg text-foreground mb-3">
                     {feature.title}
                   </h3>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     {feature.description}
                   </p>
                 </div>
@@ -136,18 +148,21 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-red-600">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 text-balance">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-orange-600 to-orange-700 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-red-500/20 rounded-full -mr-48 -mt-48 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-red-600/20 rounded-full -ml-36 -mb-36 blur-3xl"></div>
+        
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <h2 className="text-5xl md:text-6xl font-black text-white mb-6 text-balance leading-tight drop-shadow-lg">
             Ready to Hit the Road?
           </h2>
-          <p className="text-lg text-white/90 mb-8 text-balance">
-            Start your adventure today. Browse our collection and book your perfect car now.
+          <p className="text-xl text-white/90 mb-10 text-balance font-medium drop-shadow-md max-w-2xl mx-auto">
+            Start your adventure today. Browse our collection and book your perfect car in seconds.
           </p>
           <Button
             asChild
             size="lg"
-            className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold uppercase"
+            className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black uppercase tracking-widest shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95"
           >
             <Link href="/cars">Explore Our Fleet</Link>
           </Button>

@@ -81,17 +81,17 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="w-full">
-      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg p-6 md:p-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 border border-white/20 dark:border-slate-800/50">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
           {/* Car Selection */}
-          <div className="lg:col-span-1">
-            <Label htmlFor="carId" className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2 block">
-              Select Car
+          <div className="lg:col-span-1 group">
+            <Label htmlFor="carId" className="text-xs font-bold text-foreground/80 uppercase tracking-widest mb-2.5 block">
+              Car
             </Label>
             <select
               id="carId"
               {...register('carId', { required: true })}
-              className="w-full px-3 py-2.5 border border-input rounded-lg bg-background text-foreground text-sm font-medium transition-all duration-200 hover:border-gray-400 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-foreground text-sm font-medium transition-all duration-300 hover:border-red-400 dark:hover:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500 shadow-sm hover:shadow-md"
             >
               {uniqueCars.map((car) => (
                 <option key={car.id} value={car.id}>
@@ -102,44 +102,44 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
           </div>
 
           {/* Pickup Date */}
-          <div className="lg:col-span-1">
-            <Label htmlFor="pickupDate" className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2 block">
+          <div className="lg:col-span-1 group">
+            <Label htmlFor="pickupDate" className="text-xs font-bold text-foreground/80 uppercase tracking-widest mb-2.5 block">
               From
             </Label>
             <Input
               id="pickupDate"
               type="date"
               {...register('pickupDate', { required: true })}
-              className={`text-sm font-medium ${
-                errors.pickupDate ? 'border-red-500' : ''
+              className={`text-sm font-medium px-4 py-3 rounded-lg shadow-sm transition-all duration-300 focus:ring-2 focus:ring-red-500/40 focus:border-red-500 hover:shadow-md ${
+                errors.pickupDate ? 'border-red-500 focus:ring-red-500/60' : 'border-gray-300 dark:border-slate-700'
               }`}
             />
           </div>
 
           {/* Return Date */}
-          <div className="lg:col-span-1">
-            <Label htmlFor="returnDate" className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2 block">
+          <div className="lg:col-span-1 group">
+            <Label htmlFor="returnDate" className="text-xs font-bold text-foreground/80 uppercase tracking-widest mb-2.5 block">
               To
             </Label>
             <Input
               id="returnDate"
               type="date"
               {...register('returnDate', { required: true })}
-              className={`text-sm font-medium ${
-                errors.returnDate ? 'border-red-500' : ''
+              className={`text-sm font-medium px-4 py-3 rounded-lg shadow-sm transition-all duration-300 focus:ring-2 focus:ring-red-500/40 focus:border-red-500 hover:shadow-md ${
+                errors.returnDate ? 'border-red-500 focus:ring-red-500/60' : 'border-gray-300 dark:border-slate-700'
               }`}
             />
           </div>
 
           {/* Pickup Location */}
-          <div className="lg:col-span-1">
-            <Label htmlFor="pickupLocation" className="text-xs font-semibold text-foreground uppercase tracking-wide mb-2 block">
+          <div className="lg:col-span-1 group">
+            <Label htmlFor="pickupLocation" className="text-xs font-bold text-foreground/80 uppercase tracking-widest mb-2.5 block">
               Location
             </Label>
             <select
               id="pickupLocation"
               {...register('pickupLocation')}
-              className="w-full px-3 py-2.5 border border-input rounded-lg bg-background text-foreground text-sm font-medium transition-all duration-200 hover:border-gray-400 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-foreground text-sm font-medium transition-all duration-300 hover:border-red-400 dark:hover:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500 shadow-sm hover:shadow-md"
             >
               {locations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
@@ -154,7 +154,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             <Button
               type="submit"
               size="lg"
-              className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold uppercase text-sm tracking-wide rounded-lg transition-all duration-200 h-10 flex items-center justify-center"
+              className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-yellow-900 font-bold uppercase text-sm tracking-widest rounded-lg transition-all duration-300 h-11 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
               onClick={() => setUseWhatsApp(false)}
             >
               <Search className="w-4 h-4 mr-2" />
@@ -164,19 +164,19 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
         </div>
 
         {/* WhatsApp Alternative */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-xs text-muted-foreground">
+        <div className="flex items-center justify-between pt-5 border-t border-gray-200 dark:border-slate-700/50">
+          <p className="text-xs text-muted-foreground/70 font-medium">
             Prefer direct messaging?
           </p>
           <Button
             type="submit"
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="text-green-600 dark:text-green-400 font-semibold text-xs"
+            className="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 font-bold text-xs uppercase tracking-wide transition-all duration-300 hover:scale-105"
             onClick={() => setUseWhatsApp(true)}
           >
             <MessageCircle className="w-4 h-4 mr-1.5" />
-            Chat on WhatsApp
+            WhatsApp
           </Button>
         </div>
       </div>
