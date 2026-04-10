@@ -69,7 +69,7 @@ export default function LoginPage() {
               <Car className="w-10 h-10 text-accent" />
             </div>
             <h1 className="text-2xl font-bold text-foreground mb-2">Welcome Back</h1>
-            <p className="text-muted-foreground">Sign in to your JamboDrive account</p>
+            <p className="text-muted-foreground">Sign in to your Cozy Mobility account</p>
           </div>
 
           {/* Form */}

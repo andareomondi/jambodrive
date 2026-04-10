@@ -14,7 +14,7 @@ export function Footer() {
             <div className="flex items-center gap-2 mb-4">
               <Car className="w-6 h-6 text-accent" />
               <span className="font-bold text-lg text-foreground">
-                JamboDrive
+                Cozy Mobility & Tours
               </span>
             </div>
             <p className="text-muted-foreground text-sm">
@@ -95,7 +95,7 @@ export function Footer() {
               </li>
               <li className="flex gap-2 items-start text-muted-foreground">
                 <Mail className="w-4 h-4 mt-1 flex-shrink-0" />
-                <span>support@jambodrives.com</span>
+                <span>support@cozymobility.com</span>
               </li>
               <li className="flex gap-2 items-start text-muted-foreground">
                 <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
@@ -108,7 +108,7 @@ export function Footer() {
         {/* Divider */}
         <div className="border-t border-border pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-            <p>&copy; {currentYear} JamboDrive. All rights reserved.</p>
+            <p>&copy; {currentYear} Cozy Mobility & Tours. All rights reserved.</p>
             <div className="flex gap-6">
               <Link href="#" className="hover:text-accent transition-colors">
                 Privacy Policy

@@ -94,7 +94,7 @@ export function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Car className="w-8 h-8 text-accent" />
-            <span className="font-bold text-xl hidden sm:inline text-foreground">JamboDrive</span>
+            <span className="font-bold text-xl hidden sm:inline text-foreground">Cozy Mobility</span>
           </Link>
 
           {/* Desktop Navigation */}
