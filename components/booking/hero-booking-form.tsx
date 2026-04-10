@@ -80,7 +80,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+    <form onSubmit={handleSubmit(onSubmit)} className="max-w-4xl mx-auto">
       <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 border border-white/20 dark:border-slate-800/50">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
           {/* Car Selection */}
