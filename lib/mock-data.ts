@@ -67,9 +67,9 @@ export const mockCars: Car[] = [
     price: 120,
     rating: 4.8,
     reviews: 124,
-    image: 'https://images.unsplash.com/photo-1552519507-da3dc3eb7d3f?w=800&h=600&fit=crop',
+    image: '/hero/car1.jpg',
     images: [
-      'https://images.unsplash.com/photo-1552519507-da3dc3eb7d3f?w=800&h=600&fit=crop',
+      '/hero/car2.jpg',
       'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&h=600&fit=crop',
       'https://images.unsplash.com/photo-1550355291-bbee04a92027?w=800&h=600&fit=crop',
     ],

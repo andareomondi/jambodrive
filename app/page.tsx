@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { CarCard } from "@/components/cars/car-card";
+import { HeroBookingForm } from "@/components/booking/hero-booking-form";
 import { mockCars } from "@/lib/mock-data";
 import { ArrowRight, Check, Shield, Clock, MapPin } from "lucide-react";
 import { HelpSupportModal } from "@/components/modals/help-support-modal";
@@ -21,47 +22,36 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
+      
       {/* Hero Section */}
-      <section className="relative px-4 sm:px-6 lg:px-8 overflow-hidden h-screen justify-center items-center flex bg-[url('/hero/car10.jpeg')] bg-cover bg-center">
-        <div className="max-w-7xl mx-auto text-center">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 text-balance text-orange-500">
-              Drive Your Dream Car Today
+      <section className="relative px-4 sm:px-6 lg:px-8 py-12 md:py-20 overflow-hidden bg-gradient-to-r from-red-600 to-red-500 bg-[url('/hero/car10.jpeg')] bg-cover bg-center before:absolute before:inset-0 before:bg-black/50">
+        <div className="max-w-7xl mx-auto w-full relative z-10">
+          {/* Hero Text */}
+          <div className="mb-12">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 text-balance leading-tight">
+              Search Your <br />
+              Best Cars <br />
+              Here.
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground  max-w-2xl mx-auto text-balance mb-8 text-white text-balance ">
-              Experience premium car rental with Us. Choose from
-              hundreds of vehicles, book instantly, and hit the road with
-              confidence.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                asChild
-                size="lg"
-                className="bg-accent hover:bg-accent/90 text-base"
-              >
-                <Link href="/cars" className="flex items-center gap-2">
-                  Browse Cars
-                  <ArrowRight className="w-5 h-5" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link href="/auth/register">Get Started</Link>
-              </Button>
-            </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
+          {/* Booking Form */}
+          <div className="mb-12">
+            <HeroBookingForm />
+          </div>
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-3 gap-4 md:gap-8">
             {[
               { number: "500+", label: "Premium Vehicles" },
               { number: "50K+", label: "Happy Customers" },
-              { number: "24/7", label: "Customer Support" },
+              { number: "24/7", label: "Support" },
             ].map((stat, i) => (
-              <div key={i} className="text-center">
-                <p className="text-3xl md:text-4xl font-bold text-accent">
+              <div key={i} className="text-left">
+                <p className="text-2xl md:text-3xl font-bold text-yellow-400">
                   {stat.number}
                 </p>
-                <p className="mt-2 text-white/90">{stat.label}</p>
+                <p className="mt-1 text-white/80 text-sm md:text-base">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -106,9 +96,9 @@ export default function Home() {
               return (
                 <div
                   key={i}
-                  className="p-6 bg-background rounded-lg shadow-sm transition-all duration-300 hover:shadow-md"
+                  className="p-6 bg-background rounded-lg shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1"
                 >
-                  <Icon className="w-8 h-8 text-accent mb-4" />
+                  <Icon className="w-8 h-8 text-red-500 mb-4" />
                   <h3 className="font-semibold text-foreground mb-2">
                     {feature.title}
                   </h3>
@@ -146,37 +136,37 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-accent">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-red-600">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-accent-foreground mb-6 text-balance">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 text-balance">
             Ready to Hit the Road?
           </h2>
-          <p className="text-lg text-accent-foreground/90 mb-8 text-balance">
-            Start your adventure today. Browse our collection and book your
-            perfect car now.
+          <p className="text-lg text-white/90 mb-8 text-balance">
+            Start your adventure today. Browse our collection and book your perfect car now.
           </p>
           <Button
             asChild
             size="lg"
-            variant="secondary"
-            className="font-semibold"
+            className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold uppercase"
           >
             <Link href="/cars">Explore Our Fleet</Link>
           </Button>
         </div>
-<Button 
-              variant="primary" 
-              size="md"
-              onClick={() => setHelpModalOpen(true)}
-              className="fixed bottom-4 right-4 bg-accent hover:bg-accent/90 text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-110 text-md">
-              <HelpCircle className="h-4 w-4" />
-              Help
-            </Button>
+      </section>
+
+      {/* Help Button */}
+      <Button 
+        onClick={() => setHelpModalOpen(true)}
+        className="fixed bottom-4 right-4 bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-110 z-40"
+        size="icon"
+      >
+        <HelpCircle className="h-5 w-5" />
+      </Button>
+
       <HelpSupportModal 
         open={helpModalOpen}
         onOpenChange={setHelpModalOpen}
       />
-      </section>
 
       <Footer />
     </div>
