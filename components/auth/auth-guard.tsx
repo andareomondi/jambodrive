@@ -1,9 +1,8 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { createClient } from "@/lib/supabase-client"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,37 +10,54 @@ import { Lock, LogIn } from "lucide-react"
 import Link from "next/link"
 import type { User } from "@supabase/supabase-js"
 
-const publicRoutes = ["/", "/about", "/contact", "/auth/login", "/auth/register", "/auth/callback", "/forgot-password", "/reset-password", "/cars", "/cars/[id]"]
+// Keep your dynamic segments like [slug] or [id]
+const publicRoutes = [
+  "/", 
+  "/about", 
+  "/contact", 
+  "/auth/login", 
+  "/auth/register", 
+  "/auth/callback", 
+  "/forgot-password", 
+  "/reset-password", 
+  "/cars", 
+  "/cars/[slug]"
+]
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const pathname = usePathname()
-  const router = useRouter()
-  const supabase = createClient() 
+  const supabase = createClient()
 
   useEffect(() => {
     const getSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+      const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user ?? null)
       setLoading(false)
     }
 
     getSession()
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       setLoading(false)
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [supabase.auth])
 
-  const isPublicRoute = publicRoutes.includes(pathname)
+  // Improved matching logic using Regex
+  const isPublicRoute = publicRoutes.some((route) => {
+    // 1. Convert the route string into a Regex pattern
+    // This replaces [anything] with a regex that matches any character except '/'
+    const regexPattern = route
+      .replace(/\//g, "\\/") // Escape forward slashes
+      .replace(/\[.*?\]/g, "[^/]+") // Replace [slug] with a wildcard match
+    
+    const regex = new RegExp(`^${regexPattern}$`)
+    return regex.test(pathname)
+  })
 
   if (loading) {
     return (
@@ -51,6 +67,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     )
   }
 
+  // If the route is not public and there is no user, show the lock screen
   if (!isPublicRoute && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-blue-50 px-4">
@@ -66,16 +83,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             <div className="space-y-3">
               <Button
                 asChild
-                variant="primary"
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white"
               >
-                <Link href="/login">
+                <Link href="/auth/login">
                   <LogIn className="h-4 w-4 mr-2" />
                   Sign In
                 </Link>
               </Button>
               <Button variant="outline" asChild className="w-full">
-                <Link href="/signup">Create Account</Link>
+                <Link href="/auth/register">Create Account</Link>
               </Button>
             </div>
           </CardContent>
