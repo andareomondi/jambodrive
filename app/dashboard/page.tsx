@@ -28,14 +28,23 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const supabase = createClient();
+  const [user, setUser] = useState(null)
 
   const currentUser = supabase.auth.getSession().then(({ data: { session } }) => {
     if (!session) {
       router.push("/auth/login");
       return null;
     }
-    const userEmail = session.user.email;
-    return mockUsers.find((u) => u.email === userEmail) || null;
+    // get user profile from supabase using the session user id
+    const userId = session.user.id;
+    const { data: profile, error } = supabase.from("profiles").select("*").eq("id", userId).single();
+
+    if (error) {
+      toast.error("Error fetching user profile. Please try again.");
+      return null;
+    }
+    return profile;
+
   });
 
    // Get bookings for current user
@@ -81,7 +90,7 @@ export default function DashboardPage() {
           <div className="relative w-24 h-24 rounded-full overflow-hidden flex-shrink-0">
             <Image
               src={currentUser.profileImage}
-              alt={currentUser.name}
+              alt={currentUser.full_name}
               fill
               className="object-cover"
             />

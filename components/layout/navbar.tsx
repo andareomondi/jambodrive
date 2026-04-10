@@ -14,6 +14,7 @@ export function Navbar() {
   const [isFacilitator, setIsFacilitator] = useState(false)
   const supabase = createClient()
   const toggleMenu = () => setIsOpen(!isOpen)
+  const profile = null
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut()
@@ -22,9 +23,6 @@ export function Navbar() {
       return
     } else {
     toast.success('Logged out successfully!')
-    setUser(null)
-    setIsAdmin(false)
-    setIsFacilitator(false)
     }
   }
 
@@ -43,8 +41,10 @@ export function Navbar() {
           .eq('id', session.user.id)
           .single()
 
+      
+
         if (error) {
-          console.error('Error fetching user role:', error)
+          toast.error('Error fetching user role:', error)
           return
         }
 
@@ -70,7 +70,7 @@ export function Navbar() {
           .single()
 
         if (error) {
-          console.error('Error fetching user role:', error)
+          toast.error('Error fetching user role:', error)
           return
         }
 
