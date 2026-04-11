@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Navbar } from '@/components/layout/navbar'
@@ -11,9 +11,14 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BadgeStatus } from '@/components/common/badge-status'
+import { CarModal } from '@/components/modals/car-modal'
 import { Input } from '@/components/ui/input'
-import { mockUsers, mockBookings, mockCars } from '@/lib/mock-data'
-import { Users, DollarSign, Calendar, Car as CarIcon, TrendingUp, Search, Filter, Plus, Edit, Trash2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase-client'
+import { DatabaseService } from '@/lib/services'
+import type { Car, Booking, User } from '@/lib/mock-data'
+import { Users, DollarSign, Calendar, Car as CarIcon, Search, Plus, Edit, Trash2, MessageCircle, ShieldCheck } from 'lucide-react'
+import { toast } from 'sonner'
+
 import {
   Table,
   TableBody,
@@ -24,22 +29,75 @@ import {
 } from '@/components/ui/table'
 
 export default function AdminDashboardPage() {
-  // Mock current admin user
-  const currentUser = mockUsers.find((u) => u.role === 'super_admin')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('')
 
-  // Calculate stats
-  const totalBookings = mockBookings.length
-  const totalRevenue = mockBookings.reduce((sum, b) => sum + b.totalPrice, 0)
-  const totalUsers = mockUsers.filter((u) => u.role === 'customer').length
-  const totalCars = mockCars.length
+const supabase = createClient()
+const db = new DatabaseService(supabase)
+
+const [cars, setCars] = useState<Car[]>([])
+const [bookings, setBookings] = useState<Booking[]>([])
+const [users, setUsers] = useState<User[]>([])
+const [carModalOpen, setCarModalOpen] = useState(false)
+const [selectedCar, setSelectedCar] = useState<Car | null>(null)
+const [searchQuery, setSearchQuery] = useState('')
+const [statusFilter, setStatusFilter] = useState<string>('')
+
+
+const handleBookingStatus = async (id: string, status: 'confirmed' | 'cancelled') => {
+  const { error } = await supabase.from('bookings').update({ status }).eq('id', id)
+  if (error) { toast.error(error.message); return }
+  toast.success(`Booking ${status === 'confirmed' ? 'confirmed' : 'rejected'}.`)
+  setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status } : b))
+}
+
+const handleRoleChange = async (userId: string, role: string) => {
+  const { error } = await supabase.from('profiles').update({ role }).eq('id', userId)
+  if (error) { toast.error(error.message); return }
+  toast.success('Role updated.')
+  setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, role } : u))
+}
+
+const handleWhatsApp = (phone: string) => {
+  const number = phone?.replace(/\D/g, '')
+  const message = encodeURIComponent('Hello, this is the admin from Cozy Mobility Tours.')
+  window.open(`https://wa.me/${number}?text=${message}`, '_blank')
+}
+
+const handleAddCar = () => {
+  setSelectedCar(null)
+  setCarModalOpen(true)
+}
+
+const handleEditCar = (car: Car) => {
+  setSelectedCar(car)
+  setCarModalOpen(true)
+}
+
+const handleDeleteCar = async (id: string) => {
+  await db.deleteCar(id)
+  setCars((prev) => prev.filter((c) => c.id !== id))
+}
+
+const refreshCars = () => {
+  db.getCars().then(setCars).catch(console.error)
+}
+
+useEffect(() => {
+  db.getCars().then(setCars).catch(console.error)
+  db.getBookings().then(setBookings).catch(console.error)
+  db.getProfiles().then(setUsers).catch(console.error) 
+}, [])
+
+// Update your stats to use state instead of mock:
+const totalCars = cars.length
+const totalBookings = bookings.length
+const totalRevenue = bookings.reduce((sum, b) => sum + b.totalPrice, 0)
+const totalUsers = users.filter((u) => u.role === 'customer').length
 
   // Filter bookings
-  const filteredBookings = mockBookings.filter((booking) => {
+  const filteredBookings = bookings.filter((booking) => {
     const matchesSearch =
-      booking.carName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.car?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.profiles?.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       booking.id.toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesStatus = !statusFilter || booking.status === statusFilter
@@ -144,28 +202,45 @@ export default function AdminDashboardPage() {
                             <TableCell className="font-medium text-foreground">
                               #{booking.id.slice(0, 8).toUpperCase()}
                             </TableCell>
-                            <TableCell className="text-foreground">{booking.carName}</TableCell>
-                            <TableCell className="text-foreground">{booking.userName}</TableCell>
+                            <TableCell className="text-foreground">{booking.cars?.name}</TableCell>
+                            <TableCell className="text-foreground">{booking.profiles?.full_name}</TableCell>
                             <TableCell className="text-sm text-muted-foreground">
-                              {new Date(booking.pickupDate).toLocaleDateString()}
+                              {new Date(booking.pickup_date).toLocaleDateString()}
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
-                              {new Date(booking.returnDate).toLocaleDateString()}
+                              {new Date(booking.return_date).toLocaleDateString()}
                             </TableCell>
-                            <TableCell className="font-semibold text-accent">${booking.totalPrice}</TableCell>
+                            <TableCell className="font-semibold text-accent">${booking.total_price}</TableCell>
                             <TableCell>
                               <BadgeStatus status={booking.status} />
                             </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2">
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive/80">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
+<TableCell>
+  <div className="flex gap-2">
+    {booking.status === 'pending' && (
+      <>
+        <Button
+          size="sm"
+          className="bg-green-500 hover:bg-green-600 text-white h-8 px-3 text-xs"
+          onClick={() => handleBookingStatus(booking.id, 'confirmed')}
+        >
+          Confirm
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-destructive border-destructive hover:bg-destructive/10 h-8 px-3 text-xs"
+          onClick={() => handleBookingStatus(booking.id, 'cancelled')}
+        >
+          Reject
+        </Button>
+      </>
+    )}
+    {booking.status !== 'pending' && (
+      <BadgeStatus status={booking.status} />
+    )}
+  </div>
+</TableCell>
+
                           </TableRow>
                         ))
                       ) : (
@@ -180,63 +255,73 @@ export default function AdminDashboardPage() {
                 </div>
               </Card>
 
-              {/* User Management */}
-              <Card className="p-6 shadow-sm">
-                <div className="mb-6 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-foreground">User Management</h2>
-                  <Button className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add User
-                  </Button>
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {mockUsers
-                    .slice(0, 4)
-                    .map((user) => (
-                      <div key={user.id} className="border border-border rounded-lg p-4 flex items-center gap-4 transition-all duration-200 hover:shadow-md">
-                        <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-accent/10 flex items-center justify-center">
-                          {user.profileImage ? (
-                            <Image src={user.profileImage} alt={user.name} fill className="object-cover" />
-                          ) : (
-                            <Users className="h-6 w-6 text-accent" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-foreground">{user.name}</h3>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
-                          <div className="mt-2 flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs capitalize">
-                              {user.role.replace(/_/g, ' ')}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">{user.totalBookings} bookings</span>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive/80">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </Card>
+<Card className="p-6 shadow-sm">
+  <div className="mb-6 flex items-center justify-between">
+    <h2 className="text-lg font-semibold text-foreground">User Management</h2>
+  </div>
 
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    {users.map((user) => (
+      <div key={user.id} className="border border-border rounded-lg p-4 flex items-start gap-4 transition-all duration-200 hover:shadow-md">
+        <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-accent/10 flex items-center justify-center">
+          {user.profile_image ? (
+            <Image src={user.profile_image} alt={user.full_name ?? ''} fill className="object-cover" />
+          ) : (
+            <Users className="h-6 w-6 text-accent" />
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-foreground">{user.full_name}</h3>
+          <p className="text-xs text-muted-foreground">{user.email}</p>
+          <p className="text-xs text-muted-foreground">{user.phone}</p>
+          <p className="text-xs text-muted-foreground">
+            Joined: {user.join_date ? new Date(user.join_date).toLocaleDateString() : '—'}
+          </p>
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary" className="text-xs capitalize">
+              {user.role?.replace(/_/g, ' ')}
+            </Badge>
+            <span className="text-xs text-muted-foreground">{user.total_bookings} bookings</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 flex-shrink-0">
+          <Button
+            size="sm"
+            className="bg-green-500 hover:bg-green-600 text-white gap-1 text-xs"
+            onClick={() => handleWhatsApp(user.phone ?? '')}
+          >
+            <MessageCircle className="h-3 w-3" />
+            WhatsApp
+          </Button>
+          <select
+            value={user.role ?? 'customer'}
+            onChange={(e) => handleRoleChange(user.id, e.target.value)}
+            className="text-xs px-2 py-1 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50"
+          >
+            <option value="customer">Customer</option>
+            <option value="facilitator">Facilitator</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+        </div>
+      </div>
+    ))}
+  </div>
+</Card>
               {/* Cars Management */}
               <Card className="p-6 shadow-sm">
                 <div className="mb-6 flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-foreground">Fleet Management</h2>
-                  <Button className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2">
+                  <Button onClick={handleAddCar} className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2">
                     <Plus className="h-4 w-4" />
                     Add Car
                   </Button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {mockCars.slice(0, 6).map((car) => (
+                  {cars.slice(0, 6).map((car) => (
                     <div key={car.id} className="border border-border rounded-lg overflow-hidden transition-all duration-200 hover:shadow-md">
                       <img src={car.image} alt={car.name} className="w-full h-40 object-cover" />
                       <div className="p-4">
@@ -249,11 +334,11 @@ export default function AdminDashboardPage() {
                           </Badge>
                         </div>
                         <div className="mt-4 flex gap-2">
-                          <Button variant="outline" size="sm" className="flex-1">
+                          <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEditCar(car)}>
                             <Edit className="h-3 w-3 mr-1" />
                             Edit
                           </Button>
-                          <Button variant="outline" size="sm" className="flex-1 text-destructive hover:text-destructive/80">
+                          <Button variant="outline" size="sm" className="flex-1 text-destructive hover:text-destructive/80" onClick={() => handleDeleteCar(car.id)}>
                             <Trash2 className="h-3 w-3 mr-1" />
                             Remove
                           </Button>
@@ -268,6 +353,13 @@ export default function AdminDashboardPage() {
         </div>
 
       </div>
+
+      <CarModal          
+        open={carModalOpen}
+        onOpenChange={setCarModalOpen}
+        car={selectedCar}
+        onSuccess={refreshCars}
+      />
     </div>
   )
 }

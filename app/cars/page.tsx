@@ -6,8 +6,11 @@ import { Footer } from '@/components/layout/footer'
 import { CarCard } from '@/components/cars/car-card'
 import { CarFilters, FilterState } from '@/components/cars/car-filters'
 import { EmptyState } from '@/components/common/empty-state'
-import { mockCars } from '@/lib/mock-data'
 import { Car } from 'lucide-react'
+import { useEffect } from 'react'
+import { createClient } from '@/lib/supabase-client'
+import { DatabaseService } from '@/lib/services'
+import type { Car } from '@/lib/mock-data'
 
 export default function CarsPage() {
   const [filters, setFilters] = useState<FilterState>({
@@ -18,9 +21,15 @@ export default function CarsPage() {
     fuel: [],
     search: '',
   })
+const [cars, setCars] = useState<Car[]>([])
+
+useEffect(() => {
+  const db = new DatabaseService(createClient())
+  db.getCars().then(setCars).catch(console.error)
+}, [])
 
   const filteredCars = useMemo(() => {
-    return mockCars.filter((car) => {
+    return cars.filter((car) => {
       // Search filter
       if (filters.search && !car.name.toLowerCase().includes(filters.search.toLowerCase()) && !car.model.toLowerCase().includes(filters.search.toLowerCase())) {
         return false
@@ -48,7 +57,7 @@ export default function CarsPage() {
 
       return true
     })
-  }, [filters])
+  }, [filters, cars])
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -58,7 +67,7 @@ export default function CarsPage() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-2">Browse Our Fleet</h1>
           <p className="text-muted-foreground">
-            Choose from {mockCars.length} premium vehicles for your next journey
+            Choose from {cars.length} premium vehicles for your next journey
           </p>
         </div>
 
@@ -73,7 +82,7 @@ export default function CarsPage() {
             {filteredCars.length > 0 ? (
               <>
                 <div className="mb-4 text-sm text-muted-foreground">
-                  Showing {filteredCars.length} of {mockCars.length} vehicles
+                  Showing {filteredCars.length} of {cars.length} vehicles
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {filteredCars.map((car) => (

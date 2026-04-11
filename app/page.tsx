@@ -10,14 +10,22 @@ import { HeroBookingForm } from "@/components/booking/hero-booking-form";
 import { mockCars } from "@/lib/mock-data";
 import { ArrowRight, Check, Shield, Clock, MapPin } from "lucide-react";
 import { HelpSupportModal } from "@/components/modals/help-support-modal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase-client";
+import { DatabaseService } from '@/lib/services'
+import type { Car, Booking, User } from '@/lib/mock-data'
 
 
 export default function Home() {
   const supabase = createClient();
-  const featuredCars = mockCars.slice(0, 3);
+  const db = new DatabaseService(supabase)
+const [cars, setCars] = useState<Car[]>([])
+  const featuredCars = cars.slice(0, 3);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
+
+useEffect(() => {
+  db.getCars().then(setCars).catch(console.error)
+}, [])
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

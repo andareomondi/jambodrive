@@ -19,21 +19,20 @@ export interface Car {
   available: boolean
 }
 
-export interface Booking {
-  id: string
-  carId: string
-  carName: string
-  userId: string
-  userName: string
-  pickupDate: string
-  returnDate: string
-  pickupLocation: string
-  returnLocation: string
-  totalPrice: number
-  status: 'confirmed' | 'pending' | 'completed' | 'cancelled'
+interface Booking {
+  profile_id: string
+  car_id: string
+  pickup_date: string
+  return_date: string
+  pickup_location: string
+  return_location: string
+  total_price: number        // was totalPrice
   insurance: boolean
-  additionalFeatures: string[]
-  createdAt: string
+  additional_features: string[]
+  created_at: string
+  status: 'confirmed' | 'pending' | 'completed' | 'cancelled'
+  cars?: { name: string; image: string }
+  profiles?: { full_name: string; email: string }
 }
 
 export interface User {

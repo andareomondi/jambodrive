@@ -11,17 +11,54 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/common/empty-state'
-import { mockCars, mockReviews } from '@/lib/mock-data'
 import { Star, Fuel, Users, Zap, CheckCircle, MapPin, Calendar, Shield } from 'lucide-react'
+import { useEffect } from 'react'
+import { createClient } from '@/lib/supabase-client'
+import { DatabaseService } from '@/lib/services'
+import type { Car, Review } from '@/lib/mock-data'
 
 export default function CarDetailsPage() {
   const params = useParams()
   const carId = params.id as string
-  const car = mockCars.find((c) => c.id === carId)
-  const carReviews = mockReviews.filter((r) => r.carId === carId)
-  const relatedCars = mockCars.filter((c) => c.id !== carId && c.type === car?.type).slice(0, 3)
-
   const [selectedImage, setSelectedImage] = useState(0)
+const [car, setCar] = useState<Car | null>(null)
+const [carReviews, setCarReviews] = useState<Review[]>([])
+const [relatedCars, setRelatedCars] = useState<Car[]>([])
+const [loading, setLoading] = useState(true)
+
+useEffect(() => {
+  const db = new DatabaseService(createClient())
+  
+  db.getCarById(carId)
+    .then((data) => {
+      setCar(data)
+      return Promise.all([
+        db.getCars(),
+        db.getCarReviews(carId),
+        data,
+      ] as const)
+    })
+    .then(([allCars, reviews]) => {
+      setRelatedCars(allCars.filter((c) => c.id !== carId && c.type === car?.type).slice(0, 3))
+      setCarReviews(reviews)
+    })
+    .catch(console.error)
+    .finally(() => setLoading(false))
+}, [carId])
+
+
+
+if (loading) {
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <Navbar />
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+      <Footer />
+    </div>
+  )
+}
 
   if (!car) {
     return (
@@ -120,7 +157,7 @@ export default function CarDetailsPage() {
                         <div className="flex items-start justify-between mb-2">
                           <div>
                             <p className="font-semibold text-foreground">{review.title}</p>
-                            <p className="text-sm text-muted-foreground">{review.userName}</p>
+                            <p className="text-sm text-muted-foreground">{review.profiles?.full_name}</p>
                           </div>
                           <div className="flex items-center gap-1">
                             {Array.from({ length: review.rating }).map((_, i) => (
@@ -177,7 +214,7 @@ export default function CarDetailsPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Consumption</span>
-                  <span className="text-sm font-medium text-foreground">{car.fuelConsumption}</span>
+                  <span className="text-sm font-medium text-foreground">{car.fuel_consumption}</span>
                 </div>
               </div>
 

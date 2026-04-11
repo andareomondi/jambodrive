@@ -12,16 +12,20 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BadgeStatus } from "@/components/common/badge-status";
 import { EmptyState } from "@/components/common/empty-state";
-import { mockUsers, mockBookings } from "@/lib/mock-data";
 import {
   Calendar,
   MapPin,
   DollarSign,
   Car as CarIcon,
   Plus,
+  Edit,
 } from "lucide-react";
+import { EditProfileModal } from '@/components/modals/edit-profile-modal'
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase-client";
+import { useEffect } from 'react'
+import { DatabaseService } from '@/lib/services'
+import type { Booking } from '@/lib/mock-data'
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -29,34 +33,59 @@ export default function DashboardPage() {
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const supabase = createClient();
   const [user, setUser] = useState(null)
+const [editProfileOpen, setEditProfileOpen] = useState(false)
 
-  const currentUser = supabase.auth.getSession().then(({ data: { session } }) => {
+const [profile, setProfile] = useState<any>(null)
+const [bookings, setBookings] = useState<Booking[]>([])
+const [loading, setLoading] = useState(true)
+
+useEffect(() => {
+  const db = new DatabaseService(supabase)
+
+  supabase.auth.getSession().then(({ data: { session } }) => {
     if (!session) {
-      router.push("/auth/login");
-      return null;
+      router.push('/auth/login')
+      return
     }
-    // get user profile from supabase using the session user id
-    const userId = session.user.id;
-    const { data: profile, error } = supabase.from("profiles").select("*").eq("id", userId).single();
 
-    if (error) {
-      toast.error("Error fetching user profile. Please try again.");
-      return null;
-    }
-    return profile;
+    const userId = session.user.id
 
-  });
+    Promise.all([
+      supabase.from('profiles').select('*').eq('id', userId).single(),
+      db.getUserBookings(userId),
+    ])
+      .then(([{ data: profileData, error }, bookingData]) => {
+        if (error) {
+          toast.error('Error fetching profile.')
+          return
+        }
+        setProfile(profileData)
+        setBookings(bookingData ?? [])
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  })
+}, [])
 
-   // Get bookings for current user
-  const userBookings = mockBookings.filter((b) => b.userId === currentUser.id);
-  const activeBookings = userBookings.filter(
-    (b) => b.status === "confirmed" || b.status === "pending",
-  );
-  const pastBookings = userBookings.filter(
-    (b) => b.status === "completed" || b.status === "cancelled",
-  );
+const activeBookings = bookings.filter(
+  (b) => b.status === 'confirmed' || b.status === 'pending'
+)
+const pastBookings = bookings.filter(
+  (b) => b.status === 'completed' || b.status === 'cancelled'
+)
 
+if (loading) {
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <Navbar />
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  )
+}
 
+if (!profile) return null
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
@@ -89,27 +118,36 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
           <div className="relative w-24 h-24 rounded-full overflow-hidden flex-shrink-0">
             <Image
-              src={currentUser.profileImage}
-              alt={currentUser.full_name}
+              src={profile.profile_image ?? '/placeholder-avatar.png'}
+              alt={profile.full_name ?? 'User'}
               fill
               className="object-cover"
             />
           </div>
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-foreground">
-              {currentUser.name}
+              {profile.full_name}
             </h2>
             <div className="space-y-1 text-sm text-muted-foreground mt-2">
-              <p>Email: {currentUser.email}</p>
-              <p>Phone: {currentUser.phone}</p>
-              <p>Member since: {currentUser.joinDate}</p>
+              <p>Email: {profile.email}</p>
+              <p>Phone: {profile.phone}</p>
+              <p>Member since: {new Date(profile.join_date).toLocaleDateString()}</p>
             </div>
           </div>
           <div className="text-right">
             <div className="text-3xl font-bold text-accent">
-              {currentUser.totalBookings}
+              {profile.total_bookings}
             </div>
             <p className="text-sm text-muted-foreground">Total bookings</p>
+<Button
+  variant="outline"
+  size="sm"
+  onClick={() => setEditProfileOpen(true)}
+  className="gap-2"
+>
+  <Edit className="h-4 w-4" />
+  Edit Profile
+</Button>
           </div>
         </div>
       </Card>
@@ -130,7 +168,7 @@ export default function DashboardPage() {
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <h3 className="font-semibold text-lg text-foreground">
-                        {booking.carName}
+                        {booking.cars?.name}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {booking.id}
@@ -143,19 +181,19 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-accent" />
                       <span className="text-muted-foreground">
-                        {booking.pickupDate} to {booking.returnDate}
+                        {new Date(booking.pickup_date).toLocaleDateString()} to {new Date(booking.return_date).toLocaleDateString()}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-accent" />
                       <span className="text-muted-foreground">
-                        {booking.pickupLocation}
+                        {booking.pickup_location}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <DollarSign className="w-4 h-4 text-accent" />
                       <span className="text-foreground font-medium">
-                        ${booking.totalPrice}
+                        ${booking.total_price}
                       </span>
                     </div>
                   </div>
@@ -173,7 +211,7 @@ export default function DashboardPage() {
                       size="sm"
                       className="flex-1"
                     >
-                      <Link href={`/cars/${booking.carId}`}>View Car</Link>
+                      <Link href={`/cars/${booking.car_id}`}>View Car</Link>
                     </Button>
                     <Button
                       size="sm"
@@ -221,7 +259,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                       <span>
-                        {booking.pickupDate} to {booking.returnDate}
+                        {new Date(booking.pickup_date).toLocaleDateString()} to {new Date(booking.return_date).toLocaleDateString()}
                       </span>
                       <span className="flex items-center gap-1">
                         <DollarSign className="w-3 h-3" />${booking.totalPrice}
@@ -244,6 +282,12 @@ export default function DashboardPage() {
         )}
       </div>
       </div>
+<EditProfileModal
+  open={editProfileOpen}
+  onOpenChange={setEditProfileOpen}
+  profile={profile}
+  onSuccess={(updated) => setProfile(updated)}
+/>
     </div>
   );
 }

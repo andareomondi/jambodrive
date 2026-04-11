@@ -8,21 +8,46 @@ import { Footer } from '@/components/layout/footer'
 import { BookingForm, BookingFormData } from '@/components/booking/booking-form'
 import { BookingSummary } from '@/components/booking/booking-summary'
 import { EmptyState } from '@/components/common/empty-state'
-import { mockCars } from '@/lib/mock-data'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { CheckCircle } from 'lucide-react'
+import { useEffect } from 'react'
+import { createClient } from '@/lib/supabase-client'
+import { DatabaseService } from '@/lib/services'
+import type { Car } from '@/lib/mock-data'
 
 export default function BookingPage() {
   const params = useParams()
   const carId = params.carId as string
-  const car = mockCars.find((c) => c.id === carId)
   const [bookingData, setBookingData] = useState<BookingFormData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [pickupDate, setPickupDate] = useState('')
   const [returnDate, setReturnDate] = useState('')
   const [insurance, setInsurance] = useState(false)
   const [addOns, setAddOns] = useState<string[]>([])
+
+const [car, setCar] = useState<Car | null>(null)
+const [loading, setLoading] = useState(true)
+
+useEffect(() => {
+  const db = new DatabaseService(createClient())
+  db.getCarById(carId)
+    .then(setCar)
+    .catch(console.error)
+    .finally(() => setLoading(false))
+}, [carId])
+
+if (loading) {
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <Navbar />
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+      <Footer />
+    </div>
+  )
+}
 
   if (!car) {
     return (
@@ -56,35 +81,57 @@ export default function BookingPage() {
     )
   }
 
-  const handleBooking = async (data: BookingFormData) => {
-    setIsLoading(true)
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+const handleBooking = async (data: BookingFormData) => {
+  setIsLoading(true)
+  try {
+    const supabase = createClient()
 
-      // Set the booking data to show confirmation
-      setBookingData(data)
-      setPickupDate(data.pickupDate)
-      setReturnDate(data.returnDate)
-      setInsurance(data.insurance)
-      setAddOns(data.additionalFeatures)
-
-      toast.success('Booking confirmed! A confirmation email has been sent.')
-
-      // Scroll to confirmation
-      setTimeout(() => {
-        const confirmationElement = document.getElementById('booking-confirmation')
-        if (confirmationElement) {
-          confirmationElement.scrollIntoView({ behavior: 'smooth' })
-        }
-      }, 100)
-    } catch (error) {
-      toast.error('Failed to confirm booking. Please try again.')
-    } finally {
-      setIsLoading(false)
+    // Get the current logged in user
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      toast.error('You must be logged in to book a car.')
+      return
     }
-  }
 
+    const days = Math.ceil(
+      (new Date(data.returnDate).getTime() - new Date(data.pickupDate).getTime()) /
+        (1000 * 60 * 60 * 24)
+    )
+    const subtotal = days * car!.price
+    const insurancePrice = data.insurance ? days * 25 : 0
+    const addOnsPrice = data.additionalFeatures.length * 50
+    const total = subtotal + insurancePrice + addOnsPrice
+
+    const { error } = await supabase.from('bookings').insert({
+      car_id: car!.id,
+      profile_id: user.id,
+      pickup_date: new Date(data.pickupDate).toISOString(),
+      return_date: new Date(data.returnDate).toISOString(),
+      pickup_location: data.pickupLocation,
+      return_location: data.returnLocation ?? data.pickupLocation,
+      total_price: total,
+      insurance: data.insurance,
+      additional_features: data.additionalFeatures,
+      status: 'pending',
+    })
+
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+
+    setBookingData(data)
+    toast.success('Booking confirmed!')
+
+    setTimeout(() => {
+      document.getElementById('booking-confirmation')?.scrollIntoView({ behavior: 'smooth' })
+    }, 100)
+  } catch (err) {
+    toast.error('Failed to confirm booking. Please try again.')
+  } finally {
+    setIsLoading(false)
+  }
+}
   if (bookingData) {
     const days = Math.ceil(
       (new Date(bookingData.returnDate).getTime() - new Date(bookingData.pickupDate).getTime()) /
