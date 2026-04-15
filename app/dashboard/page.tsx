@@ -118,7 +118,7 @@ if (!profile) return null
         <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
           <div className="relative w-24 h-24 rounded-full overflow-hidden flex-shrink-0">
             <Image
-              src={profile.profile_image ?? '/placeholder-avatar.png'}
+              src={profile.profile_image ?? 'default.png'}
               alt={profile.full_name ?? 'User'}
               fill
               className="object-cover"
