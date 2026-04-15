@@ -22,31 +22,42 @@ export default function CarDetailsPage() {
   const carId = params.id as string
   const [selectedImage, setSelectedImage] = useState(0)
 const [car, setCar] = useState<Car | null>(null)
-const [carReviews, setCarReviews] = useState<Review[]>([])
 const [relatedCars, setRelatedCars] = useState<Car[]>([])
 const [loading, setLoading] = useState(true)
 
-useEffect(() => {
-  const db = new DatabaseService(createClient())
-  
-  db.getCarById(carId)
-    .then((data) => {
-      setCar(data)
-      return Promise.all([
-        db.getCars(),
-        db.getCarReviews(carId),
-        data,
-      ] as const)
-    })
-    .then(([allCars, reviews]) => {
-      setRelatedCars(allCars.filter((c) => c.id !== carId && c.type === car?.type).slice(0, 3))
-      setCarReviews(reviews)
-    })
-    .catch(console.error)
-    .finally(() => setLoading(false))
-}, [carId])
 
+  useEffect(() => {
+    const db = new DatabaseService(createClient())
 
+    const fetchData = async () => {
+      try {
+        // 1. Get the current car FIRST
+        const carData = await db.getCarById(carId)
+        if (!carData) {
+          setCar(null)
+          return
+        }
+
+        setCar(carData)
+
+        // 2. Get all cars and filter properly
+        const allCars = await db.getCars()
+
+        const filtered = allCars
+          .filter((c) => c.type === carData.type && c.id !== carData.id)
+          .slice(0, 3)
+
+        setRelatedCars(filtered)
+
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [carId])
 
 if (loading) {
   return (
@@ -146,31 +157,6 @@ if (loading) {
                   ))}
                 </div>
               </div>
-
-              {/* Reviews Section */}
-              {carReviews.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-6">Reviews</h3>
-                  <div className="space-y-4">
-                    {carReviews.map((review) => (
-                      <Card key={review.id} className="p-4 shadow-soft">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <p className="font-semibold text-foreground">{review.title}</p>
-                            <p className="text-sm text-muted-foreground">{review.profiles?.full_name}</p>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {Array.from({ length: review.rating }).map((_, i) => (
-                              <Star key={i} className="w-4 h-4 fill-accent text-accent" />
-                            ))}
-                          </div>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{review.comment}</p>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -182,18 +168,6 @@ if (loading) {
                 <h2 className="text-2xl font-bold text-foreground">{car.name}</h2>
                 <p className="text-muted-foreground text-sm">{car.model}</p>
               </div>
-
-              {/* Rating */}
-              <div className="flex items-center gap-2 mb-6 pb-6 border-b border-border">
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.round(car.rating) }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-accent text-accent" />
-                  ))}
-                </div>
-                <span className="font-medium text-foreground">{car.rating.toFixed(1)}</span>
-                <span className="text-sm text-muted-foreground">({car.reviews} reviews)</span>
-              </div>
-
               {/* Specs */}
               <div className="space-y-3 mb-6 pb-6 border-b border-border">
                 <div className="flex items-center justify-between">

@@ -42,22 +42,11 @@ export function CarCard({ car }: CarCardProps) {
         <div className="p-2">
           <div className="mb-2">
             <h3 className="font-semibold text-lg text-foreground">{car.name}</h3>
-            <p className="text-sm text-muted-foreground">{car.model}</p>
-          </div>
-
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1">
-              <Star className="w-4 h-4 fill-accent text-accent" />
-              <span className="text-sm font-medium text-foreground">
-                {car.rating.toFixed(1)}
-              </span>
-              <span className="text-xs text-muted-foreground">({car.reviews})</span>
-            </div>
-            <Badge variant="secondary" className="text-xs capitalize">
+            <p className="text-sm text-muted-foreground">{car.model} <Badge variant="secondary" className="text-xs capitalize">
               {car.type}
             </Badge>
+</p>
           </div>
-
           <div className="flex gap-3 mb-4 text-xs text-muted-foreground">
             <div className="flex items-center gap-1">
               <Users className="w-4 h-4" />

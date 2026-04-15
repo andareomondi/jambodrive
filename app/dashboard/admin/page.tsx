@@ -266,7 +266,7 @@ const totalUsers = users.filter((u) => u.role === 'customer').length
       <div key={user.id} className="border border-border rounded-lg p-4 flex items-start gap-4 transition-all duration-200 hover:shadow-md">
         <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-accent/10 flex items-center justify-center">
           {user.profile_image ? (
-            <Image src={user.profile_image} alt={user.full_name ?? ''} fill className="object-cover" />
+            <Image src={user.profile_image ?? 'https://github.com/andareomondi/jambodrive/blob/main/public/default.png'} alt={user.full_name ?? ''} fill className="object-cover" />
           ) : (
             <Users className="h-6 w-6 text-accent" />
           )}
