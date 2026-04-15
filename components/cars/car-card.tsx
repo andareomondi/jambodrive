@@ -10,6 +10,7 @@ import { Star, Fuel, Users, Zap } from 'lucide-react'
 
 interface CarCardProps {
   car: Car
+  days?: number
 }
 
 export function CarCard({ car }: CarCardProps) {
@@ -22,8 +23,8 @@ export function CarCard({ car }: CarCardProps) {
 
   return (
     <Link href={`/cars/${car.id}`}>
-      <Card className="overflow-hidden h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-        <div className="relative h-48 bg-secondary overflow-hidden">
+      <Card className="p-2 overflow-hidden h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+        <div className="relative rounded-md h-65 bg-secondary overflow-hidden">
           <Image
             src={car.image}
             alt={car.name}
@@ -38,7 +39,7 @@ export function CarCard({ car }: CarCardProps) {
           )}
         </div>
 
-        <div className="p-4">
+        <div className="p-2">
           <div className="mb-2">
             <h3 className="font-semibold text-lg text-foreground">{car.name}</h3>
             <p className="text-sm text-muted-foreground">{car.model}</p>

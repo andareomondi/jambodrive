@@ -24,7 +24,7 @@ export interface FilterState {
 export function CarFilters({ onFilterChange }: CarFiltersProps) {
   const [filters, setFilters] = useState<FilterState>({
     priceMin: 0,
-    priceMax: 300,
+    priceMax: 1000000,
     carType: [],
     transmission: [],
     fuel: [],
@@ -33,7 +33,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [expandedSection, setExpandedSection] = useState<string | null>(null)
 
-  const carTypes = ['sedan', 'suv', 'coupe', 'hatchback', 'truck']
+  const carTypes = ['toyota', 'suv', 'coupe', 'hatchback', 'truck']
   const transmissions = ['manual', 'automatic']
   const fuels = ['petrol', 'diesel', 'hybrid', 'electric']
 
@@ -66,7 +66,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
   const handleReset = () => {
     const resetFilters = {
       priceMin: 0,
-      priceMax: 300,
+      priceMax: 1000000,
       carType: [],
       transmission: [],
       fuel: [],
@@ -167,7 +167,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
                       <input
                         type="range"
                         min="0"
-                        max="300"
+                        max="1000000"
                         value={filters.priceMin}
                         onChange={(e) => handlePriceChange('min', parseInt(e.target.value))}
                         className="flex-1"

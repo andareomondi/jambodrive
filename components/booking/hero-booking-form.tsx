@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
@@ -8,13 +8,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MessageCircle, Search } from 'lucide-react'
 import { toast } from 'sonner'
-import { mockCars } from '@/lib/mock-data'
 
+// Update the interface to match the image's fields
 interface QuickBookingData {
-  carId: string
-  pickupDate: string
-  returnDate: string
   pickupLocation: string
+  dropOffLocation: string
+  pickupDate: string
+  pickupTime: string
+  dropOffDate: string
+  dropOffTime: string
+  type: string
 }
 
 interface HeroBookingFormProps {
@@ -23,41 +26,48 @@ interface HeroBookingFormProps {
 
 export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
   const router = useRouter()
+  const [useWhatsApp, setUseWhatsApp] = useState(false)
+
   const { register, handleSubmit, watch, formState: { errors } } = useForm<QuickBookingData>({
     defaultValues: {
-      carId: mockCars[0]?.id || '',
-      pickupLocation: 'downtown',
+      pickupLocation: 'jkia',
+      dropOffLocation: 'athi_river',
+      type: 'any',
     },
   })
 
-  const [useWhatsApp, setUseWhatsApp] = useState(false)
-  const formData = watch()
-
+  // Mock data based on your screenshot
   const locations = [
-    { id: 'downtown', name: 'Downtown' },
-    { id: 'airport', name: 'Airport' },
-    { id: 'waterfront', name: 'Waterfront' },
+    { id: 'jkia', name: 'JKIA' },
+    { id: 'athi_river', name: 'Athi River' },
+    { id: 'nairobi_cbd', name: 'Nairobi CBD' },
+    { id: 'mombasa', name: 'Mombasa' },
   ]
 
-  // Group cars by name for dropdown
-  const uniqueCars = Array.from(
-    new Map(mockCars.map((car) => [car.name, car])).values()
-  )
+  const types = [
+    { id: 'sedan', name: 'Sedan' },
+    { id: 'suv', name: 'SUV' },
+    { id: 'coupe', name: 'Coupe' },
+    { id: 'hatchback', name: 'Hatchback' },
+    { id: 'truck', name: 'Truck' },
+  ]
 
   const generateWhatsAppMessage = (data: QuickBookingData) => {
-    const car = mockCars.find((c) => c.id === data.carId)
-    const message = `Hi! I'd like to book a car:\n\n🚗 Car: ${car?.name || 'Not specified'}\n📅 Pickup: ${data.pickupDate}\n📅 Return: ${data.returnDate}\n📍 Location: ${data.pickupLocation}`
+    const message = `Hi! I'd like to book a car:\n\n🚗 type: ${data.type}\n📍 Pickup: ${data.pickupLocation} on ${data.pickupDate} at ${data.pickupTime}\n🏁 Drop-off: ${data.dropOffLocation} on ${data.dropOffDate} at ${data.dropOffTime}`
     return encodeURIComponent(message)
   }
 
   const onSubmit = (data: QuickBookingData) => {
-    if (!data.pickupDate || !data.returnDate) {
+    if (!data.pickupDate || !data.dropOffDate) {
       toast.error('Please select both dates')
       return
     }
 
-    if (new Date(data.pickupDate) >= new Date(data.returnDate)) {
-      toast.error('Return date must be after pickup date')
+    const pickup = new Date(`${data.pickupDate}T${data.pickupTime || '00:00'}`)
+    const dropoff = new Date(`${data.dropOffDate}T${data.dropOffTime || '00:00'}`)
+
+    if (pickup >= dropoff) {
+      toast.error('Drop-off date/time must be after pickup')
       return
     }
 
@@ -69,114 +79,149 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
       toast.success('Opening WhatsApp...')
       setUseWhatsApp(false)
     } else {
-      // Navigate to car detail page with booking params
       const queryParams = new URLSearchParams({
-        from: data.pickupDate,
-        to: data.returnDate,
-        location: data.pickupLocation,
+        pickup_loc: data.pickupLocation,
+        dropoff_loc: data.dropOffLocation,
+        pickup_date: data.pickupDate,
+        pickup_time: data.pickupTime,
+        dropoff_date: data.dropOffDate,
+        dropoff_time: data.dropOffTime,
+        type: data.type,
       }).toString()
-      router.push(`/cars/${data.carId}?${queryParams}`)
+      router.push(`/cars?${queryParams}`)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-4xl mx-auto">
-      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 border border-white/20 dark:border-slate-800/50">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
-          {/* Car Selection */}
-          <div className="lg:col-span-1 group">
-            <Label htmlFor="carId" className="text-xs font-bold text-foreground/80 uppercase tracking-widest mb-2.5 block">
-              Car
+    <form onSubmit={handleSubmit(onSubmit)} className="max-w-7xl mx-auto w-full">
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-2xl p-6 border border-white/20 dark:border-slate-800/50">
+        
+        {/* 8-Column Grid for large screens to fit all fields in one row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-5 items-end">
+          
+          {/* Pickup Location */}
+          <div className="group">
+            <Label htmlFor="pickupLocation" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
+              Pickup Location
             </Label>
             <select
-              id="carId"
-              {...register('carId', { required: true })}
-              className="w-full px-4 py-3 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-foreground text-sm font-medium transition-all duration-300 hover:border-red-400 dark:hover:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500 shadow-sm hover:shadow-md"
+              id="pickupLocation"
+              {...register('pickupLocation')}
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500/40 focus:border-red-500"
             >
-              {uniqueCars.map((car) => (
-                <option key={car.id} value={car.id}>
-                  {car.name}
-                </option>
+              {locations.map((loc) => (
+                <option key={`pickup-${loc.id}`} value={loc.id}>{loc.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Drop Off Location */}
+          <div className="group">
+            <Label htmlFor="dropOffLocation" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
+              Drop Off Location
+            </Label>
+            <select
+              id="dropOffLocation"
+              {...register('dropOffLocation')}
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500/40 focus:border-red-500"
+            >
+              {locations.map((loc) => (
+                <option key={`drop-${loc.id}`} value={loc.id}>{loc.name}</option>
               ))}
             </select>
           </div>
 
           {/* Pickup Date */}
-          <div className="lg:col-span-1 group">
-            <Label htmlFor="pickupDate" className="text-xs font-bold text-foreground/80 uppercase tracking-widest mb-2.5 block">
-              From
+          <div className="group">
+            <Label htmlFor="pickupDate" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
+              Pickup Date
             </Label>
             <Input
               id="pickupDate"
               type="date"
               {...register('pickupDate', { required: true })}
-              className={`text-sm font-medium px-4 py-3 rounded-lg shadow-sm transition-all duration-300 focus:ring-2 focus:ring-red-500/40 focus:border-red-500 hover:shadow-md ${
-                errors.pickupDate ? 'border-red-500 focus:ring-red-500/60' : 'border-gray-300 dark:border-slate-700'
-              }`}
+              className={`text-sm px-3 py-2.5 rounded-md ${errors.pickupDate ? 'border-red-500' : ''}`}
             />
           </div>
 
-          {/* Return Date */}
-          <div className="lg:col-span-1 group">
-            <Label htmlFor="returnDate" className="text-xs font-bold text-foreground/80 uppercase tracking-widest mb-2.5 block">
-              To
+          {/* Pickup Time */}
+          <div className="group">
+            <Label htmlFor="pickupTime" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
+              Pickup Time
             </Label>
             <Input
-              id="returnDate"
-              type="date"
-              {...register('returnDate', { required: true })}
-              className={`text-sm font-medium px-4 py-3 rounded-lg shadow-sm transition-all duration-300 focus:ring-2 focus:ring-red-500/40 focus:border-red-500 hover:shadow-md ${
-                errors.returnDate ? 'border-red-500 focus:ring-red-500/60' : 'border-gray-300 dark:border-slate-700'
-              }`}
+              id="pickupTime"
+              type="time"
+              {...register('pickupTime')}
+              className="text-sm px-3 py-2.5 rounded-md"
             />
           </div>
 
-          {/* Pickup Location */}
-          <div className="lg:col-span-1 group">
-            <Label htmlFor="pickupLocation" className="text-xs font-bold text-foreground/80 uppercase tracking-widest mb-2.5 block">
-              Location
+          {/* Drop Off Date */}
+          <div className="group">
+            <Label htmlFor="dropOffDate" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
+              Drop Off Date
+            </Label>
+            <Input
+              id="dropOffDate"
+              type="date"
+              {...register('dropOffDate', { required: true })}
+              className={`text-sm px-3 py-2.5 rounded-md ${errors.dropOffDate ? 'border-red-500' : ''}`}
+            />
+          </div>
+
+          {/* Drop Off Time */}
+          <div className="group">
+            <Label htmlFor="dropOffTime" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
+              Drop Off Time
+            </Label>
+            <Input
+              id="dropOffTime"
+              type="time"
+              {...register('dropOffTime')}
+              className="text-sm px-3 py-2.5 rounded-md"
+            />
+          </div>
+
+          {/* type */}
+          <div className="group">
+            <Label htmlFor="type" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
+              Type
             </Label>
             <select
-              id="pickupLocation"
-              {...register('pickupLocation')}
-              className="w-full px-4 py-3 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-foreground text-sm font-medium transition-all duration-300 hover:border-red-400 dark:hover:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500 shadow-sm hover:shadow-md"
+              id="type"
+              {...register('type')}
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500/40 focus:border-red-500"
             >
-              {locations.map((loc) => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.name}
-                </option>
+              {types.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
           </div>
 
-          {/* Action Button */}
-          <div className="lg:col-span-1 flex items-end">
+          {/* Search Button */}
+          <div className="group">
             <Button
               type="submit"
-              size="lg"
-              className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-yellow-900 font-bold uppercase text-sm tracking-widest rounded-lg transition-all duration-300 h-11 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
+              className="w-full bg-[#d33a41] hover:bg-[#b02e35] text-white font-bold uppercase text-sm rounded-md h-[42px]"
               onClick={() => setUseWhatsApp(false)}
             >
-              <Search className="w-4 h-4 mr-2" />
-              Find Car
+              Search
             </Button>
           </div>
         </div>
 
         {/* WhatsApp Alternative */}
-        <div className="flex items-center justify-between pt-5 border-t border-gray-200 dark:border-slate-700/50">
-          <p className="text-xs text-muted-foreground/70 font-medium">
-            Prefer direct messaging?
-          </p>
+        <div className="flex items-center justify-end pt-3 border-t border-gray-200 dark:border-slate-700/50 mt-2">
           <Button
             type="submit"
             variant="ghost"
             size="sm"
-            className="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 font-bold text-xs uppercase tracking-wide transition-all duration-300 hover:scale-105"
+            className="text-[#3bdf70] hover:bg-green-50 font-bold text-xs uppercase transition-all"
             onClick={() => setUseWhatsApp(true)}
           >
             <MessageCircle className="w-4 h-4 mr-1.5" />
-            WhatsApp
+            WhatsApp Me
           </Button>
         </div>
       </div>

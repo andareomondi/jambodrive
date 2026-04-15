@@ -6,22 +6,34 @@ import { Footer } from '@/components/layout/footer'
 import { CarCard } from '@/components/cars/car-card'
 import { CarFilters, FilterState } from '@/components/cars/car-filters'
 import { EmptyState } from '@/components/common/empty-state'
-import { Car } from 'lucide-react'
+import { Car as CarIcon } from 'lucide-react'
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
 import { DatabaseService } from '@/lib/services'
 import type { Car } from '@/lib/mock-data'
+import { useSearchParams } from 'next/navigation'
 
 export default function CarsPage() {
+const searchParams = useSearchParams()
   const [filters, setFilters] = useState<FilterState>({
     priceMin: 0,
-    priceMax: 300,
-    carType: [],
+    priceMax: 1000000,
+    carType: searchParams.get('type') ? [searchParams.get('type') as string] : [],
     transmission: [],
     fuel: [],
     search: '',
   })
 const [cars, setCars] = useState<Car[]>([])
+
+const days = useMemo(() => {
+    const from = searchParams.get('from')
+    const to = searchParams.get('to')
+    if (!from || !to) return 1
+    
+    const diffTime = Math.abs(new Date(to).getTime() - new Date(from).getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays || 1
+  }, [searchParams])
 
 useEffect(() => {
   const db = new DatabaseService(createClient())
@@ -41,7 +53,7 @@ useEffect(() => {
       }
 
       // Car type filter
-      if (filters.carType.length > 0 && !filters.carType.includes(car.type)) {
+      if (filters.carType.length > 0 && !filters.carType.includes(car.type.toLowerCase())) {
         return false
       }
 
@@ -92,7 +104,7 @@ useEffect(() => {
               </>
             ) : (
               <EmptyState
-                icon={Car}
+                icon={CarIcon}
                 title="No Vehicles Found"
                 description="Try adjusting your filters to find the perfect car for your journey."
                 action={{ label: 'Clear Filters', href: '/cars' }}
