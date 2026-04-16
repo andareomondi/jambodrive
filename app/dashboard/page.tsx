@@ -7,6 +7,8 @@ import Image from "next/image";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { DepositFundsModal } from "@/components/modals/deposit-funds-modal";
+import { ManageBookingModal } from '@/components/modals/manage-booking-modal'
+import { BookingSummaryModal } from '@/components/modals/booking-summary-modal'
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +33,9 @@ export default function DashboardPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [manageModalOpen, setManageModalOpen] = useState(false);
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const supabase = createClient();
   const [user, setUser] = useState(null)
 const [editProfileOpen, setEditProfileOpen] = useState(false)
@@ -66,6 +71,16 @@ useEffect(() => {
       .finally(() => setLoading(false))
   })
 }, [])
+
+  const handleManageBooking = (booking: Booking) => {
+    setSelectedBooking(booking)
+    setManageModalOpen(true)
+  }
+
+  const handleViewBookingSummary = (booking: Booking) => {
+    setSelectedBooking(booking)
+    setSummaryModalOpen(true)
+  }
 
 const activeBookings = bookings.filter(
   (b) => b.status === 'confirmed' || b.status === 'pending'
@@ -108,10 +123,20 @@ if (!profile) return null
           </Button>
         </div>
 
-        {/* Deposit Modal */}
+        {/* Modals */}
         <DepositFundsModal
           open={depositModalOpen}
           onOpenChange={setDepositModalOpen}
+        />
+        <ManageBookingModal
+          open={manageModalOpen}
+          onOpenChange={setManageModalOpen}
+          booking={selectedBooking}
+        />
+        <BookingSummaryModal
+          open={summaryModalOpen}
+          onOpenChange={setSummaryModalOpen}
+          booking={selectedBooking}
         />
       {/* Profile Card */}
       <Card className="p-6 shadow-sm mb-8">
@@ -215,7 +240,7 @@ if (!profile) return null
                     </Button>
                     <Button
                       size="sm"
-                      className="flex-1 bg-accent hover:bg-accent/90"
+                      className="flex-1 bg-accent hover:bg-accent/90" onClick={() => handleManageBooking(booking)}
                     >
                       Manage
                     </Button>
@@ -266,8 +291,9 @@ if (!profile) return null
                       </span>
                     </div>
                   </div>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/cars/${booking.carId}`}>View Details</Link>
+                  <Button asChild variant="outline" size="sm" onClick={() => handleViewBookingSummary(booking)}>
+                  <a href="#">View Details </a>
+
                   </Button>
                 </div>
               </Card>
