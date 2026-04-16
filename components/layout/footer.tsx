@@ -60,7 +60,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  href="#"
+                  href="/contact"
                   className="text-muted-foreground hover:text-accent transition-colors"
                 >
                   Contact Us
@@ -68,7 +68,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/faq"
                   className="text-muted-foreground hover:text-accent transition-colors"
                 >
                   FAQ
@@ -76,7 +76,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/terms"
                   className="text-muted-foreground hover:text-accent transition-colors"
                 >
                   Terms & Conditions
@@ -110,10 +110,7 @@ export function Footer() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
             <p>&copy; {currentYear} Cozy Mobility & Tours. All rights reserved.</p>
             <div className="flex gap-6">
-              <Link href="#" className="hover:text-accent transition-colors">
-                Privacy Policy
-              </Link>
-              <Link href="#" className="hover:text-accent transition-colors">
+              <Link href="/terms" className="hover:text-accent transition-colors">
                 Terms of Service
               </Link>
             </div>
