@@ -203,7 +203,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
           <div className="group">
             <Button
               type="submit"
-              className="w-full bg-[#d33a41] hover:bg-[#b02e35] text-white font-bold uppercase text-sm rounded-md h-[42px]"
+              className="w-full bg-accent hover:bg-accent/90 text-white font-bold uppercase text-sm rounded-md h-[42px]"
               onClick={() => setUseWhatsApp(false)}
             >
               Search

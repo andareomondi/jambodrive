@@ -38,7 +38,7 @@ useEffect(() => {
         <div className="max-w-7xl mx-auto w-full relative z-10">
           {/* Hero Text */}
           <div className="mb-16 max-w-2xl">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-black text-white mb-8 text-balance leading-tight tracking-tight drop-shadow-lg">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-black mb-8 text-balance leading-tight tracking-tight drop-shadow-lg text-orange-400">
               Search Your <br className="hidden md:block" />
               Best Cars <br />
               Here.
@@ -61,7 +61,7 @@ useEffect(() => {
               { number: "24/7", label: "Support" },
             ].map((stat, i) => (
               <div key={i} className="text-left group hover:scale-105 transition-transform duration-300">
-                <p className="text-3xl md:text-4xl font-black text-yellow-400 drop-shadow-lg">
+                <p className="text-3xl md:text-4xl font-black text-orange-400 drop-shadow-lg">
                   {stat.number}
                 </p>
                 <p className="mt-2 text-white/90 text-sm md:text-base font-medium drop-shadow-md">{stat.label}</p>
@@ -154,30 +154,6 @@ useEffect(() => {
           </div>
         </div>
       </section>
-
-      {/* CTA Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-orange-600 to-orange-700 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-red-500/20 rounded-full -mr-48 -mt-48 blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-red-600/20 rounded-full -ml-36 -mb-36 blur-3xl"></div>
-        
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h2 className="text-5xl md:text-6xl font-black text-white mb-6 text-balance leading-tight drop-shadow-lg">
-            Ready to Hit the Road?
-          </h2>
-          <p className="text-xl text-white/90 mb-10 text-balance font-medium drop-shadow-md max-w-2xl mx-auto">
-            Start your adventure today. Browse our collection and book your perfect car in seconds.
-          </p>
-          <Button
-            asChild
-            size="lg"
-            className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black uppercase tracking-widest shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95"
-          >
-            <Link href="/cars">Explore Our Fleet</Link>
-          </Button>
-        </div>
-      </section>
-
-      {/* Help Button */}
       <Button 
         onClick={() => setHelpModalOpen(true)}
         className="fixed bottom-4 right-4 bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-110 z-40"
