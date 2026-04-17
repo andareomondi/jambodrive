@@ -97,7 +97,7 @@ export default function DashboardPage() {
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
             <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
-            <p className="text-muted-foreground animate-pulse">Loading your dashboard...</p>
+            <p className="text-muted-foreground animate-pulse">Loading</p>
           </div>
         </div>
       </div>

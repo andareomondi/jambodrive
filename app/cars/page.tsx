@@ -83,14 +83,14 @@ useEffect(() => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="flex flex-col">
           {/* Filters Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="w-full">
             <CarFilters onFilterChange={setFilters} />
           </div>
 
           {/* Cars Grid */}
-          <div className="lg:col-span-3">
+          <div className="w-full">
             {filteredCars.length > 0 ? (
               <>
                 <div className="mb-4 text-sm text-muted-foreground">

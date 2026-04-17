@@ -59,17 +59,22 @@ const [loading, setLoading] = useState(true)
     fetchData()
   }, [carId])
 
-if (loading) {
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
-      <div className="flex-1 flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
+            <p className="text-muted-foreground animate-pulse">Loading</p>
+          </div>
+        </div>
       </div>
-      <Footer />
-    </div>
-  )
-}
+    );
+  }
+
+
 
   if (!car) {
     return (
