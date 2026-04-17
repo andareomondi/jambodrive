@@ -275,7 +275,7 @@ if (!profile) return null
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="font-semibold text-foreground">
-                        {booking.carName}
+                        {booking.cars?.name}
                       </h3>
                       <BadgeStatus
                         status={booking.status}
@@ -286,8 +286,8 @@ if (!profile) return null
                       <span>
                         {new Date(booking.pickup_date).toLocaleDateString()} to {new Date(booking.return_date).toLocaleDateString()}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <DollarSign className="w-3 h-3" />${booking.totalPrice}
+                      <span className="flex items-center gap-1">Total Price:
+                        Ksh {booking.total_price}
                       </span>
                     </div>
                   </div>
