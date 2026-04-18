@@ -12,7 +12,6 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [user, setUser] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [isFacilitator, setIsFacilitator] = useState(false)
   const supabase = useMemo(() => createClient(), [])
   const toggleMenu = () => setIsOpen(!isOpen)
   const profile = null
@@ -35,7 +34,6 @@ export function Navbar() {
       setUser(session?.user ?? null)
 
       if (session?.user) {
-        // Fetch user role from your database
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('role')
@@ -50,7 +48,6 @@ export function Navbar() {
         }
 
         setIsAdmin(profile.role === 'admin')
-        setIsFacilitator(profile.role === 'facilitator')
       }
     }
 
@@ -76,10 +73,8 @@ export function Navbar() {
         }
 
         setIsAdmin(profile.role === 'admin')
-        setIsFacilitator(profile.role === 'facilitator')
       } else {
         setIsAdmin(false)
-        setIsFacilitator(false)
       }
     })
 
@@ -112,14 +107,7 @@ export function Navbar() {
               >
                 Browse Cars
               </Link>
-              { isFacilitator && user && (
-                <Link
-                href="/dashboard/facilitator"
-                className="text-foreground hover:text-accent transition-colors font-medium"
-              >
-                Facilitator
-              </Link>)
-              }{ isAdmin && user && (
+              { isAdmin && user && (
                 <Link
                 href="/dashboard/admin"
                 className="text-foreground hover:text-accent transition-colors font-medium"
@@ -174,11 +162,7 @@ export function Navbar() {
               <Link href="/cars" onClick={() => setIsOpen(false)} className="px-3 py-2 text-foreground hover:bg-secondary rounded-md transition-colors">
                 Browse Cars
               </Link>
-              { isFacilitator && (
-                <Link href="/dashboard/facilitator" onClick={() => setIsOpen(false)} className="px-3 py-2 text-foreground hover:bg-secondary rounded-md transition-colors">
-                  Facilitator 
-                </Link>)
-              }{ isAdmin && (
+              { isAdmin && (
                 <Link href="/dashboard/admin" onClick={() => setIsOpen(false)} className="px-3 py-2 text-foreground hover:bg-secondary rounded-md transition-colors">
                   Super Admin
                 </Link>)

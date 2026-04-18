@@ -37,11 +37,72 @@ export default function AdminDashboardPage() {
   const [cars, setCars] = useState<Car[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [user, setUser] = useState<User[]>([])
   const [carModalOpen, setCarModalOpen] = useState(false)
   const [selectedCar, setSelectedCar] = useState<Car | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const revenueStatuses = ['confirmed', 'completed']
+  const profile = null
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    const getSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      setUser(session?.user ?? null)
+
+      if (session?.user) {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+
+      
+
+        if (error) {
+          toast.error('Error fetching user role:', error)
+          return
+        }
+
+        setIsAdmin(profile.role === 'admin')
+      }
+    }
+
+    getSession()
+    
+    // listen for auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user ?? null)
+
+      if (session?.user) {
+        // Fetch user role from your database
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+
+        if (error) {
+          toast.error('Error fetching user role:', error)
+          return
+        }
+
+        setIsAdmin(profile.role === 'admin')
+      } else {
+        setIsAdmin(false)
+      }
+    })
+
+    return () => {
+      return
+    }
+  }, [supabase])
+ 
 
   const handleBookingStatus = async (id: string, status: 'confirmed' | 'cancelled') => {
     const { error } = await supabase.from('bookings').update({ status }).eq('id', id)
@@ -113,6 +174,20 @@ const handleWhatsApp = (phone: string) => {
 
     return matchesSearch && matchesStatus
   })
+
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-foreground mb-4">Access Denied</h1>
+          <p className="text-lg text-muted-foreground mb-6">You do not have permission to view this page.</p>
+          <Link href="/" className="inline-block px-6 py-3 bg-accent hover:bg-accent/90 text-white rounded-xl">
+            Go Back Home
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-background">

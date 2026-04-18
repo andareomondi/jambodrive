@@ -14,14 +14,16 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase-client";
 import { DatabaseService } from '@/lib/services'
 import type { Car, Booking, User } from '@/lib/mock-data'
+import { useMemo } from "react";
 
 
 export default function Home() {
-  const supabase = createClient();
-  const db = new DatabaseService(supabase)
 const [cars, setCars] = useState<Car[]>([])
   const featuredCars = cars.slice(0, 3);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
+const supabase = useMemo(() => createClient(), [])
+const db = useMemo(() => new DatabaseService(supabase), [supabase])
+
 
 useEffect(() => {
   db.getCars().then(setCars).catch(console.error)

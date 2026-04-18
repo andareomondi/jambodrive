@@ -28,10 +28,13 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase-client";
 import { DatabaseService } from "@/lib/services";
 import type { Booking } from "@/lib/mock-data";
+import { useMemo } from "react";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const supabase = createClient();
+const supabase = useMemo(() => createClient(), [])
+const db = useMemo(() => new DatabaseService(supabase), [supabase])
+
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
@@ -44,8 +47,6 @@ export default function DashboardPage() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   useEffect(() => {
-    const db = new DatabaseService(supabase);
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         router.push("/auth/login");
@@ -102,7 +103,17 @@ export default function DashboardPage() {
     );
   }
 
-  if (!profile) return null;
+  if (!profile) return (
+<div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-foreground mb-4">Access Denied</h1>
+          <p className="text-lg text-muted-foreground mb-6">You do not have permission to view this page.</p>
+          <Link href="/" className="inline-block px-6 py-3 bg-accent hover:bg-accent/90 text-white rounded-xl">
+            Go Back Home
+          </Link>
+        </div>
+      </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-background">
