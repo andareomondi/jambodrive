@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Menu, X, Car, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
+import { useMemo } from 'react'
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [user, setUser] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [isFacilitator, setIsFacilitator] = useState(false)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const toggleMenu = () => setIsOpen(!isOpen)
   const profile = null
 

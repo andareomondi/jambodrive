@@ -211,13 +211,12 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
           </div>
         </div>
 
-        {/* WhatsApp Alternative */}
         <div className="flex items-center justify-end pt-3 border-t border-gray-200 dark:border-slate-700/50 mt-2">
           <Button
             type="submit"
             variant="ghost"
             size="sm"
-            className="text-[#3bdf70] hover:bg-green-50 font-bold text-xs uppercase transition-all"
+            className="text-[#3bdf70] hover:bg-green-50 hover:text-green font-bold text-xs uppercase transition-all"
             onClick={() => setUseWhatsApp(true)}
           >
             <MessageCircle className="w-4 h-4 mr-1.5" />

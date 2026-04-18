@@ -60,14 +60,6 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  href="/contact"
-                  className="text-muted-foreground hover:text-accent transition-colors"
-                >
-                  Contact Us
-                </Link>
-              </li>
-              <li>
-                <Link
                   href="/faq"
                   className="text-muted-foreground hover:text-accent transition-colors"
                 >

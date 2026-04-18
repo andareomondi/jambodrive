@@ -28,10 +28,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useMemo } from 'react'
 
 export default function AdminDashboardPage() {
-  const supabase = createClient()
-  const db = new DatabaseService(supabase)
+  const supabase = useMemo(() => createClient(), [])
+  const db = useMemo(() => new DatabaseService(supabase), [supabase])
 
   const [cars, setCars] = useState<Car[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])

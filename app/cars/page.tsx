@@ -24,6 +24,8 @@ const searchParams = useSearchParams()
     search: '',
   })
 const [cars, setCars] = useState<Car[]>([])
+const supabase = useMemo(() => createClient(), [])
+const db = useMemo(() => new DatabaseService(supabase), [supabase])
 
 const days = useMemo(() => {
     const from = searchParams.get('from')
@@ -36,7 +38,6 @@ const days = useMemo(() => {
   }, [searchParams])
 
 useEffect(() => {
-  const db = new DatabaseService(createClient())
   db.getCars().then(setCars).catch(console.error)
 }, [])
 
@@ -107,7 +108,6 @@ useEffect(() => {
                 icon={CarIcon}
                 title="No Vehicles Found"
                 description="Try adjusting your filters to find the perfect car for your journey."
-                action={{ label: 'Clear Filters', href: '/cars' }}
               />
             )}
           </div>
