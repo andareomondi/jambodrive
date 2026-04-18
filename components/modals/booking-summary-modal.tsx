@@ -46,8 +46,8 @@ export function BookingSummaryModal({ open, onOpenChange, booking }: BookingSumm
   if (!booking) return null
 
   // Calculate total days
-  const pickupDate = new Date(booking.pickupDate)
-  const returnDate = new Date(booking.returnDate)
+  const pickupDate = new Date(booking.pickup_date)
+  const returnDate = new Date(booking.return_date)
   const totalDays = Math.ceil((returnDate.getTime() - pickupDate.getTime()) / (1000 * 60 * 60 * 24))
 
   const handleDownloadReceipt = () => {
@@ -86,9 +86,9 @@ export function BookingSummaryModal({ open, onOpenChange, booking }: BookingSumm
               <label className="text-xs md:text-sm text-muted-foreground">Booking ID</label>
               <p className="font-medium text-sm md:text-base text-foreground font-mono">{booking.id}</p>
             </div>
-            <div>
+            <div className="flex flex-col">
               <label className="text-xs md:text-sm text-muted-foreground">Status</label>
-              <Badge className="mt-1 capitalize text-xs md:text-sm bg-blue-600">
+              <Badge className="mt-1 capitalize text-xs md:text-sm bg-black">
                 {booking.status}
               </Badge>
             </div>
@@ -96,10 +96,19 @@ export function BookingSummaryModal({ open, onOpenChange, booking }: BookingSumm
 
           {/* Vehicle Information */}
           <Card className="p-3 md:p-4 bg-muted/50">
-            <h3 className="font-semibold text-sm md:text-base text-foreground mb-2 md:mb-3">Vehicle Rented</h3>
-            <div>
-              <p className="font-medium text-sm md:text-base text-foreground">{booking.car?.name}</p>
-              {car && <p className="text-xs md:text-sm text-muted-foreground">{car.model}</p>}
+                     <div className="flex items-center gap-3">
+              <div className="w-16 h-16 bg-gray-200 rounded overflow-hidden flex-shrink-0">
+                {car ? (
+                  <img src={car.image} alt={car.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-500">
+                    No Image
+                  </div>
+                )}
+              </div>
+
+              <p className="font-medium text-sm md:text-base text-foreground">{car?.name}</p>
+              {car && <p className="text-xs md:text-sm text-muted-foreground">{car.model} • ${car.price}/day</p>}
             </div>
           </Card>
 
@@ -109,7 +118,7 @@ export function BookingSummaryModal({ open, onOpenChange, booking }: BookingSumm
               <Calendar className="h-4 md:h-5 w-4 md:w-5 text-accent mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-xs md:text-sm text-muted-foreground">Pickup Date & Location</p>
-                <p className="font-medium text-sm md:text-base text-foreground">{booking.pickup_date}</p>
+                <p className="font-medium text-sm md:text-base text-foreground">{new Date(booking.pickup_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                 <p className="text-xs md:text-sm text-muted-foreground">{booking.pickup_location}</p>
               </div>
             </div>
@@ -117,7 +126,7 @@ export function BookingSummaryModal({ open, onOpenChange, booking }: BookingSumm
               <Calendar className="h-4 md:h-5 w-4 md:w-5 text-accent mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-xs md:text-sm text-muted-foreground">Return Date & Location</p>
-                <p className="font-medium text-sm md:text-base text-foreground">{booking.return_date}</p>
+                <p className="font-medium text-sm md:text-base text-foreground">{new Date(booking.return_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                 <p className="text-xs md:text-sm text-muted-foreground">{booking.return_location}</p>
               </div>
             </div>
