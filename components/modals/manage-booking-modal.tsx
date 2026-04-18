@@ -39,7 +39,7 @@ useEffect(() => {
       if (!booking) return 
 
       try {
-        const carData = db.getCarById(booking.car_id)
+        const carData = await db.getCarById(booking.car_id)
         setCar(carData)
       } catch (err) {
         console.error('Error fetching car data:', err)
@@ -52,8 +52,8 @@ useEffect(() => {
   if (!booking) return null
 
   const today = new Date()
-  const pickupDate = new Date(booking.pickupDate)
-  const returnDate = new Date(booking.returnDate)
+  const pickupDate = new Date(booking.pickup_date)
+  const returnDate = new Date(booking.return_date)
   const isActive = today >= pickupDate && today <= returnDate
 
   // Calculate running cost for active bookings
@@ -134,9 +134,18 @@ useEffect(() => {
 
           {/* Vehicle Details */}
           <Card className="p-3 md:p-4 bg-muted/50">
-            <h3 className="font-semibold text-sm md:text-base text-foreground mb-2 md:mb-3">Vehicle</h3>
-            <div>
-              <p className="font-medium text-sm md:text-base text-foreground">{booking.car?.name}</p>
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 bg-gray-200 rounded overflow-hidden flex-shrink-0">
+                {car ? (
+                  <img src={car.image} alt={car.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-500">
+                    No Image
+                  </div>
+                )}
+              </div>
+
+              <p className="font-medium text-sm md:text-base text-foreground">{car?.name}</p>
               {car && <p className="text-xs md:text-sm text-muted-foreground">{car.model} • ${car.price}/day</p>}
             </div>
           </Card>
@@ -147,28 +156,28 @@ useEffect(() => {
               <Calendar className="h-4 md:h-5 w-4 md:w-5 text-accent mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-xs md:text-sm text-muted-foreground">Pickup</p>
-                <p className="font-medium text-sm md:text-base text-foreground">{booking.pickupDate}</p>
+                <p className="font-medium text-sm md:text-base text-foreground">{new Date(booking.pickup_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}</p>
               </div>
             </div>
             <div className="flex gap-2 md:gap-3 items-start">
               <Calendar className="h-4 md:h-5 w-4 md:w-5 text-accent mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-xs md:text-sm text-muted-foreground">Return</p>
-                <p className="font-medium text-sm md:text-base text-foreground">{booking.returnDate}</p>
+                <p className="font-medium text-sm md:text-base text-foreground">{new Date(booking.return_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}</p>
               </div>
             </div>
             <div className="flex gap-2 md:gap-3 items-start">
               <MapPin className="h-4 md:h-5 w-4 md:w-5 text-accent mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-xs md:text-sm text-muted-foreground">Pickup Location</p>
-                <p className="font-medium text-sm md:text-base text-foreground">{booking.pickupLocation}</p>
+                <p className="font-medium text-sm md:text-base text-foreground">{booking.pickup_location}</p>
               </div>
             </div>
             <div className="flex gap-2 md:gap-3 items-start">
               <MapPin className="h-4 md:h-5 w-4 md:w-5 text-accent mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-xs md:text-sm text-muted-foreground">Return Location</p>
-                <p className="font-medium text-sm md:text-base text-foreground">{booking.returnLocation}</p>
+                <p className="font-medium text-sm md:text-base text-foreground">{booking.return_location}</p>
               </div>
             </div>
           </div>
@@ -196,7 +205,7 @@ useEffect(() => {
               )}
               <div className="border-t border-accent/20 pt-1 md:pt-2 mt-1 md:mt-2 flex justify-between">
                 <span className="font-semibold text-foreground">Total Price:</span>
-                <span className="font-bold text-accent">${booking.totalPrice}</span>
+                <span className="font-bold text-accent">${booking.total_price}</span>
               </div>
               {isActive && (
                 <div className="border-t border-green-200 pt-1 md:pt-2 mt-1 md:mt-2 flex justify-between bg-green-50 p-2 -mx-3 md:-mx-4 -mb-3 md:-mb-4 rounded">

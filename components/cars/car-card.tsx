@@ -32,6 +32,11 @@ export function CarCard({ car }: CarCardProps) {
             className="object-cover transition-transform duration-300 hover:scale-105"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
+                        <div className="absolute top-3 right-3">
+                          <Badge className={`${car.available ? 'bg-white/90 text-black' : 'bg-black/80 text-white'} backdrop-blur-sm border-none shadow-sm`}>
+                            {car.available ? 'Available' : 'Rented'}
+                          </Badge>
+                        </div>
           {!car.available && (
             <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
               <span className="text-white font-semibold">Not Available</span>
