@@ -14,6 +14,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Calendar, MapPin, DollarSign, CheckCircle, Download, Share2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase-client'
+import { DatabaseService } from '@/lib/services'
+import { useState, useEffect } from 'react'
 
 interface BookingSummaryModalProps {
   open: boolean
@@ -22,9 +25,25 @@ interface BookingSummaryModalProps {
 }
 
 export function BookingSummaryModal({ open, onOpenChange, booking }: BookingSummaryModalProps) {
-  if (!booking) return null
+  const db = new DatabaseService(createClient())
+  const [car, setCar] = useState<Car | null>(null)
 
-  const car = mockCars.find((c) => c.id === booking.carId)
+  useEffect(() => {
+    const fetchCar = async () => {
+      try {
+        const carData = await db.getCarById(booking.car_id)
+        setCar(carData)
+      } catch (err) {
+        console.error('Error fetching car data:', err)
+      }
+    }
+
+    if (booking) {
+      fetchCar()
+    }
+  }, [booking])
+
+  if (!booking) return null
 
   // Calculate total days
   const pickupDate = new Date(booking.pickupDate)
@@ -79,7 +98,7 @@ export function BookingSummaryModal({ open, onOpenChange, booking }: BookingSumm
           <Card className="p-3 md:p-4 bg-muted/50">
             <h3 className="font-semibold text-sm md:text-base text-foreground mb-2 md:mb-3">Vehicle Rented</h3>
             <div>
-              <p className="font-medium text-sm md:text-base text-foreground">{booking.carName}</p>
+              <p className="font-medium text-sm md:text-base text-foreground">{booking.car?.name}</p>
               {car && <p className="text-xs md:text-sm text-muted-foreground">{car.model}</p>}
             </div>
           </Card>
@@ -90,16 +109,16 @@ export function BookingSummaryModal({ open, onOpenChange, booking }: BookingSumm
               <Calendar className="h-4 md:h-5 w-4 md:w-5 text-accent mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-xs md:text-sm text-muted-foreground">Pickup Date & Location</p>
-                <p className="font-medium text-sm md:text-base text-foreground">{booking.pickupDate}</p>
-                <p className="text-xs md:text-sm text-muted-foreground">{booking.pickupLocation}</p>
+                <p className="font-medium text-sm md:text-base text-foreground">{booking.pickup_date}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">{booking.pickup_location}</p>
               </div>
             </div>
             <div className="flex gap-2 md:gap-3 items-start">
               <Calendar className="h-4 md:h-5 w-4 md:w-5 text-accent mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-xs md:text-sm text-muted-foreground">Return Date & Location</p>
-                <p className="font-medium text-sm md:text-base text-foreground">{booking.returnDate}</p>
-                <p className="text-xs md:text-sm text-muted-foreground">{booking.returnLocation}</p>
+                <p className="font-medium text-sm md:text-base text-foreground">{booking.return_date}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">{booking.return_location}</p>
               </div>
             </div>
           </div>
@@ -129,25 +148,25 @@ export function BookingSummaryModal({ open, onOpenChange, booking }: BookingSumm
                   <span className="font-medium text-foreground">Included</span>
                 </div>
               )}
-              {booking.additionalFeatures.length > 0 && (
+              {booking.additional_features.length > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Add-ons:</span>
-                  <span className="font-medium text-foreground">${Math.round(booking.totalPrice * 0.1)}</span>
+                  <span className="font-medium text-foreground">${Math.round(booking.total_price * 0.1)}</span>
                 </div>
               )}
               <div className="border-t border-accent/20 pt-1 md:pt-2 mt-1 md:mt-2 flex justify-between">
                 <span className="font-semibold text-foreground">Total Amount Paid:</span>
-                <span className="font-bold text-accent text-base md:text-lg">${booking.totalPrice}</span>
+                <span className="font-bold text-accent text-base md:text-lg">${booking.total_price}</span>
               </div>
             </div>
           </Card>
 
           {/* Additional Features */}
-          {booking.additionalFeatures.length > 0 && (
+          {booking.additional_features.length > 0 && (
             <div>
               <label className="text-xs md:text-sm text-muted-foreground block mb-2">Additional Services</label>
               <div className="flex flex-wrap gap-2">
-                {booking.additionalFeatures.map((feature) => (
+                {booking.additional_features.map((feature) => (
                   <Badge key={feature} variant="secondary" className="text-xs md:text-sm">
                     {feature}
                   </Badge>

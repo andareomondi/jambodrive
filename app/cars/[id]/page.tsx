@@ -222,8 +222,7 @@ const [loading, setLoading] = useState(true)
                   )
                 })}
               </div>
-
-              {/* CTA Button */}
+              {car.available && (
               <Button
                 asChild
                 className="w-full bg-accent hover:bg-accent/90 text-base"
@@ -231,9 +230,10 @@ const [loading, setLoading] = useState(true)
               >
                 <Link href={`/booking/${car.id}`}>Book Now</Link>
               </Button>
+              )}
 
               {!car.available && (
-                <p className="text-center text-sm text-muted-foreground mt-4">This vehicle is currently unavailable</p>
+                <p className="text-center text-sm text-muted-foreground mt-2">This vehicle is currently unavailable</p>
               )}
             </Card>
           </div>

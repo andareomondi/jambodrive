@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Booking, mockCars } from '@/lib/mock-data'
 import { EditBookingModal } from './edit-booking-modal'
 import {
@@ -16,6 +16,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Calendar, MapPin, DollarSign, AlertCircle, CheckCircle, Clock } from 'lucide-react'
 import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase-client'
+import { DatabaseService } from '@/lib/services'
+import { useMemo } from 'react'
 
 interface ManageBookingModalProps {
   open: boolean
@@ -26,13 +29,28 @@ interface ManageBookingModalProps {
 export function ManageBookingModal({ open, onOpenChange, booking }: ManageBookingModalProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
+const supabase = useMemo(() => createClient(), [])
+  const db = useMemo(() => new DatabaseService(supabase), [supabase])
+  const [car, setCar] = useState<Car | null>(null)
+
+
+useEffect(() => {
+    const fetchCar = async () => {
+      if (!booking) return 
+
+      try {
+        const carData = db.getCarById(booking.car_id)
+        setCar(carData)
+      } catch (err) {
+        console.error('Error fetching car data:', err)
+      }
+    }
+
+    fetchCar()
+  }, [booking, db]) 
 
   if (!booking) return null
 
-  // Get car details
-  const car = mockCars.find((c) => c.id === booking.carId)
-
-  // Calculate if booking is active
   const today = new Date()
   const pickupDate = new Date(booking.pickupDate)
   const returnDate = new Date(booking.returnDate)
@@ -108,7 +126,7 @@ export function ManageBookingModal({ open, onOpenChange, booking }: ManageBookin
               <label className="text-xs md:text-sm text-muted-foreground">Booking ID</label>
               <p className="font-medium text-sm md:text-base text-foreground">{booking.id}</p>
             </div>
-            <div>
+            <div className="flex flex-col">
               <label className="text-xs md:text-sm text-muted-foreground">Status</label>
               <Badge className="mt-1 capitalize text-xs md:text-sm">{booking.status}</Badge>
             </div>
@@ -118,7 +136,7 @@ export function ManageBookingModal({ open, onOpenChange, booking }: ManageBookin
           <Card className="p-3 md:p-4 bg-muted/50">
             <h3 className="font-semibold text-sm md:text-base text-foreground mb-2 md:mb-3">Vehicle</h3>
             <div>
-              <p className="font-medium text-sm md:text-base text-foreground">{booking.carName}</p>
+              <p className="font-medium text-sm md:text-base text-foreground">{booking.car?.name}</p>
               {car && <p className="text-xs md:text-sm text-muted-foreground">{car.model} • ${car.price}/day</p>}
             </div>
           </Card>
@@ -189,7 +207,6 @@ export function ManageBookingModal({ open, onOpenChange, booking }: ManageBookin
             </div>
           </Card>
 
-          {/* Additional Features */}
                   </div>
 
         <DialogFooter className="flex flex-col-reverse md:flex-row gap-2 justify-end">

@@ -33,13 +33,11 @@ export default function DashboardPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  // State
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
-  // Modal States
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [manageModalOpen, setManageModalOpen] = useState(false);
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
@@ -181,8 +179,6 @@ export default function DashboardPage() {
             </div>
           </div>
         </Card>
-
-        {/* ACTIVE BOOKINGS SECTION */}
         <section>
           <div className="flex items-center gap-2 mb-6">
             <div className="h-8 w-1 bg-accent rounded-full" />
@@ -209,7 +205,7 @@ export default function DashboardPage() {
                       <BadgeStatus status={booking.status} />
                     </div>
 
-                    <div className="space-y-4 mb-6 text-sm bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl">
+                    <div className="space-y-4  text-sm bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl">
                       <div className="flex items-center gap-3">
                         <Calendar className="w-4 h-4 text-accent flex-shrink-0" />
                         <span className="text-foreground font-medium">
@@ -221,29 +217,22 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-3">
                         <MapPin className="w-4 h-4 text-accent flex-shrink-0" />
                         <span className="text-muted-foreground truncate">
-                          {booking.pickup_location}
+                         PickUp: {booking.pickup_location}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
                         <DollarSign className="w-4 h-4 text-accent flex-shrink-0" />
                         <span className="text-foreground font-semibold">
-                          ${booking.total_price}
+                          Total Package Price: Ksh {booking.total_price}
                         </span>
                       </div>
                     </div>
-
-                    {booking.insurance && (
-                      <Badge variant="outline" className="mb-4 text-xs font-normal border-green-200 text-green-700 bg-green-50 dark:bg-green-900/10 dark:text-green-400 dark:border-green-900/50">
-                        Insurance Included
-                      </Badge>
-                    )}
                   </div>
-                  
                   <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 flex gap-3">
                     <Button
                       asChild
                       variant="outline"
-                      className="flex-1 rounded-xl bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800"
+                      className="flex-1 rounded-xl bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-foreground"
                     >
                       <Link href={`/cars/${booking.car_id}`}>View Car</Link>
                     </Button>
