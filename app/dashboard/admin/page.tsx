@@ -41,6 +41,7 @@ export default function AdminDashboardPage() {
   const [selectedCar, setSelectedCar] = useState<Car | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const revenueStatuses = ['confirmed', 'completed']
 
   const handleBookingStatus = async (id: string, status: 'confirmed' | 'cancelled') => {
     const { error } = await supabase.from('bookings').update({ status }).eq('id', id)
@@ -56,11 +57,18 @@ export default function AdminDashboardPage() {
     setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, role } : u))
   }
 
-  const handleWhatsApp = (phone: string) => {
-    const number = phone?.replace(/\D/g, '')
-    const message = encodeURIComponent('Hello, this is the admin from Cozy Mobility Tours.')
-    window.open(`https://wa.me/${number}?text=${message}`, '_blank')
+const handleWhatsApp = (phone: string) => {
+  if (!phone) return;
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.startsWith('0')) {
+    cleaned = '254' + cleaned.substring(1);
+  } 
+  else if (cleaned.startsWith('7')) {
+    cleaned = '254' + cleaned;
   }
+  const message = encodeURIComponent('Hello, this is the admin from Cozy Mobility Tours.');
+  window.open(`https://wa.me/${cleaned}?text=${message}`, '_blank');
+}
 
   const handleAddCar = () => {
     setSelectedCar(null)
@@ -90,8 +98,10 @@ export default function AdminDashboardPage() {
 
   const totalCars = cars.length
   const totalBookings = bookings.length
-  const totalRevenue = bookings.reduce((sum, b) => sum + b.total_price, 0)
   const totalUsers = users.filter((u) => u.role === 'customer').length
+  const totalRevenue = bookings
+    .filter((b) => revenueStatuses.includes(b.status))
+    .reduce((sum, b) => sum + b.total_price, 0)
 
   const filteredBookings = bookings.filter((booking) => {
     const matchesSearch =
@@ -127,7 +137,7 @@ export default function AdminDashboardPage() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {[
                   { icon: Calendar, label: 'Bookings', value: totalBookings, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
-                  { icon: DollarSign, label: 'Revenue', value: `$${totalRevenue.toLocaleString()}`, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-500/10' },
+                  { icon: DollarSign, label: 'Revenue Collected', value: `Ksh ${totalRevenue.toLocaleString()}`, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-500/10' },
                   { icon: CarIcon, label: 'Fleet', value: totalCars, color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-500/10' },
                   { icon: Users, label: 'Customers', value: totalUsers, color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-500/10' },
                 ].map((stat, i) => {
@@ -211,7 +221,7 @@ export default function AdminDashboardPage() {
                             <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                               {new Date(booking.pickup_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - {new Date(booking.return_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                             </TableCell>
-                            <TableCell className="font-semibold text-foreground whitespace-nowrap">${booking.total_price}</TableCell>
+                            <TableCell className="font-semibold text-foreground whitespace-nowrap">Ksh {booking.total_price}</TableCell>
                             <TableCell className="whitespace-nowrap">
                               <BadgeStatus status={booking.status} />
                             </TableCell>
@@ -299,7 +309,7 @@ export default function AdminDashboardPage() {
                         >
                           <option value="customer">Customer</option>
                           <option value="facilitator">Facilitator</option>
-                          <option value="super_admin">Super Admin</option>
+                          <option value="admin">Super Admin</option>
                         </select>
                       </div>
 
@@ -312,7 +322,7 @@ export default function AdminDashboardPage() {
               <Card className="p-4 sm:p-6 shadow-sm border-none bg-white dark:bg-card rounded-2xl">
                 <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <h2 className="text-xl font-bold text-foreground">Fleet Management</h2>
-                  <Button onClick={handleAddCar} className="w-full sm:w-auto bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black rounded-xl">
+                  <Button onClick={handleAddCar} className="w-full sm:w-auto bg-accent hover:bg-accent/90 rounded-xl">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Vehicle
                   </Button>

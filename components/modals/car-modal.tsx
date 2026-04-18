@@ -22,9 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Car, Save, Plus, X } from 'lucide-react'
+import { Car, Save, Plus, X, Image as ImageIcon, Gauge, Settings2, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { uploadCarImage } from '@/lib/upload-image'
+import { cn } from '@/lib/utils'
 
 type CarType = 'sedan' | 'suv' | 'hatchback' | 'truck' | 'van' | 'coupe' | 'convertible' | 'wagon'
 type TransmissionType = 'automatic' | 'manual'
@@ -36,13 +37,13 @@ interface CarFormData {
   year: number
   price: number
   image: string
-  images: string          // comma-separated for simplicity
+  images: string
   type: CarType
   seats: number
   transmission: TransmissionType
   fuel: FuelType
   fuel_consumption: string
-  features: string        // comma-separated
+  features: string
   description: string
   available: boolean
 }
@@ -70,472 +71,269 @@ interface Car {
 interface CarModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  car?: Car | null          // null/undefined = create mode
-  onSuccess?: () => void    // optional callback to refresh list
+  car?: Car | null
+  onSuccess?: () => void
 }
 
-// ── Dropdown options ──────────────────────────────────────────────────────────
 const carTypeLabels: Record<CarType, string> = {
-  sedan: 'Sedan',
-  suv: 'SUV',
-  hatchback: 'Hatchback',
-  truck: 'Truck',
-  van: 'Van',
-  coupe: 'Coupé',
-  convertible: 'Convertible',
-  wagon: 'Wagon',
+  sedan: 'Sedan', suv: 'SUV', hatchback: 'Hatchback', truck: 'Truck',
+  van: 'Van', coupe: 'Coupé', convertible: 'Convertible', wagon: 'Wagon',
 }
 
 const transmissionLabels: Record<TransmissionType, string> = {
-  automatic: 'Automatic',
-  manual: 'Manual',
+  automatic: 'Automatic', manual: 'Manual',
 }
 
 const fuelLabels: Record<FuelType, string> = {
-  petrol: 'Petrol',
-  diesel: 'Diesel',
-  electric: 'Electric',
-  hybrid: 'Hybrid',
+  petrol: 'Petrol', diesel: 'Diesel', electric: 'Electric', hybrid: 'Hybrid',
 }
 
 const currentYear = new Date().getFullYear()
 
-// ── Component ─────────────────────────────────────────────────────────────────
 export function CarModal({ open, onOpenChange, car, onSuccess }: CarModalProps) {
   const supabase = createClient()
-const [coverImageFile, setCoverImageFile] = useState<File | null>(null)
-const [galleryFiles, setGalleryFiles] = useState<File[]>([])
-const [uploading, setUploading] = useState(false)
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null)
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([])
+  const [uploading, setUploading] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const isEditing = !!car
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    control,
-    formState: { errors },
-  } = useForm<CarFormData>({
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<CarFormData>({
     defaultValues: {
-      name: '',
-      model: '',
-      year: currentYear,
-      price: 0,
-      image: '',
-      images: '',
-      type: 'sedan',
-      seats: 5,
-      transmission: 'automatic',
-      fuel: 'petrol',
-      fuel_consumption: '',
-      features: '',
-      description: '',
-      available: true,
+      name: '', model: '', year: currentYear, price: 0, image: '', images: '',
+      type: 'sedan', seats: 5, transmission: 'automatic', fuel: 'petrol',
+      fuel_consumption: '', features: '', description: '', available: true,
     },
   })
 
-  // Populate form when editing
   useEffect(() => {
     if (car) {
       reset({
-        name: car.name,
-        model: car.model,
-        year: car.year,
-        price: car.price,
-        image: car.image ?? '',
-        images: car.images?.join(', ') ?? '',
-        type: car.type,
-        seats: car.seats,
-        transmission: car.transmission,
-        fuel: car.fuel,
-        fuel_consumption: car.fuel_consumption ?? '',
-        features: car.features?.join(', ') ?? '',
-        description: car.description ?? '',
+        name: car.name, model: car.model, year: car.year, price: car.price,
+        image: car.image ?? '', images: car.images?.join(', ') ?? '',
+        type: car.type, seats: car.seats, transmission: car.transmission,
+        fuel: car.fuel, fuel_consumption: car.fuel_consumption ?? '',
+        features: car.features?.join(', ') ?? '', description: car.description ?? '',
         available: car.available,
       })
     } else {
       reset({
-        name: '',
-        model: '',
-        year: currentYear,
-        price: 0,
-        image: '',
-        images: '',
-        type: 'sedan',
-        seats: 5,
-        transmission: 'automatic',
-        fuel: 'petrol',
-        fuel_consumption: '',
-        features: '',
-        description: '',
-        available: true,
+        name: '', model: '', year: currentYear, price: 0, image: '', images: '',
+        type: 'sedan', seats: 5, transmission: 'automatic', fuel: 'petrol',
+        fuel_consumption: '', features: '', description: '', available: true,
       })
     }
   }, [car, reset, open])
 
-const onSubmit = async (data: CarFormData) => {
-  setIsLoading(true)
-  setUploading(true)
-  try {
-    // Upload cover image if a new file was selected
-    let coverUrl = car?.image ?? ''
-    if (coverImageFile) {
-      coverUrl = await uploadCarImage(coverImageFile)
+  const onSubmit = async (data: CarFormData) => {
+    setIsLoading(true)
+    setUploading(true)
+    try {
+      let coverUrl = car?.image ?? ''
+      if (coverImageFile) coverUrl = await uploadCarImage(coverImageFile)
+
+      let galleryUrls: string[] = car?.images ?? []
+      if (galleryFiles.length > 0) {
+        const newGallery = await Promise.all(galleryFiles.map(uploadCarImage))
+        galleryUrls = [...galleryUrls, ...newGallery]
+      }
+
+      const payload = {
+        name: data.name,
+        model: data.model,
+        year: Number(data.year),
+        price: Number(data.price),
+        image: coverUrl || null,
+        images: galleryUrls,
+        type: data.type,
+        seats: Number(data.seats),
+        transmission: data.transmission,
+        fuel: data.fuel,
+        fuel_consumption: data.fuel_consumption || null,
+        features: data.features ? data.features.split(',').map((s) => s.trim()).filter(Boolean) : [],
+        description: data.description || null,
+        available: data.available,
+      }
+
+      let error
+      if (isEditing) {
+        ;({ error } = await supabase.from('cars').update(payload).eq('id', car!.id))
+      } else {
+        ;({ error } = await supabase.from('cars').insert(payload))
+      }
+
+      if (error) throw error
+
+      toast.success(isEditing ? 'Car updated!' : 'Car added!')
+      setCoverImageFile(null)
+      setGalleryFiles([])
+      onOpenChange(false)
+      onSuccess?.()
+    } catch (err: any) {
+      toast.error(err.message || 'Action failed.')
+    } finally {
+      setIsLoading(false)
+      setUploading(false)
     }
-
-    // Upload gallery images if new files were selected
-    let galleryUrls: string[] = car?.images ?? []
-    if (galleryFiles.length > 0) {
-      galleryUrls = await Promise.all(galleryFiles.map(uploadCarImage))
-    }
-
-    const payload = {
-      name: data.name,
-      model: data.model,
-      year: Number(data.year),
-      price: Number(data.price),
-      image: coverUrl || null,
-      images: galleryUrls,
-      type: data.type,
-      seats: Number(data.seats),
-      transmission: data.transmission,
-      fuel: data.fuel,
-      fuel_consumption: data.fuel_consumption || null,
-      features: data.features
-        ? data.features.split(',').map((s) => s.trim()).filter(Boolean)
-        : [],
-      description: data.description || null,
-      available: data.available,
-    }
-
-    let error
-    if (isEditing) {
-      ;({ error } = await supabase.from('cars').update(payload).eq('id', car!.id))
-    } else {
-      ;({ error } = await supabase.from('cars').insert(payload))
-    }
-
-    if (error) { toast.error(error.message); return }
-
-    toast.success(isEditing ? 'Car updated!' : 'Car added!')
-    setCoverImageFile(null)
-    setGalleryFiles([])
-    reset()
-    onOpenChange(false)
-    onSuccess?.()
-  } catch (err: any) {
-    toast.error(err.message || 'Upload failed. Try again.')
-  } finally {
-    setIsLoading(false)
-    setUploading(false)
   }
-}
-  const handleCancel = () => {
-    reset()
-    onOpenChange(false)
-  }
+
+  const SectionHeader = ({ icon: Icon, title }: { icon: any, title: string }) => (
+    <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800 mb-4 mt-6 first:mt-0">
+      <Icon className="w-4 h-4 text-accent" />
+      <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{title}</h3>
+    </div>
+  )
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[620px] max-h-[90vh] overflow-y-auto animate-in fade-in duration-200">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
-              <Car className="h-5 w-5 text-accent" />
+    <Dialog open={open} onOpenChange={onOpenChange} >
+      <DialogContent className="sm:max-w-[650px] p-0 overflow-hidden border-none rounded-3xl sm:max-h-[85vh] flex flex-col h-full">
+        
+        {/* Header */}
+        <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-accent flex items-center justify-center shadow-lg shadow-accent/20">
+              <Car className="h-6 w-6 text-white" />
             </div>
             <div>
-              <DialogTitle className="text-xl">
-                {isEditing ? 'Edit Car' : 'Add New Car'}
+              <DialogTitle className="text-xl font-bold">
+                {isEditing ? 'Update Vehicle' : 'New Listing'}
               </DialogTitle>
-              <DialogDescription>
-                {isEditing
-                  ? 'Update the details for this vehicle'
-                  : 'Fill in the details to list a new vehicle'}
+              <DialogDescription className="text-sm">
+                {isEditing ? `Editing ${car?.name} ${car?.model}` : 'Add a premium car to your fleet'}
               </DialogDescription>
             </div>
           </div>
-        </DialogHeader>
+        </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-2">
-
-          {/* ── Row: Name + Model ── */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium">Name</Label>
-              <Input
-                id="name"
-                placeholder="e.g. Toyota"
-                className="transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-                {...register('name', {
-                  required: 'Name is required',
-                  minLength: { value: 2, message: 'At least 2 characters' },
-                })}
-              />
-              {errors.name && (
-                <p className="text-xs text-destructive">{errors.name.message}</p>
-              )}
+        {/* Form Body - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
+          <form id="car-form" onSubmit={handleSubmit(onSubmit)} className="space-y-1">
+            
+            <SectionHeader icon={Settings2} title="Basic Information" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-xs font-semibold px-1">Brand Name</Label>
+                <Input id="name" required placeholder="e.g. Mercedes" className="rounded-xl bg-slate-50 border-none h-11" {...register('name', { required: true })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="model" className="text-xs font-semibold px-1">Model Variant</Label>
+                <Input required id="model" placeholder="e.g. C-Class" className="rounded-xl bg-slate-50 border-none h-11" {...register('model', { required: true })} />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="model" className="text-sm font-medium">Model</Label>
-              <Input
-                id="model"
-                placeholder="e.g. Corolla"
-                className="transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-                {...register('model', {
-                  required: 'Model is required',
-                  minLength: { value: 1, message: 'Required' },
-                })}
-              />
-              {errors.model && (
-                <p className="text-xs text-destructive">{errors.model.message}</p>
-              )}
-            </div>
-          </div>
-
-          {/* ── Row: Year + Price + Seats ── */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="year" className="text-sm font-medium">Year</Label>
-              <Input
-                id="year"
-                type="number"
-                min={1900}
-                max={currentYear + 1}
-                className="transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-                {...register('year', {
-                  required: 'Year is required',
-                  min: { value: 1900, message: 'Invalid year' },
-                  max: { value: currentYear + 1, message: 'Invalid year' },
-                })}
-              />
-              {errors.year && (
-                <p className="text-xs text-destructive">{errors.year.message}</p>
-              )}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold px-1">Year</Label>
+                <Input required type="number" className="rounded-xl bg-slate-50 border-none h-11" {...register('year', { required: true })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold px-1">KES / Day</Label>
+                <Input required type="number" className="rounded-xl bg-slate-50 border-none h-11" {...register('price', { required: true })} />
+              </div>
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label className="text-xs font-semibold px-1">Seats</Label>
+                <Input required type="number" className="rounded-xl bg-slate-50 border-none h-11" {...register('seats', { required: true })} />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="price" className="text-sm font-medium">Price / day (KES)</Label>
-              <Input
-                id="price"
-                type="number"
-                min={0}
-                step={0.01}
-                placeholder="0.00"
-                className="transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-                {...register('price', {
-                  required: 'Price is required',
-                  min: { value: 0, message: 'Must be ≥ 0' },
-                })}
-              />
-              {errors.price && (
-                <p className="text-xs text-destructive">{errors.price.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="seats" className="text-sm font-medium">Seats</Label>
-              <Input
-                id="seats"
-                type="number"
-                min={1}
-                max={50}
-                className="transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-                {...register('seats', {
-                  required: 'Seats required',
-                  min: { value: 1, message: 'Min 1' },
-                })}
-              />
-              {errors.seats && (
-                <p className="text-xs text-destructive">{errors.seats.message}</p>
-              )}
-            </div>
-          </div>
-
-          {/* ── Row: Type + Transmission + Fuel ── */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Type</Label>
-              <Controller
-                name="type"
-                control={control}
-                rules={{ required: true }}
-                render={({ field }) => (
+            <SectionHeader icon={Gauge} title="Technical Specs" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold px-1">Category</Label>
+                <Controller name="type" control={control} render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-accent/50">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(carTypeLabels).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
+                    <SelectTrigger className="rounded-xl bg-slate-50 border-none h-11"><SelectValue /></SelectTrigger>
+                    <SelectContent>{Object.entries(carTypeLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
                   </Select>
-                )}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Transmission</Label>
-              <Controller
-                name="transmission"
-                control={control}
-                rules={{ required: true }}
-                render={({ field }) => (
+                )} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold px-1">Gearbox</Label>
+                <Controller name="transmission" control={control} render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-accent/50">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(transmissionLabels).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
+                    <SelectTrigger className="rounded-xl bg-slate-50 border-none h-11"><SelectValue /></SelectTrigger>
+                    <SelectContent>{Object.entries(transmissionLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
                   </Select>
-                )}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Fuel</Label>
-              <Controller
-                name="fuel"
-                control={control}
-                rules={{ required: true }}
-                render={({ field }) => (
+                )} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold px-1">Fuel</Label>
+                <Controller name="fuel" control={control} render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-accent/50">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(fuelLabels).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
+                    <SelectTrigger className="rounded-xl bg-slate-50 border-none h-11"><SelectValue /></SelectTrigger>
+                    <SelectContent>{Object.entries(fuelLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
                   </Select>
-                )}
-              />
+                )} />
+              </div>
             </div>
-          </div>
 
-          {/* ── Fuel Consumption ── */}
-          <div className="space-y-2">
-            <Label htmlFor="fuel_consumption" className="text-sm font-medium">
-              Fuel Consumption <span className="text-muted-foreground font-normal">(optional)</span>
-            </Label>
-            <Input
-              id="fuel_consumption"
-              placeholder="e.g. 12L/100km"
-              className="transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-              {...register('fuel_consumption')}
-            />
-          </div>
+            <SectionHeader icon={ImageIcon} title="Media & Extras" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <Label className="text-xs font-semibold px-1 flex items-center justify-between">
+                  Main Photo
+                  {coverImageFile && <span className="text-[10px] text-emerald-500 font-bold uppercase">Selected</span>}
+                </Label>
+                <div className="relative group cursor-pointer">
+                  <Input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={(e) => setCoverImageFile(e.target.files?.[0] ?? null)} />
+                  <div className="h-24 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1 group-hover:bg-slate-50 transition-colors">
+                    <ImageIcon className="w-5 h-5 text-slate-400" />
+                    <span className="text-[10px] text-muted-foreground font-medium">Click to upload cover</span>
+                  </div>
+                </div>
+              </div>
 
-<div className="space-y-2">
-  <Label className="text-sm font-medium">
-    Cover Image <span className="text-muted-foreground font-normal">(optional)</span>
-  </Label>
-  <Input
-    type="file"
-    accept="image/*"
-    className="transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-    onChange={(e) => setCoverImageFile(e.target.files?.[0] ?? null)}
-  />
-</div>
-          {/* ── Gallery Images ── */}
-<div className="space-y-2">
-  <Label className="text-sm font-medium">
-    Gallery Images <span className="text-muted-foreground font-normal">(optional, select multiple)</span>
-  </Label>
-  <Input
-    type="file"
-    accept="image/*"
-    multiple
-    className="transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-    onChange={(e) => setGalleryFiles(Array.from(e.target.files ?? []))}
-  />
-  {galleryFiles.length > 0 && (
-    <p className="text-xs text-muted-foreground">{galleryFiles.length} file(s) selected</p>
-  )}
-</div>
-
-          {/* ── Features ── */}
-          <div className="space-y-2">
-            <Label htmlFor="features" className="text-sm font-medium">
-              Features{' '}
-              <span className="text-muted-foreground font-normal">(comma-separated, optional)</span>
-            </Label>
-            <Input
-              id="features"
-              placeholder="e.g. GPS, Bluetooth, Sunroof"
-              className="transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-              {...register('features')}
-            />
-          </div>
-
-          {/* ── Description ── */}
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium">
-              Description <span className="text-muted-foreground font-normal">(optional)</span>
-            </Label>
-            <Textarea
-              id="description"
-              placeholder="Brief description of the vehicle..."
-              rows={3}
-              className="resize-none transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-              {...register('description')}
-            />
-          </div>
-
-          {/* ── Available toggle ── */}
-          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
-            <div>
-              <p className="text-sm font-medium">Available for booking</p>
-              <p className="text-xs text-muted-foreground">Toggle off to hide from customers</p>
+              <div className="space-y-3">
+                <Label className="text-xs font-semibold px-1 flex items-center justify-between">
+                  Gallery
+                  <span className="text-[10px] text-muted-foreground uppercase">{galleryFiles.length} files</span>
+                </Label>
+                <div className="relative group cursor-pointer">
+                  <Input type="file" accept="image/*" multiple className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={(e) => setGalleryFiles(Array.from(e.target.files ?? []))} />
+                  <div className="h-24 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1 group-hover:bg-slate-50 transition-colors">
+                    <Plus className="w-5 h-5 text-slate-400" />
+                    <span className="text-[10px] text-muted-foreground font-medium">Add more photos</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <Controller
-              name="available"
-              control={control}
-              render={({ field }) => (
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              )}
-            />
-          </div>
 
-          {/* ── Info banner ── */}
-          <div className="bg-muted/50 border border-border rounded-lg p-3 flex items-start gap-2">
-            <div className="h-5 w-5 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-xs font-semibold text-accent">i</span>
+            <div className="space-y-1.5 mt-4">
+              <Label className="text-xs font-semibold px-1">Key Features (comma separated)</Label>
+              <Input required placeholder="Bluetooth, Sunroof, AC..." className="rounded-xl bg-slate-50 border-none h-11" {...register('features')} />
             </div>
-            <p className="text-xs text-muted-foreground">
-              Rating and review count are managed automatically and cannot be set manually.
-            </p>
-          </div>
 
-          {/* ── Actions ── */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isLoading}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
-            >
-              {isEditing ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-              {isLoading ? (uploading ? 'Uploading...' : 'Saving...') : isEditing ? 'Save Changes' : 'Add Car'}
-            </Button>
+            <div className="space-y-1.5 mt-4">
+              <Label className="text-xs font-semibold px-1">Description</Label>
+              <Textarea rows={3} placeholder="Vehicle highlights..." className="rounded-xl bg-slate-50 border-none resize-none" {...register('description')} />
+            </div>
+
+            <div className="flex items-center justify-between bg-accent/5 rounded-2xl p-4 mt-6">
+              <div className="flex items-center gap-3">
+                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isLoading ? "bg-slate-200" : "bg-white")}>
+                  <Info className="w-5 h-5 text-accent" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">Visibility</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-tight">Show to customers</p>
+                </div>
+              </div>
+              <Controller name="available" control={control} render={({ field }) => (
+                <Switch checked={field.value} onCheckedChange={field.onChange} />
+              )} />
+            </div>
+          </form>
+
+        {/* Action Bar */}
+        <div className="py-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isLoading} className="flex-1 rounded-xl h-12 font-bold">
+            Cancel
+          </Button>
+          <Button type="submit" form="car-form" disabled={isLoading} className="flex-[2] bg-accent hover:bg-accent/90 text-white rounded-xl h-12 font-bold shadow-lg shadow-accent/20">
+            {isLoading ? (uploading ? 'Uploading...' : 'Saving...') : isEditing ? 'Update Vehicle' : 'Create Listing'}
+          </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   )

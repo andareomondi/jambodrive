@@ -32,7 +32,7 @@ useEffect(() => {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative px-4 sm:px-6 lg:px-8 py-16 md:py-28 overflow-hidden bg-gradient-to-br from-red-600 via-red-500 to-red-700 bg-[url('/hero/car10.jpeg')] bg-cover bg-center">
+      <section className="relative px-4 sm:px-6 lg:px-8 py-16 md:py-28 overflow-hidden bg-gradient-to-br from-red-600 via-red-500 to-red-700 bg-[url('/hero/car11.png')] bg-cover bg-center">
         <div className="absolute inset-0 bg-black/55 backdrop-blur-[1px]"></div>
         
         <div className="max-w-7xl mx-auto w-full relative z-10">
