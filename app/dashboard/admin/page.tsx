@@ -374,8 +374,8 @@ const handleWhatsApp = (phone: string) => {
         const car = cars.find(c => c.id === booking.car_id);
         const phoneNumber = booking.profiles?.phone || ""; 
         
-        if (phoneNumber) {
-          toast.error(phoneNumber)
+        if (!phoneNumber) {
+          toast.error("No phone number available for this customer.");
           return;
         }
 
