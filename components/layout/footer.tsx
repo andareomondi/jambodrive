@@ -43,14 +43,6 @@ export function Footer() {
                   Browse Cars
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/dashboard"
-                  className="text-muted-foreground hover:text-accent transition-colors"
-                >
-                  Dashboard
-                </Link>
-              </li>
             </ul>
           </div>
 
@@ -83,15 +75,15 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex gap-2 items-start text-muted-foreground">
                 <Phone className="w-4 h-4 mt-1 flex-shrink-0" />
-                <span>+1 (555) 123-4567</span>
+                <span>+254 758 5009431</span>
               </li>
               <li className="flex gap-2 items-start text-muted-foreground">
                 <Mail className="w-4 h-4 mt-1 flex-shrink-0" />
-                <span>support@cozymobility.com</span>
+                <span>cozymaxm@gmail.com</span>
               </li>
               <li className="flex gap-2 items-start text-muted-foreground">
                 <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
-                <span>123 Auto Drive, City, State 12345</span>
+                <span>Nairobi, Kenya</span>
               </li>
             </ul>
           </div>

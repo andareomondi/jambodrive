@@ -1,15 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MessageCircle, Search } from 'lucide-react'
+import { MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
-// Update the interface to match the image's fields
 interface QuickBookingData {
   pickupLocation: string
   dropOffLocation: string
@@ -28,15 +27,14 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
   const router = useRouter()
   const [useWhatsApp, setUseWhatsApp] = useState(false)
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<QuickBookingData>({
+  const { register, handleSubmit, formState: { errors } } = useForm<QuickBookingData>({
     defaultValues: {
-      pickupLocation: 'jkia',
-      dropOffLocation: 'athi_river',
-      type: 'any',
+      pickupLocation: 'JKIA',
+      dropOffLocation: 'Athi River',
+      type: 'sedan',
     },
   })
 
-  // Mock data based on your screenshot
   const locations = [
     { id: 'jkia', name: 'JKIA' },
     { id: 'athi_river', name: 'Athi River' },
@@ -53,7 +51,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
   ]
 
   const generateWhatsAppMessage = (data: QuickBookingData) => {
-    const message = `Hi! I'd like to book a car:\n\n🚗 type: ${data.type}\n📍 Pickup: ${data.pickupLocation} on ${data.pickupDate} at ${data.pickupTime}\n🏁 Drop-off: ${data.dropOffLocation} on ${data.dropOffDate} at ${data.dropOffTime}`
+    const message = `Hi! I'd like to book a car:\n\nType: ${data.type}\nPickup: ${data.pickupLocation} on ${data.pickupDate} at ${data.pickupTime}\nDrop-off: ${data.dropOffLocation} on ${data.dropOffDate} at ${data.dropOffTime}`
     return encodeURIComponent(message)
   }
 
@@ -72,7 +70,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
     }
 
     if (useWhatsApp) {
-      const whatsappNumber = '254700000000' // Replace with your WhatsApp business number
+      const whatsappNumber = '254758500943'
       const message = generateWhatsAppMessage(data)
       const whatsappURL = `https://wa.me/${whatsappNumber}?text=${message}`
       window.open(whatsappURL, '_blank')
@@ -96,42 +94,47 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-7xl mx-auto w-full">
       <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-2xl p-6 border border-white/20 dark:border-slate-800/50">
         
-        {/* 8-Column Grid for large screens to fit all fields in one row */}
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-5 items-end">
           
-          {/* Pickup Location */}
+          {/* Pickup Location with Datalist */}
           <div className="group">
             <Label htmlFor="pickupLocation" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
               Pickup Location
             </Label>
-            <select
+            <Input
               id="pickupLocation"
-              {...register('pickupLocation')}
-              className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500/40 focus:border-red-500"
-            >
+              list="pickup-locations"
+              placeholder="Select or type..."
+              {...register('pickupLocation', { required: true })}
+              className="text-sm px-3 py-2.5 rounded-md"
+            />
+            <datalist id="pickup-locations">
               {locations.map((loc) => (
-                <option key={`pickup-${loc.id}`} value={loc.id}>{loc.name}</option>
+                <option key={`pickup-${loc.id}`} value={loc.name} />
               ))}
-            </select>
+            </datalist>
           </div>
 
-          {/* Drop Off Location */}
+          {/* Drop Off Location with Datalist */}
           <div className="group">
             <Label htmlFor="dropOffLocation" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
               Drop Off Location
             </Label>
-            <select
+            <Input
               id="dropOffLocation"
-              {...register('dropOffLocation')}
-              className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500/40 focus:border-red-500"
-            >
+              list="dropoff-locations"
+              placeholder="Select or type..."
+              {...register('dropOffLocation', { required: true })}
+              className="text-sm px-3 py-2.5 rounded-md"
+            />
+            <datalist id="dropoff-locations">
               {locations.map((loc) => (
-                <option key={`drop-${loc.id}`} value={loc.id}>{loc.name}</option>
+                <option key={`drop-${loc.id}`} value={loc.name} />
               ))}
-            </select>
+            </datalist>
           </div>
 
-          {/* Pickup Date */}
+          {/* Dates & Times */}
           <div className="group">
             <Label htmlFor="pickupDate" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
               Pickup Date
@@ -144,12 +147,12 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             />
           </div>
 
-          {/* Pickup Time */}
           <div className="group">
             <Label htmlFor="pickupTime" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
               Pickup Time
             </Label>
             <Input
+              required
               id="pickupTime"
               type="time"
               {...register('pickupTime')}
@@ -157,7 +160,6 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             />
           </div>
 
-          {/* Drop Off Date */}
           <div className="group">
             <Label htmlFor="dropOffDate" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
               Drop Off Date
@@ -170,12 +172,12 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             />
           </div>
 
-          {/* Drop Off Time */}
           <div className="group">
             <Label htmlFor="dropOffTime" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
               Drop Off Time
             </Label>
             <Input
+              required
               id="dropOffTime"
               type="time"
               {...register('dropOffTime')}
@@ -183,7 +185,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             />
           </div>
 
-          {/* type */}
+          {/* Type */}
           <div className="group">
             <Label htmlFor="type" className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block">
               Type
@@ -199,7 +201,6 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             </select>
           </div>
 
-          {/* Search Button */}
           <div className="group">
             <Button
               type="submit"
@@ -211,10 +212,11 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
           </div>
         </div>
 
-        <div className="flex items-center justify-end pt-3 border-t border-gray-200 dark:border-slate-700/50 mt-2">
+        {/* WhatsApp Section with Helper Text */}
+        <div className="flex flex-col items-center pt-3 border-t border-gray-200 dark:border-slate-700/50 mt-2">
           <Button
             type="submit"
-            variant="ghost"
+            variant="outline"
             size="sm"
             className="text-[#3bdf70] hover:bg-green-50 hover:text-green font-bold text-xs uppercase transition-all"
             onClick={() => setUseWhatsApp(true)}
@@ -222,6 +224,9 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             <MessageCircle className="w-4 h-4 mr-1.5" />
             WhatsApp Me
           </Button>
+          <p className="text-[10px] text-muted-foreground mt-1 ">
+            Details will be sent to the admin and he will reach out to you.
+          </p>
         </div>
       </div>
     </form>
