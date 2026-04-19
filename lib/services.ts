@@ -76,7 +76,7 @@ export class DatabaseService {
       .select(`
         *,
         cars ( name, image ),
-        profiles ( full_name, email )
+        profiles ( full_name, email, phone )
       `)
       .order('created_at', { ascending: false });
       

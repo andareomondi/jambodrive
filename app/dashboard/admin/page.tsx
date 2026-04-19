@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BadgeStatus } from '@/components/common/badge-status'
 import { CarModal } from '@/components/modals/car-modal'
+import { BookingModal } from '@/components/modals/BookingModal'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase-client'
 import { deleteCarImageFromStorage } from '@/lib/handle_file_deletion'
@@ -49,6 +50,7 @@ export default function AdminDashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [carToDelete, setCarToDelete] = useState<Car | null>(null)
+  const [bookingModalOpen, setBookingModalOpen] = useState(false)
 
   useEffect(() => {
     const getSession = async () => {
@@ -108,19 +110,67 @@ export default function AdminDashboardPage() {
   }, [supabase])
  
 
-  const handleBookingStatus = async (id: string, status: 'confirmed' | 'cancelled') => {
-    const { error } = await supabase.from('bookings').update({ status }).eq('id', id)
-    if (error) { toast.error(error.message); return }
+const handleBookingStatus = async (id: string, status: 'confirmed' | 'cancelled') => {
+    const { data: bookingData, error: bookingError } = await supabase
+      .from('bookings')
+      .update({ status })
+      .eq('id', id)
+      .select('car_id')
+      .single()
+
+    if (bookingError) { 
+      toast.error(bookingError.message)
+      return 
+    }
+
+    if (status === 'confirmed' && bookingData?.car_id) {
+      const { error: carError } = await supabase
+        .from('cars')
+        .update({ available: false })
+        .eq('id', bookingData.car_id)
+
+      if (carError) {
+        toast.error("Booking confirmed, but failed to update car availability.")
+        console.error(carError)
+      } else {
+        setCars((prev) => 
+          prev.map((c) => c.id === bookingData.car_id ? { ...c, available: false } : c)
+        )
+      }
+    }
+
     toast.success(`Booking ${status === 'confirmed' ? 'confirmed' : 'rejected'}.`)
+    
     setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status } : b))
   }
-
   const handleRoleChange = async (userId: string, role: string) => {
     const { error } = await supabase.from('profiles').update({ role }).eq('id', userId)
     if (error) { toast.error(error.message); return }
     toast.success('Role updated.')
     setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, role } : u))
   }
+ const initiateWhatsApp = (phoneNumber: string, bookingDetails: any) => {
+   let formattedNumber = phoneNumber.replace(/\D/g, '');
+  if (formattedNumber.startsWith('0')) {
+    formattedNumber = '254' + formattedNumber.substring(1);
+  } else if (formattedNumber.startsWith('7')) {
+    formattedNumber = '254' + formattedNumber;
+  }
+  const cleanNumber = formattedNumber.replace(/\D/g, '');
+  const message = `Hello, We have received your booking and confirmed it.
+
+*Booking Details:*
+🚗 Vehicle: ${bookingDetails.car_name}
+📅 Pickup: ${new Date(bookingDetails.pickup_date).toLocaleDateString()}
+📍 Location: ${bookingDetails.pickup_location}
+💰 Total: KES ${bookingDetails.total_price}
+
+Please let us know if you have any questions!`;
+
+  const encodedMessage = encodeURIComponent(message);
+  
+  window.open(`https://wa.me/${cleanNumber}?text=${encodedMessage}`, '_blank');
+};
 
 const handleWhatsApp = (phone: string) => {
   if (!phone) return;
@@ -242,7 +292,7 @@ const handleWhatsApp = (phone: string) => {
                 <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-foreground">Recent Bookings</h2>
-                    <Button className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl">
+                    <Button onClick = {() => setBookingModalOpen(true)} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl">
                       <Plus className="h-4 w-4 mr-2" />
                       New Booking
                     </Button>
@@ -315,7 +365,33 @@ const handleWhatsApp = (phone: string) => {
                                       Reject
                                     </Button>
                                   </>
-                                ) : (
+                                ) : booking.status === 'confirmed' ? (
+<Button
+      variant="outline"
+      size="sm"
+      className="rounded-xl border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 transition-all flex items-center gap-2"
+      onClick={() => {
+        const car = cars.find(c => c.id === booking.car_id);
+        const phoneNumber = booking.profiles?.phone || ""; 
+        
+        if (phoneNumber) {
+          toast.error(phoneNumber)
+          return;
+        }
+
+        initiateWhatsApp(phoneNumber, {
+          car_name: `${car?.name} ${car?.model}`,
+          pickup_date: booking.pickup_date,
+          pickup_location: booking.pickup_location,
+          total_price: booking.total_price
+        });
+      }}
+    >
+      <MessageCircle className="h-3.5 w-3.5" />
+      Initiate
+    </Button>
+                                )
+     : (
                                   <span className="text-xs text-muted-foreground px-2">Processed</span>
                                 )}
                               </div>
@@ -467,6 +543,14 @@ const handleWhatsApp = (phone: string) => {
         car={selectedCar}
         onSuccess={refreshCars}
       />
+<BookingModal 
+  open={bookingModalOpen} 
+  onOpenChange={setBookingModalOpen} 
+  onSuccess={() => {
+    refreshCars() 
+    db.getBookings().then(setBookings)
+  }}
+/>
     </div>
   )
 }
