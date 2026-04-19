@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { Progress } from '@/components/ui/progress' // Added Progress component
 import {
   Select,
   SelectContent,
@@ -22,73 +23,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Car, Save, Plus, X, Image as ImageIcon, Gauge, Settings2, Info } from 'lucide-react'
+import { Car, Save, Plus, X, Image as ImageIcon, Gauge, Settings2, Info, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { uploadCarImage } from '@/lib/upload-image'
 import { cn } from '@/lib/utils'
 
+// ... Types and Record Constants stay the same ...
 type CarType = 'sedan' | 'suv' | 'hatchback' | 'truck' | 'van' | 'coupe' | 'convertible' | 'wagon'
 type TransmissionType = 'automatic' | 'manual'
 type FuelType = 'petrol' | 'diesel' | 'electric' | 'hybrid'
 
 interface CarFormData {
-  name: string
-  model: string
-  year: number
-  price: number
-  image: string
-  images: string
-  type: CarType
-  seats: number
-  transmission: TransmissionType
-  fuel: FuelType
-  fuel_consumption: string
-  features: string
-  description: string
-  available: boolean
+  name: string; model: string; year: number; price: number; image: string; images: string;
+  type: CarType; seats: number; transmission: TransmissionType; fuel: FuelType;
+  fuel_consumption: string; features: string; description: string; available: boolean;
 }
 
 interface Car {
-  id: string
-  name: string
-  model: string
-  year: number
-  price: number
-  rating: number
-  reviews: number
-  image: string
-  images: string[]
-  type: CarType
-  seats: number
-  transmission: TransmissionType
-  fuel: FuelType
-  fuel_consumption: string
-  features: string[]
-  description: string
-  available: boolean
+  id: string; name: string; model: string; year: number; price: number; rating: number;
+  reviews: number; image: string; images: string[]; type: CarType; seats: number;
+  transmission: TransmissionType; fuel: FuelType; fuel_consumption: string;
+  features: string[]; description: string; available: boolean;
 }
 
 interface CarModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  car?: Car | null
-  onSuccess?: () => void
+  open: boolean; onOpenChange: (open: boolean) => void; car?: Car | null; onSuccess?: () => void;
 }
 
-const carTypeLabels: Record<CarType, string> = {
-  sedan: 'Sedan', suv: 'SUV', hatchback: 'Hatchback', truck: 'Truck',
-  van: 'Van', coupe: 'Coupé', convertible: 'Convertible', wagon: 'Wagon',
-}
-
-const transmissionLabels: Record<TransmissionType, string> = {
-  automatic: 'Automatic', manual: 'Manual',
-}
-
-const fuelLabels: Record<FuelType, string> = {
-  petrol: 'Petrol', diesel: 'Diesel', electric: 'Electric', hybrid: 'Hybrid',
-}
-
-const currentYear = new Date().getFullYear()
+const carTypeLabels: Record<CarType, string> = { sedan: 'Sedan', suv: 'SUV', hatchback: 'Hatchback', truck: 'Truck', van: 'Van', coupe: 'Coupé', convertible: 'Convertible', wagon: 'Wagon' };
+const transmissionLabels: Record<TransmissionType, string> = { automatic: 'Automatic', manual: 'Manual' };
+const fuelLabels: Record<FuelType, string> = { petrol: 'Petrol', diesel: 'Diesel', electric: 'Electric', hybrid: 'Hybrid' };
+const currentYear = new Date().getFullYear();
 
 export function CarModal({ open, onOpenChange, car, onSuccess }: CarModalProps) {
   const supabase = createClient()
@@ -96,6 +61,7 @@ export function CarModal({ open, onOpenChange, car, onSuccess }: CarModalProps) 
   const [galleryFiles, setGalleryFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [progress, setProgress] = useState(0) // New Progress State
   const isEditing = !!car
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<CarFormData>({
@@ -123,19 +89,37 @@ export function CarModal({ open, onOpenChange, car, onSuccess }: CarModalProps) 
         fuel_consumption: '', features: '', description: '', available: true,
       })
     }
+    // Reset progress when modal opens/closes
+    if (!open) setProgress(0)
   }, [car, reset, open])
 
   const onSubmit = async (data: CarFormData) => {
     setIsLoading(true)
     setUploading(true)
+    setProgress(5) // Initial start
+
     try {
       let coverUrl = car?.image ?? ''
-      if (coverImageFile) coverUrl = await uploadCarImage(coverImageFile)
+      if (coverImageFile) {
+        coverUrl = await uploadCarImage(coverImageFile)
+        setProgress(30) // Cover uploaded
+      } else {
+        setProgress(20) // Skip cover
+      }
 
       let galleryUrls: string[] = car?.images ?? []
       if (galleryFiles.length > 0) {
-        const newGallery = await Promise.all(galleryFiles.map(uploadCarImage))
+        const stepSize = 50 / galleryFiles.length
+        const newGallery: string[] = []
+        
+        for (let i = 0; i < galleryFiles.length; i++) {
+          const url = await uploadCarImage(galleryFiles[i])
+          newGallery.push(url)
+          setProgress((prev) => prev + stepSize)
+        }
         galleryUrls = [...galleryUrls, ...newGallery]
+      } else {
+        setProgress(70) // Skip gallery
       }
 
       const payload = {
@@ -164,13 +148,19 @@ export function CarModal({ open, onOpenChange, car, onSuccess }: CarModalProps) 
 
       if (error) throw error
 
+      setProgress(100) // Database complete
       toast.success(isEditing ? 'Car updated!' : 'Car added!')
-      setCoverImageFile(null)
-      setGalleryFiles([])
-      onOpenChange(false)
-      onSuccess?.()
+      
+      setTimeout(() => {
+        setCoverImageFile(null)
+        setGalleryFiles([])
+        onOpenChange(false)
+        onSuccess?.()
+      }, 400)
+      
     } catch (err: any) {
       toast.error(err.message || 'Action failed.')
+      setProgress(0)
     } finally {
       setIsLoading(false)
       setUploading(false)
@@ -185,14 +175,14 @@ export function CarModal({ open, onOpenChange, car, onSuccess }: CarModalProps) 
   )
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} >
+    <Dialog open={open} onOpenChange={isLoading ? () => {} : onOpenChange}>
       <DialogContent className="sm:max-w-[650px] p-0 overflow-hidden border-none rounded-3xl sm:max-h-[85vh] flex flex-col h-full">
         
         {/* Header */}
         <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-2xl bg-accent flex items-center justify-center shadow-lg shadow-accent/20">
-              <Car className="h-6 w-6 text-white" />
+              {isLoading ? <Loader2 className="h-6 w-6 text-white animate-spin" /> : <Car className="h-6 w-6 text-white" />}
             </div>
             <div>
               <DialogTitle className="text-xl font-bold">
@@ -324,14 +314,25 @@ export function CarModal({ open, onOpenChange, car, onSuccess }: CarModalProps) 
             </div>
           </form>
 
-        {/* Action Bar */}
-        <div className="py-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex gap-3">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isLoading} className="flex-1 rounded-xl h-12 font-bold">
-            Cancel
-          </Button>
-          <Button type="submit" form="car-form" disabled={isLoading} className="flex-[2] bg-accent hover:bg-accent/90 text-white rounded-xl h-12 font-bold shadow-lg shadow-accent/20">
-            {isLoading ? (uploading ? 'Uploading...' : 'Saving...') : isEditing ? 'Update Vehicle' : 'Create Listing'}
-          </Button>
+          {/* Progress Section - Shows when loading */}
+          {isLoading && (
+            <div className="mt-8 space-y-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                <span>{uploading ? 'Uploading Media...' : 'Finalizing Record...'}</span>
+                <span>{Math.round(progress)}%</span>
+              </div>
+              <Progress value={progress} className="h-2 bg-slate-200 dark:bg-slate-800" />
+            </div>
+          )}
+
+          {/* Action Bar */}
+          <div className="py-4 mt-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isLoading} className="flex-1 rounded-xl h-12 font-bold">
+              Cancel
+            </Button>
+            <Button type="submit" form="car-form" disabled={isLoading} className="flex-[2] bg-accent hover:bg-accent/90 text-white rounded-xl h-12 font-bold shadow-lg shadow-accent/20">
+              {isLoading ? (uploading ? 'Processing...' : 'Saving...') : isEditing ? 'Update Vehicle' : 'Create Listing'}
+            </Button>
           </div>
         </div>
       </DialogContent>

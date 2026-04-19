@@ -11,6 +11,7 @@ import { BadgeStatus } from '@/components/common/badge-status'
 import { CarModal } from '@/components/modals/car-modal'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase-client'
+import { deleteCarImageFromStorage } from '@/lib/handle_file_deletion'
 import { DatabaseService } from '@/lib/services'
 import type { Car, Booking, User } from '@/lib/mock-data'
 import { 
@@ -19,6 +20,7 @@ import {
   MoreVertical, Filter
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { DeleteCarModal } from '@/components/modals/delete-car-modal'
 
 import {
   Table,
@@ -45,6 +47,8 @@ export default function AdminDashboardPage() {
   const revenueStatuses = ['confirmed', 'completed']
   const profile = null
   const [isAdmin, setIsAdmin] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [carToDelete, setCarToDelete] = useState<Car | null>(null)
 
   useEffect(() => {
     const getSession = async () => {
@@ -141,12 +145,12 @@ const handleWhatsApp = (phone: string) => {
     setCarModalOpen(true)
   }
 
-  const handleDeleteCar = async (id: string) => {
-    await db.deleteCar(id)
-    setCars((prev) => prev.filter((c) => c.id !== id))
-    toast.success("Car removed successfully")
+  const openDeleteConfirm = (car: Car) => {
+    setCarToDelete(car)
+    setDeleteModalOpen(true)
   }
 
+  
   const refreshCars = () => {
     db.getCars().then(setCars).catch(console.error)
   }
@@ -428,7 +432,7 @@ const handleWhatsApp = (phone: string) => {
                             <Edit className="h-3.5 w-3.5 mr-2" />
                             Edit
                           </Button>
-                          <Button variant="outline" size="sm" className="rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-transparent" onClick={() => handleDeleteCar(car.id)}>
+                          <Button variant="outline" size="sm" className="rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-transparent" onClick={() => openDeleteConfirm(car)}>
                             <Trash2 className="h-3.5 w-3.5 mr-2" />
                             Delete
                           </Button>
@@ -443,7 +447,20 @@ const handleWhatsApp = (phone: string) => {
           </main>
         </div>
       </div>
-
+<DeleteCarModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false)
+          setCarToDelete(null)
+        }}
+        onSuccess={refreshCars}
+        carId={carToDelete?.id ?? null}
+        carName={carToDelete?.name ?? ''}
+        imageUrls={[
+          ...(carToDelete?.image ? [carToDelete.image] : []),
+          ...(carToDelete?.images || [])
+        ]}
+      />
       <CarModal          
         open={carModalOpen}
         onOpenChange={setCarModalOpen}
