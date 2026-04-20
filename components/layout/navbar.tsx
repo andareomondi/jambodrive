@@ -7,6 +7,7 @@ import { Menu, X, Car, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import { useMemo } from 'react'
+import Image from 'next/image'
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -89,8 +90,8 @@ export function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Car className="w-8 h-8 text-accent" />
-            <span className="font-bold text-xl hidden sm:inline text-foreground">Cozy Mobility</span>
+            <Image src="/logo.ico" alt="Cozy Mobility Logo" width={32} height={32} className="rounded-sm" />
+            <span className="font-bold text-xl sm:inline text-foreground">Cozy Mobility</span>
           </Link>
 
           {/* Desktop Navigation */}
