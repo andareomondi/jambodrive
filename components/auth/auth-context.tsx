@@ -1,20 +1,19 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useEffect, useState, useMemo } from "react"
-import type { User, Session } from "@supabase/supabase-js"
-import { createClient } from "@/lib/supabase-client"
+import { createContext, useContext, useEffect, useState, useMemo } from "react";
+import type { User, Session } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 
-type UserRole = "admin" | "user" | null
+type UserRole = "admin" | "user" | null;
 
 interface AuthContextValue {
-  user: User | null
-  session: Session | null
-  role: UserRole
-  isAdmin: boolean
-  loading: boolean
-  signOut: () => Promise<void>
+  user: User | null;
+  session: Session | null;
+  role: UserRole;
+  isAdmin: boolean;
+  loading: boolean;
+  signOut: () => Promise<void>;
 }
-
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
@@ -23,70 +22,87 @@ const AuthContext = createContext<AuthContextValue>({
   isAdmin: false,
   loading: true,
   signOut: async () => {},
-})
-
-// ─── Provider ─────────────────────────────────────────────────────────────────
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const supabase = useMemo(() => createClient(), [])
+  const supabase = useMemo(() => createClient(), []);
 
-  const [user, setUser] = useState<User | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
-  const [role, setRole] = useState<UserRole>(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [role, setRole] = useState<UserRole>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch role from profiles table once we have a user
   const fetchRole = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", userId)
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .single();
 
-    if (!error && data) {
-      setRole(data.role as UserRole)
-    } else {
-      setRole("user") // safe fallback
+      setRole(!error && data ? (data.role as UserRole) : "user");
+    } catch {
+      setRole("user"); // always fallback, never hang
     }
-  }
+  };
 
   useEffect(() => {
-    // 1. Get existing session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
+    let mounted = true;
 
-      if (session?.user) {
-        fetchRole(session.user.id).finally(() => setLoading(false))
-      } else {
-        setLoading(false)
-      }
-    })
+    // Safety net — if nothing resolves in 5s, unblock the UI
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 5000);
 
-    // 2. Listen to auth state changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session)
-        setUser(session?.user ?? null)
+    // Initial session check
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session } }) => {
+        if (!mounted) return;
+
+        setSession(session);
+        setUser(session?.user ?? null);
 
         if (session?.user) {
-          await fetchRole(session.user.id)
-        } else {
-          setRole(null)
+          await fetchRole(session.user.id);
         }
 
-        setLoading(false)
-      }
-    )
+        clearTimeout(timeout);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (mounted) setLoading(false);
+        clearTimeout(timeout);
+      });
 
-    // 3. Cleanup — this was missing in your navbar!
-    return () => subscription.unsubscribe()
-  }, [supabase])
+    // Auth state changes AFTER initial load (login, logout, token refresh)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        await fetchRole(session.user.id);
+      } else {
+        setRole(null);
+      }
+
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const signOut = async () => {
-    await supabase.auth.signOut()
-    // onAuthStateChange handles clearing user/session/role
-  }
+    await supabase.auth.signOut();
+  };
 
   return (
     <AuthContext.Provider
@@ -101,13 +117,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     >
       {children}
     </AuthContext.Provider>
-  )
+  );
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
+  return context;
 }

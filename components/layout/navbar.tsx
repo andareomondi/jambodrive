@@ -8,8 +8,26 @@ import { toast } from "sonner";
 import Image from "next/image";
 import { useAuth } from "@/components/auth/auth-context";
 
+function AuthButtonsSkeleton() {
+  return (
+    <div className="flex gap-3">
+      <div className="h-9 w-20 rounded-md bg-muted animate-pulse" />
+      <div className="h-9 w-20 rounded-md bg-muted animate-pulse" />
+    </div>
+  );
+}
+
+function MobileAuthSkeleton() {
+  return (
+    <div className="flex gap-2 w-full">
+      <div className="h-9 flex-1 rounded-md bg-muted animate-pulse" />
+      <div className="h-9 flex-1 rounded-md bg-muted animate-pulse" />
+    </div>
+  );
+}
+
 export function Navbar() {
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, isAdmin, loading, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const toggleMenu = () => setIsOpen(!isOpen);
 
@@ -26,7 +44,7 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
+          {/* Logo — always visible, no auth dependency */}
           <Link
             href="/"
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -43,7 +61,7 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation — public links always visible */}
           <div className="hidden md:flex items-center gap-8">
             <Link
               href="/"
@@ -57,7 +75,7 @@ export function Navbar() {
             >
               Browse Cars
             </Link>
-            {isAdmin && user && (
+            {!loading && isAdmin && user && (
               <Link
                 href="/dashboard/admin"
                 className="text-foreground hover:text-accent transition-colors font-medium"
@@ -67,9 +85,11 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Desktop Auth Buttons */}
-          <div className="hidden md:flex gap-3">
-            {user ? (
+          {/* Desktop Auth — skeleton while loading, then real buttons */}
+          <div className="hidden md:flex gap-3 min-w-[168px] justify-end">
+            {loading ? (
+              <AuthButtonsSkeleton />
+            ) : user ? (
               <>
                 <Button variant="outline" asChild>
                   <Link href="/dashboard">Profile</Link>
@@ -121,7 +141,7 @@ export function Navbar() {
               >
                 Browse Cars
               </Link>
-              {isAdmin && user && (
+              {!loading && isAdmin && user && (
                 <Link
                   href="/dashboard/admin"
                   onClick={() => setIsOpen(false)}
@@ -133,7 +153,9 @@ export function Navbar() {
             </div>
 
             <div className="mt-4 pt-2 border-t border-border flex gap-2">
-              {user ? (
+              {loading ? (
+                <MobileAuthSkeleton />
+              ) : user ? (
                 <>
                   <Button variant="outline" asChild className="flex-1">
                     <Link href="/dashboard">Profile</Link>
