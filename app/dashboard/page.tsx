@@ -44,7 +44,11 @@ export default function DashboardPage() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (authLoading) return;
+    if (!user) {
+      setProfileLoading(false);
+      return;
+    }
 
     setProfileLoading(true);
     Promise.all([db.getUserProfile(user.id), db.getUserBookings(user.id)])
@@ -53,7 +57,7 @@ export default function DashboardPage() {
         setBookings(bookingsData);
       })
       .catch(console.error)
-      .finally(() => setProfileLoading(false)); // ✅ done loading regardless of outcome
+      .finally(() => setProfileLoading(false));
   }, [user]);
 
   const activeBookings = bookings.filter(
@@ -72,7 +76,6 @@ export default function DashboardPage() {
     setSummaryModalOpen(true);
   };
 
-  // ✅ Single loading gate — waits for both auth and profile
   if (authLoading || profileLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
@@ -81,7 +84,6 @@ export default function DashboardPage() {
     );
   }
 
-  // ✅ Only show access denied if auth resolved and there's genuinely no user
   if (!user) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">

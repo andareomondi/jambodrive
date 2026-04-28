@@ -43,7 +43,7 @@ export default function AdminDashboardPage() {
 
   const supabase = useMemo(() => createClient(), []);
   const db = useMemo(() => new DatabaseService(supabase), [supabase]);
-
+  const [dataLoading, setDataLoading] = useState(true);
   const [cars, setCars] = useState<Car[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -58,11 +58,15 @@ export default function AdminDashboardPage() {
   const revenueStatuses = ["confirmed", "completed"];
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (authLoading) return;
+    if (!isAdmin) {
+      setDataLoading(false);
+      return;
+    }
     db.getCars().then(setCars).catch(console.error);
     db.getBookings().then(setBookings).catch(console.error);
     db.getProfiles().then(setUsers).catch(console.error);
-  }, [isAdmin]);
+  }, [isAdmin, authLoading, db]);
 
   const totalCars = cars.length;
   const totalBookings = bookings.length;
