@@ -1,73 +1,45 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
-import { createClient } from "@/lib/supabase-client"
+import { useAuth } from "@/components/auth/auth-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Lock, LogIn } from "lucide-react"
 import Link from "next/link"
-import type { User } from "@supabase/supabase-js"
 
-// Keep your dynamic segments like [slug] or [id]
 const publicRoutes = [
-  "/", 
-  "/about", 
-  "/contact", 
-  "/auth/login", 
-  "/auth/register", 
-  "/auth/callback", 
-  "/forgot-password", 
-  "/reset-password", 
-  "/cars", 
-  "/cars/[slug]"
+  "/",
+  "/about",
+  "/contact",
+  "/auth/login",
+  "/auth/register",
+  "/auth/callback",
+  "/forgot-password",
+  "/reset-password",
+  "/cars",
+  "/cars/[slug]",
 ]
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, loading } = useAuth() 
   const pathname = usePathname()
-  const supabase = createClient()
 
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setLoading(false)
-    }
-
-    getSession()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [supabase.auth])
-
-  // Improved matching logic using Regex
   const isPublicRoute = publicRoutes.some((route) => {
-    // 1. Convert the route string into a Regex pattern
-    // This replaces [anything] with a regex that matches any character except '/'
     const regexPattern = route
-      .replace(/\//g, "\\/") // Escape forward slashes
-      .replace(/\[.*?\]/g, "[^/]+") // Replace [slug] with a wildcard match
-    
-    const regex = new RegExp(`^${regexPattern}$`)
-    return regex.test(pathname)
+      .replace(/\//g, "\\/")
+      .replace(/\[.*?\]/g, "[^/]+")
+    return new RegExp(`^${regexPattern}$`).test(pathname)
   })
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600" />
       </div>
     )
   }
 
-  // If the route is not public and there is no user, show the lock screen
   if (!isPublicRoute && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-blue-50 px-4">
@@ -81,10 +53,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
               You need to be logged in to access this page. Please sign in to continue.
             </p>
             <div className="space-y-3">
-              <Button
-                asChild
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-              >
+              <Button asChild className="w-full bg-orange-500 hover:bg-orange-600 text-white">
                 <Link href="/auth/login">
                   <LogIn className="h-4 w-4 mr-2" />
                   Sign In

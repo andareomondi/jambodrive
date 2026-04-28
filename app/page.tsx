@@ -1,6 +1,6 @@
 "use client";
 
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/layout/navbar";
@@ -11,32 +11,30 @@ import { mockCars } from "@/lib/mock-data";
 import { ArrowRight, Check, Shield, Clock, MapPin } from "lucide-react";
 import { HelpSupportModal } from "@/components/modals/help-support-modal";
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase-client";
-import { DatabaseService } from '@/lib/services'
-import type { Car, Booking, User } from '@/lib/mock-data'
+import { createClient } from "@/lib/supabase/client";
+import { DatabaseService } from "@/lib/services";
+import type { Car, Booking, User } from "@/lib/mock-data";
 import { useMemo } from "react";
 
-
 export default function Home() {
-const [cars, setCars] = useState<Car[]>([])
+  const [cars, setCars] = useState<Car[]>([]);
   const featuredCars = cars.slice(0, 3);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
-const supabase = useMemo(() => createClient(), [])
-const db = useMemo(() => new DatabaseService(supabase), [supabase])
+  const supabase = useMemo(() => createClient(), []);
+  const db = useMemo(() => new DatabaseService(supabase), [supabase]);
 
-
-useEffect(() => {
-  db.getCars().then(setCars).catch(console.error)
-}, [])
+  useEffect(() => {
+    db.getCars().then(setCars).catch(console.error);
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      
+
       {/* Hero Section */}
       <section className="relative px-4 sm:px-6 lg:px-8 py-16 md:py-28 overflow-hidden bg-gradient-to-br from-red-600 via-red-500 to-red-700 bg-[url('/hero/car11.png')] bg-cover bg-center">
         <div className="absolute inset-0 bg-black/55 backdrop-blur-[1px]"></div>
-        
+
         <div className="max-w-7xl mx-auto w-full relative z-10">
           {/* Hero Text */}
           <div className="mb-16 max-w-2xl">
@@ -46,7 +44,8 @@ useEffect(() => {
               Here.
             </h1>
             <p className="text-lg md:text-xl text-white/90 max-w-xl text-balance drop-shadow-md font-medium">
-              Find your perfect rental in seconds. Premium vehicles, flexible terms, instant booking.
+              Find your perfect rental in seconds. Premium vehicles, flexible
+              terms, instant booking.
             </p>
           </div>
 
@@ -62,11 +61,16 @@ useEffect(() => {
               { number: "50K+", label: "Happy Customers" },
               { number: "24/7", label: "Support" },
             ].map((stat, i) => (
-              <div key={i} className="text-left group hover:scale-105 transition-transform duration-300">
+              <div
+                key={i}
+                className="text-left group hover:scale-105 transition-transform duration-300"
+              >
                 <p className="text-3xl md:text-4xl font-black text-orange-400 drop-shadow-lg">
                   {stat.number}
                 </p>
-                <p className="mt-2 text-white/90 text-sm md:text-base font-medium drop-shadow-md">{stat.label}</p>
+                <p className="mt-2 text-white/90 text-sm md:text-base font-medium drop-shadow-md">
+                  {stat.label}
+                </p>
               </div>
             ))}
           </div>
@@ -156,7 +160,7 @@ useEffect(() => {
           </div>
         </div>
       </section>
-      <Button 
+      <Button
         onClick={() => setHelpModalOpen(true)}
         className="fixed bottom-4 right-4 bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-110 z-40"
         size="icon"
@@ -164,10 +168,7 @@ useEffect(() => {
         <HelpCircle className="h-5 w-5" />
       </Button>
 
-      <HelpSupportModal 
-        open={helpModalOpen}
-        onOpenChange={setHelpModalOpen}
-      />
+      <HelpSupportModal open={helpModalOpen} onOpenChange={setHelpModalOpen} />
 
       <Footer />
     </div>
