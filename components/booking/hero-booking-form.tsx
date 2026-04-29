@@ -26,8 +26,6 @@ interface HeroBookingFormProps {
 export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
   const router = useRouter();
   const [useWhatsApp, setUseWhatsApp] = useState(false);
-  const [pickupLocation, setPickupLocation] = useState("JKIA");
-  const [dropOffLocation, setDropOffLocation] = useState("Athi River");
 
   const {
     register,
@@ -55,18 +53,13 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
   ];
 
   const generateWhatsAppMessage = (data: QuickBookingData) => {
-    const message = `Hi! I'd like to book a car:\n\nType: ${data.type}\nPickup: ${pickupLocation} on ${data.pickupDate} at ${data.pickupTime}\nDrop-off: ${dropOffLocation} on ${data.dropOffDate} at ${data.dropOffTime}`;
+    const message = `Hi! I'd like to book a car:\n\nType: ${data.type}\nPickup: ${data.pickupLocation} on ${data.pickupDate} at ${data.pickupTime}\nDrop-off: ${data.dropOffLocation} on ${data.dropOffDate} at ${data.dropOffTime}`;
     return encodeURIComponent(message);
   };
 
   const onSubmit = (data: QuickBookingData) => {
     if (!data.pickupDate || !data.dropOffDate) {
       toast.error("Please select both dates");
-      return;
-    }
-
-    if (!pickupLocation || !dropOffLocation) {
-      toast.error("Please enter both pickup and drop-off locations");
       return;
     }
 
@@ -80,32 +73,28 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
       return;
     }
 
-    const finalData = { ...data, pickupLocation, dropOffLocation };
-
     if (useWhatsApp) {
       const whatsappNumber = "254758500943";
       const message = generateWhatsAppMessage(data);
-      window.open(`https://wa.me/${whatsappNumber}?text=${message}`, "_blank");
+      const whatsappURL = `https://wa.me/${whatsappNumber}?text=${message}`;
+      window.open(whatsappURL, "_blank");
       toast.success("Opening WhatsApp...");
       setUseWhatsApp(false);
     } else {
       const queryParams = new URLSearchParams({
-        pickup_loc: finalData.pickupLocation,
-        dropoff_loc: finalData.dropOffLocation,
-        pickup_date: finalData.pickupDate,
-        pickup_time: finalData.pickupTime,
-        dropoff_date: finalData.dropOffDate,
-        dropoff_time: finalData.dropOffTime,
-        type: finalData.type,
+        pickup_loc: data.pickupLocation,
+        dropoff_loc: data.dropOffLocation,
+        pickup_date: data.pickupDate,
+        pickup_time: data.pickupTime,
+        dropoff_date: data.dropOffDate,
+        dropoff_time: data.dropOffTime,
+        type: data.type,
       }).toString();
+
+      if (onSuccess) onSuccess(data);
       router.push(`/cars?${queryParams}`);
     }
   };
-
-  const inputClass =
-    "w-full text-sm px-3 py-2.5 rounded-md border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-foreground focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500";
-  const labelClass =
-    "text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block";
 
   return (
     <form
@@ -114,18 +103,20 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
     >
       <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-2xl p-6 border border-white/20 dark:border-slate-800/50">
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-5 items-end">
-          {/* Pickup Location */}
+          {/* Pickup Location (Native Type-or-Select) */}
           <div className="group">
-            <Label htmlFor="pickupLocation" className={labelClass}>
+            <Label
+              htmlFor="pickupLocation"
+              className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block"
+            >
               Pickup Location
             </Label>
-            <input
+            <Input
               id="pickupLocation"
               list="pickup-locations"
-              value={pickupLocation}
-              onChange={(e) => setPickupLocation(e.target.value)}
               placeholder="Select or type..."
-              className={inputClass}
+              {...register("pickupLocation", { required: true })}
+              className={`text-sm px-3 py-2.5 rounded-md ${errors.pickupLocation ? "border-red-500" : ""}`}
             />
             <datalist id="pickup-locations">
               {locations.map((loc) => (
@@ -134,18 +125,20 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             </datalist>
           </div>
 
-          {/* Drop Off Location */}
+          {/* Drop Off Location (Native Type-or-Select) */}
           <div className="group">
-            <Label htmlFor="dropOffLocation" className={labelClass}>
+            <Label
+              htmlFor="dropOffLocation"
+              className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block"
+            >
               Drop Off Location
             </Label>
-            <input
+            <Input
               id="dropOffLocation"
               list="dropoff-locations"
-              value={dropOffLocation}
-              onChange={(e) => setDropOffLocation(e.target.value)}
               placeholder="Select or type..."
-              className={inputClass}
+              {...register("dropOffLocation", { required: true })}
+              className={`text-sm px-3 py-2.5 rounded-md ${errors.dropOffLocation ? "border-red-500" : ""}`}
             />
             <datalist id="dropoff-locations">
               {locations.map((loc) => (
@@ -154,9 +147,12 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             </datalist>
           </div>
 
-          {/* Pickup Date */}
+          {/* Dates & Times */}
           <div className="group">
-            <Label htmlFor="pickupDate" className={labelClass}>
+            <Label
+              htmlFor="pickupDate"
+              className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block"
+            >
               Pickup Date
             </Label>
             <Input
@@ -167,9 +163,11 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             />
           </div>
 
-          {/* Pickup Time */}
           <div className="group">
-            <Label htmlFor="pickupTime" className={labelClass}>
+            <Label
+              htmlFor="pickupTime"
+              className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block"
+            >
               Pickup Time
             </Label>
             <Input
@@ -181,9 +179,11 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             />
           </div>
 
-          {/* Drop Off Date */}
           <div className="group">
-            <Label htmlFor="dropOffDate" className={labelClass}>
+            <Label
+              htmlFor="dropOffDate"
+              className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block"
+            >
               Drop Off Date
             </Label>
             <Input
@@ -194,9 +194,11 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             />
           </div>
 
-          {/* Drop Off Time */}
           <div className="group">
-            <Label htmlFor="dropOffTime" className={labelClass}>
+            <Label
+              htmlFor="dropOffTime"
+              className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block"
+            >
               Drop Off Time
             </Label>
             <Input
@@ -210,7 +212,10 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
 
           {/* Type */}
           <div className="group">
-            <Label htmlFor="type" className={labelClass}>
+            <Label
+              htmlFor="type"
+              className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block"
+            >
               Type
             </Label>
             <select
@@ -226,7 +231,6 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             </select>
           </div>
 
-          {/* Search Button */}
           <div className="group">
             <Button
               type="submit"
@@ -250,7 +254,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             <MessageCircle className="w-4 h-4 mr-1.5" />
             WhatsApp Me
           </Button>
-          <p className="text-[10px] text-muted-foreground mt-1">
+          <p className="text-[10px] text-muted-foreground mt-1 ">
             Details will be sent to the admin and he will reach out to you.
           </p>
         </div>
