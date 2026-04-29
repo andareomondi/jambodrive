@@ -33,7 +33,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
     formState: { errors },
   } = useForm<QuickBookingData>({
     defaultValues: {
-      type: "sedan",
+      type: "economy",
     },
   });
 
@@ -45,11 +45,14 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
   ];
 
   const types = [
-    { id: "sedan", name: "Sedan" },
+    { id: "economy", name: "Economy" },
+    { id: "compact", name: "Compact" },
+    { id: "executive", name: "Executive" },
     { id: "suv", name: "SUV" },
-    { id: "coupe", name: "Coupe" },
-    { id: "hatchback", name: "Hatchback" },
-    { id: "truck", name: "Truck" },
+    { id: "ssuv", name: "Luxury SUV" },
+    { id: "vans", name: "Vans" },
+    { id: "safari", name: "Safari" },
+    { id: "wedding", name: "Wedding & Events" },
   ];
 
   const generateWhatsAppMessage = (data: QuickBookingData) => {
@@ -216,7 +219,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
               htmlFor="type"
               className="text-[10px] font-bold text-foreground/80 uppercase tracking-widest mb-1.5 block"
             >
-              Type
+              Category
             </Label>
             <select
               id="type"
