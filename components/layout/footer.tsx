@@ -14,7 +14,7 @@ export function Footer() {
             <div className="flex items-center gap-2 mb-4">
               <Car className="w-6 h-6 text-accent" />
               <span className="font-bold text-lg text-foreground">
-                Cozy Mobility & Tours
+                Cosmara
               </span>
             </div>
             <p className="text-muted-foreground text-sm">
@@ -92,7 +92,7 @@ export function Footer() {
         {/* Divider */}
         <div className="border-t border-border pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-            <p>&copy; {currentYear} Cozy Mobility & Tours. All rights reserved.</p>
+            <p>&copy; {currentYear} Cosmara. All rights reserved.</p>
             <div className="flex gap-6">
               <Link href="/terms" className="hover:text-accent transition-colors">
                 Terms of Service

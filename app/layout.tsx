@@ -10,7 +10,7 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Cozy Mobility & Tours",
+  title: "Cosmara",
   description:
     "Experience premium car rental services with us. Book luxury and affordable vehicles for your next journey.",
   icons: {

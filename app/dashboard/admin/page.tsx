@@ -161,7 +161,7 @@ export default function AdminDashboardPage() {
     if (cleaned.startsWith("0")) cleaned = "254" + cleaned.substring(1);
     else if (cleaned.startsWith("7")) cleaned = "254" + cleaned;
     window.open(
-      `https://wa.me/${cleaned}?text=${encodeURIComponent("Hello, this is the admin from Cozy Mobility Tours.")}`,
+      `https://wa.me/${cleaned}?text=${encodeURIComponent("Hello, this is the admin from Cosmara.")}`,
       "_blank",
     );
   };

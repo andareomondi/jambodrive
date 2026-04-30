@@ -103,7 +103,7 @@ export default function RegisterPage() {
             <div className="flex justify-center mb-4">
               <Car className="w-10 h-10 text-accent" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Join Cozy Mobility</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-2">Join Cosmara</h1>
             <p className="text-muted-foreground">Create your account to start booking premium cars</p>
           </div>
 

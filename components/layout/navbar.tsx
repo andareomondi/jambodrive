@@ -52,7 +52,7 @@ export function Navbar() {
               className="rounded-sm"
             />
             <span className="font-bold text-xl text-foreground">
-              Cozy Mobility
+              Cosmara
             </span>
           </Link>
 
