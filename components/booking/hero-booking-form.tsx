@@ -39,9 +39,28 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
 
   const locations = [
     { id: "jkia", name: "JKIA" },
-    { id: "athi_river", name: "Athi River" },
+    { id: "wilson_airport", name: "Wilson Airport" },
+    { id: "kilimani", name: "Kilimani" },
+    { id: "hurlingham", name: "Hurlingham" },
+    { id: "kileleshwa", name: "Kileleshwa" },
+    { id: "ngong", name: "Ngong" },
+    { id: "karen", name: "Karen" },
+    { id: "kitisuru", name: "Kitisuru" },
+    { id: "runda", name: "Runda" },
+    { id: "kawangware", name: "Kawangware" },
+    { id: "kikuyu", name: "Kikuyu" },
+    { id: "thika_town", name: "Thika Town" },
+    { id: "juja", name: "Juja" },
     { id: "nairobi_cbd", name: "Nairobi CBD" },
-    { id: "mombasa", name: "Mombasa" },
+    { id: "kitengela", name: "Kitengela" },
+    { id: "sabaki", name: "Sabaki" },
+    { id: "syokimau", name: "Syokimau" },
+    { id: "embakasi", name: "Embakasi" },
+    { id: "athi_river", name: "Athi River" },
+    { id: "langata", name: "Lang'ata" },
+    { id: "uthiru", name: "Uthiru" },
+    { id: "ruaka", name: "Ruaka" },
+    { id: "kiambu", name: "Kiambu" },
   ];
 
   const types = [
