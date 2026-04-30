@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Filter, X, RotateCcw, Search } from "lucide-react";
+import { Filter, RotateCcw, Search, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CarFiltersProps {
@@ -32,10 +32,25 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
     search: "",
   });
   const [isOpen, setIsOpen] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const carTypes = ["toyota", "suv", "coupe", "hatchback", "truck"];
+  const carTypes = [
+    "compact",
+    "executive",
+    "suv",
+    "ssuv",
+    "vans",
+    "safari",
+    "wedding",
+  ];
   const transmissions = ["manual", "automatic"];
   const fuels = ["petrol", "diesel", "hybrid", "electric"];
+
+  // Formats specific keys for display
+  const formatLabel = (val: string) => {
+    if (val === "ssuv") return "Luxury SUV";
+    return val.charAt(0).toUpperCase() + val.slice(1);
+  };
 
   const handleToggleArray = (key: keyof FilterState, value: string) => {
     const newFilters = {
@@ -48,10 +63,17 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
     onFilterChange(newFilters);
   };
 
-  const handlePriceChange = (values: number[]) => {
-    const newFilters = { ...filters, priceMin: values[0], priceMax: values[1] };
-    setFilters(newFilters);
-    onFilterChange(newFilters);
+  // Debounce search to prevent performance lag on keystrokes
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setFilters((prev) => {
+      const next = { ...prev, search: val };
+      if (searchTimeout.current) clearTimeout(searchTimeout.current);
+      searchTimeout.current = setTimeout(() => {
+        onFilterChange(next);
+      }, 300); // Waits 300ms after user stops typing
+      return next;
+    });
   };
 
   const handleReset = () => {
@@ -65,6 +87,8 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
     };
     setFilters(reset);
     onFilterChange(reset);
+    // Optional: close panel on reset
+    setIsOpen(false);
   };
 
   const FilterPill = ({
@@ -85,7 +109,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
           : "bg-background text-muted-foreground border-slate-200 hover:border-accent/50 hover:bg-slate-50",
       )}
     >
-      {label.charAt(0).toUpperCase() + label.slice(1)}
+      {formatLabel(label)}
     </button>
   );
 
@@ -97,17 +121,14 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
 
   return (
     <div className="w-full">
+      {/* Top Search & Toggle Bar */}
       <div className="flex gap-2 mb-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search cars..."
             value={filters.search}
-            onChange={(e) => {
-              const nf = { ...filters, search: e.target.value };
-              setFilters(nf);
-              onFilterChange(nf);
-            }}
+            onChange={handleSearchChange}
             className="pl-10 h-11 rounded-xl bg-white border-slate-200"
           />
         </div>
@@ -135,14 +156,14 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
             : "grid-rows-[0fr] opacity-0 overflow-hidden",
         )}
       >
-        <Card className="min-h-0 p-6 rounded-2xl border-none shadow-md bg-white dark:bg-card">
-          <div className="flex items-center justify-between mb-8">
+        <Card className="min-h-0 p-4 sm:p-6 rounded-2xl border-none shadow-md bg-white dark:bg-card">
+          <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold">Filter Options</h3>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleReset}
-              className="text-muted-foreground hover:text-white"
+              className="hidden sm:flex text-muted-foreground hover:text-foreground"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Reset All
@@ -152,20 +173,37 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
           <div className="space-y-8">
             {/* Price Slider */}
             <div className="space-y-4">
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <Label className="text-sm font-semibold">
                   Price Range (per day)
                 </Label>
-                <span className="text-sm font-bold text-accent">
-                  Ksh {filters.priceMin} - Ksh {filters.priceMax}
+                <span className="text-sm font-bold text-accent bg-accent/10 px-3 py-1 rounded-full">
+                  Ksh {filters.priceMin.toLocaleString()} - Ksh{" "}
+                  {filters.priceMax.toLocaleString()}
                 </span>
               </div>
               <Slider
                 defaultValue={[0, 1000000]}
                 max={1000000}
-                step={10}
+                step={1000} // Increased step for massive performance boost
                 value={[filters.priceMin, filters.priceMax]}
-                onValueChange={handlePriceChange}
+                onValueChange={(vals) => {
+                  // Updates UI immediately
+                  setFilters((prev) => ({
+                    ...prev,
+                    priceMin: vals[0],
+                    priceMax: vals[1],
+                  }));
+                }}
+                onValueCommit={(vals) => {
+                  // Triggers fetch ONLY when user stops dragging
+                  const newFilters = {
+                    ...filters,
+                    priceMin: vals[0],
+                    priceMax: vals[1],
+                  };
+                  onFilterChange(newFilters);
+                }}
                 className="py-4"
               />
             </div>
@@ -201,6 +239,24 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Footer Mobile Actions (Sticky-ish bottom UX) */}
+          <div className="mt-8 pt-5 border-t border-slate-100 dark:border-slate-800 flex flex-col-reverse sm:flex-row gap-3 justify-end items-center">
+            <Button
+              variant="ghost"
+              className="w-full sm:w-auto text-muted-foreground sm:hidden"
+              onClick={handleReset}
+            >
+              Reset Filters
+            </Button>
+            <Button
+              className="w-full sm:w-auto bg-foreground hover:bg-foreground/90 text-background font-semibold"
+              onClick={() => setIsOpen(false)}
+            >
+              <Check className="w-4 h-4 mr-2" />
+              View Results
+            </Button>
           </div>
         </Card>
       </div>

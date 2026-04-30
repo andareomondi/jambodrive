@@ -1,70 +1,90 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
-import { Navbar } from '@/components/layout/navbar'
-import { Footer } from '@/components/layout/footer'
-import { CarCard } from '@/components/cars/car-card'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { EmptyState } from '@/components/common/empty-state'
-import { Fuel, Users, Zap, CheckCircle, MapPin, Calendar, Shield } from 'lucide-react'
-import { createClient } from '@/lib/supabase-client'
-import { DatabaseService } from '@/lib/services'
-import type { Car } from '@/lib/mock-data'
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
+import { CarCard } from "@/components/cars/car-card";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/common/empty-state";
+import {
+  Fuel,
+  Users,
+  Zap,
+  CheckCircle,
+  MapPin,
+  Calendar,
+  Shield,
+} from "lucide-react";
+import { createClient } from "@/lib/supabase-client";
+import { DatabaseService } from "@/lib/services";
+import type { Car } from "@/lib/mock-data";
+
+// Helper function to format the car types nicely
+const formatCarType = (type: string) => {
+  if (!type) return "";
+  const lower = type.toLowerCase();
+  if (lower === "ssuv") return "Luxury SUV";
+  if (lower === "suv") return "SUV";
+  return type.charAt(0).toUpperCase() + type.slice(1);
+};
 
 export default function CarDetailsPage() {
-  const params = useParams()
-  const carId = params.id as string
-  const [selectedImage, setSelectedImage] = useState(0)
-  const [car, setCar] = useState<Car | null>(null)
-  const [relatedCars, setRelatedCars] = useState<Car[]>([])
-  const [loading, setLoading] = useState(true)
+  const params = useParams();
+  const carId = params.id as string;
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [car, setCar] = useState<Car | null>(null);
+  const [relatedCars, setRelatedCars] = useState<Car[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const db = new DatabaseService(createClient())
+    const db = new DatabaseService(createClient());
 
     const fetchData = async () => {
       try {
-        const carData = await db.getCarById(carId)
+        const carData = await db.getCarById(carId);
         if (!carData) {
-          setCar(null)
-          return
+          setCar(null);
+          return;
         }
-        setCar(carData)
+        setCar(carData);
 
-        const allCars = await db.getCars()
+        const allCars = await db.getCars();
         const filtered = allCars
           .filter((c) => c.type === carData.type && c.id !== carData.id)
-          .slice(0, 3)
+          .slice(0, 3);
 
-        setRelatedCars(filtered)
+        setRelatedCars(filtered);
       } catch (err) {
-        console.error(err)
+        console.error(err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchData()
-  }, [carId])
+    fetchData();
+  }, [carId]);
 
   const handleWhatsAppInquiry = () => {
     if (!car) return;
 
-    const phoneNumber = "254758500943"; 
+    const phoneNumber = "254758500943";
     const message = `Hi, I'm interested in booking the following vehicle:
 *Vehicle:* ${car.name} (${car.model})
 *Price:* $${car.price}/day
-*Status:* ${car.available ? 'Available' : 'Currently Booked/Inquiry'}
+*Type:* ${formatCarType(car.type)}
 *Link:* ${window.location.href}
 
 Could you please provide more details on the booking process?`;
 
     const encodedMessage = encodeURIComponent(message);
-    window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
+    window.open(
+      `https://wa.me/${phoneNumber}?text=${encodedMessage}`,
+      "_blank",
+    );
   };
 
   if (loading) {
@@ -88,13 +108,13 @@ Could you please provide more details on the booking process?`;
         <div className="flex-1 flex items-center justify-center">
           <EmptyState
             title="Car Not Found"
-            description="The car you&apos;re looking for doesn&apos;t exist."
-            action={{ label: 'Back to Cars', href: '/cars' }}
+            description="The car you're looking for doesn't exist."
+            action={{ label: "Back to Cars", href: "/cars" }}
           />
         </div>
         <Footer />
       </div>
-    )
+    );
   }
 
   return (
@@ -102,7 +122,10 @@ Could you please provide more details on the booking process?`;
       <Navbar />
 
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
-        <Link href="/cars" className="inline-flex items-center text-accent hover:text-accent/80 mb-8 transition-colors">
+        <Link
+          href="/cars"
+          className="inline-flex items-center text-accent hover:text-accent/80 mb-8 transition-colors"
+        >
           ← Back to Cars
         </Link>
 
@@ -119,7 +142,9 @@ Could you please provide more details on the booking process?`;
               />
               {!car.available && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <span className="text-white text-xl font-semibold">Not Available</span>
+                  <span className="text-white text-xl font-semibold">
+                    Not Available
+                  </span>
                 </div>
               )}
             </div>
@@ -131,7 +156,7 @@ Could you please provide more details on the booking process?`;
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
                     className={`relative h-20 w-20 rounded-md overflow-hidden border-2 transition-colors ${
-                      selectedImage === idx ? 'border-accent' : 'border-border'
+                      selectedImage === idx ? "border-accent" : "border-border"
                     }`}
                   >
                     <Image
@@ -146,14 +171,23 @@ Could you please provide more details on the booking process?`;
             )}
 
             <div className="mt-12">
-              <h2 className="text-2xl font-bold text-foreground mb-6">About This Vehicle</h2>
-              <p className="text-muted-foreground leading-relaxed mb-8">{car.description}</p>
+              <h2 className="text-2xl font-bold text-foreground mb-6">
+                About This Vehicle
+              </h2>
+              <p className="text-muted-foreground leading-relaxed mb-8">
+                {car.description}
+              </p>
 
               <div className="mb-8">
-                <h3 className="text-lg font-semibold text-foreground mb-4">Features</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-4">
+                  Features
+                </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {car.features.map((feature, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm text-foreground">
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 text-sm text-foreground"
+                    >
                       <CheckCircle className="w-4 h-4 text-accent flex-shrink-0" />
                       <span>{feature}</span>
                     </div>
@@ -165,9 +199,16 @@ Could you please provide more details on the booking process?`;
 
           <div className="lg:col-span-1">
             <Card className="p-6 shadow-medium sticky top-32">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-foreground">{car.name}</h2>
-                <p className="text-muted-foreground text-sm">{car.model}</p>
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground">
+                    {car.name}
+                  </h2>
+                  <p className="text-muted-foreground text-sm">{car.model}</p>
+                </div>
+                <div className="bg-accent/10 text-accent border border-accent/20 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase whitespace-nowrap">
+                  {formatCarType(car.type)}
+                </div>
               </div>
 
               <div className="space-y-3 mb-6 pb-6 border-b border-border">
@@ -178,73 +219,80 @@ Could you please provide more details on the booking process?`;
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Transmission</span>
-                  <span className="text-sm font-medium text-foreground capitalize">{car.transmission}</span>
+                  <span className="text-sm text-muted-foreground">
+                    Transmission
+                  </span>
+                  <span className="text-sm font-medium text-foreground capitalize">
+                    {car.transmission}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Fuel Type</span>
+                  <span className="text-sm text-muted-foreground">
+                    Fuel Type
+                  </span>
                   <span className="text-sm font-medium text-foreground flex items-center gap-1 capitalize">
                     <Zap className="w-4 h-4" /> {car.fuel}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Consumption</span>
-                  <span className="text-sm font-medium text-foreground">{car.fuel_consumption}</span>
+                  <span className="text-sm text-muted-foreground">
+                    Consumption
+                  </span>
+                  <span className="text-sm font-medium text-foreground">
+                    {car.fuel_consumption}
+                  </span>
                 </div>
               </div>
 
               <div className="mb-6 pb-6 border-b border-border">
-                <div className="text-sm text-muted-foreground mb-1">Price per day</div>
+                <div className="text-sm text-muted-foreground mb-1">
+                  Price per day
+                </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-accent">${car.price}</span>
+                  <span className="text-4xl font-bold text-accent">
+                    ${car.price}
+                  </span>
                   <span className="text-muted-foreground">/day</span>
                 </div>
               </div>
 
               <div className="space-y-2 mb-6">
                 {[
-                  { icon: Shield, label: 'Insurance Included' },
-                  { icon: Calendar, label: 'Flexible Dates' },
-                  { icon: MapPin, label: 'Multiple Locations' },
+                  { icon: Shield, label: "Insurance Included" },
+                  { icon: Calendar, label: "Flexible Dates" },
+                  { icon: MapPin, label: "Multiple Locations" },
                 ].map((item, i) => {
-                  const Icon = item.icon
+                  const Icon = item.icon;
                   return (
-                    <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 text-sm text-muted-foreground"
+                    >
                       <Icon className="w-4 h-4 text-accent" />
                       <span>{item.label}</span>
                     </div>
-                  )
+                  );
                 })}
               </div>
 
-              {/* BOOKING BUTTON LOGIC */}
               <div className="space-y-3">
-                {/* ORIGINAL LINK LOGIC (Commented out for now)
-                  {car.available && (
-                    <Button
-                      asChild
-                      className="w-full bg-accent hover:bg-accent/90 text-base"
-                    >
-                      <Link href={`/booking/${car.id}`}>Book Now</Link>
-                    </Button>
-                  )}
-                */}
-
-                {/* TEMPORARY WHATSAPP BOOKING LOGIC */}
                 <Button
                   onClick={handleWhatsAppInquiry}
                   className={`w-full text-base ${
-                    car.available 
-                      ? 'bg-green-600 hover:bg-green-700 text-white' 
-                      : 'bg-muted text-muted-foreground'
+                    car.available
+                      ? "bg-green-600 hover:bg-green-700 text-white"
+                      : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {car.available ? 'Book Now via WhatsApp' : 'Inquire Availability'}
+                  {car.available
+                    ? "Book Now via WhatsApp"
+                    : "Inquire Availability"}
                 </Button>
 
                 {!car.available && (
                   <p className="text-center text-xs text-muted-foreground mt-2">
-                    This vehicle is currently unavailable. You can still message us to join the waitlist.
+                    This vehicle is currently unavailable. You can still message
+                    us to join the waitlist.
                   </p>
                 )}
               </div>
@@ -254,7 +302,9 @@ Could you please provide more details on the booking process?`;
 
         {relatedCars.length > 0 && (
           <div>
-            <h2 className="text-2xl font-bold text-foreground mb-6">Similar Vehicles</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-6">
+              Similar Vehicles
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {relatedCars.map((relatedCar) => (
                 <CarCard key={relatedCar.id} car={relatedCar} />
@@ -266,5 +316,5 @@ Could you please provide more details on the booking process?`;
 
       <Footer />
     </div>
-  )
+  );
 }

@@ -46,8 +46,7 @@ type CarType =
   | "ssuv"
   | "vans"
   | "safari"
-  | "wedding"
-  | "wagon";
+  | "wedding";
 type TransmissionType = "automatic" | "manual";
 type FuelType = "petrol" | "diesel" | "electric" | "hybrid";
 
@@ -104,7 +103,6 @@ const carTypeLabels: Record<CarType, string> = {
   vans: "Vans",
   safari: "Safari",
   wedding: "Wedding & Events",
-  wagon: "Wagon",
 };
 const transmissionLabels: Record<TransmissionType, string> = {
   automatic: "Automatic",
