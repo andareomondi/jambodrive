@@ -163,6 +163,7 @@ Could you please provide more details on the booking process?`;
                       src={image}
                       alt={`${car.name} ${idx + 1}`}
                       fill
+                      loading="lazy"
                       className="object-cover"
                     />
                   </button>
