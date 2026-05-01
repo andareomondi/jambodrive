@@ -33,7 +33,7 @@ function VerificationHandler() {
       const error = searchParams.get("error");
       const errorCode = searchParams.get("error_code");
       const errorDescription = searchParams.get("error_description");
-
+      const supabase = useMemo(() => createClient(), []);
       // Only proceed if we have either a code or an error in the URL
       if (!code && !error) {
         return;
@@ -62,7 +62,6 @@ function VerificationHandler() {
       // Handle success case
       if (code) {
         //logout to clear any existing session and force re-login with the verified handleEmailVerification
-        const supabase = createClient();
         await supabase.auth.signOut();
         setVerificationStatus("success");
       }
