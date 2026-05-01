@@ -6,15 +6,238 @@ import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { CarCard } from "@/components/cars/car-card";
+import { Card } from "@/components/ui/card";
 import { HeroBookingForm } from "@/components/booking/hero-booking-form";
 import { mockCars } from "@/lib/mock-data";
 import { ArrowRight, Check, Shield, Clock, MapPin } from "lucide-react";
 import { HelpSupportModal } from "@/components/modals/help-support-modal";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { DatabaseService } from "@/lib/services";
 import type { Car, Booking, User } from "@/lib/mock-data";
-import { useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+
+function VerificationModal() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState("");
+  const [verificationStatus, setVerificationStatus] = useState<
+    "loading" | "success" | "error"
+  >("loading");
+
+  useEffect(() => {
+    const handleEmailVerification = async () => {
+      const code = searchParams.get("code");
+      const error = searchParams.get("error");
+      const errorCode = searchParams.get("error_code");
+      const errorDescription = searchParams.get("error_description");
+
+      // Only proceed if we have either a code or an error
+      if (!code && !error) {
+        return;
+      }
+
+      // Show modal
+      setShowVerificationModal(true);
+
+      // Handle error case
+      if (error) {
+        setVerificationStatus("error");
+
+        if (errorCode === "otp_expired") {
+          setVerificationMessage(
+            "This verification link has expired. Please request a new one.",
+          );
+        } else if (errorCode === "otp_disabled") {
+          setVerificationMessage("Email verification is not enabled.");
+        } else {
+          setVerificationMessage(
+            errorDescription || "Email verification failed. Please try again.",
+          );
+        }
+        return;
+      }
+
+      // Handle success case with code
+      if (code) {
+        setVerificationStatus("success");
+      }
+    };
+
+    handleEmailVerification();
+  }, [searchParams]);
+
+  const closeModal = () => {
+    setShowVerificationModal(false);
+    // Clean up URL by removing query params
+    router.replace("/");
+  };
+
+  if (!showVerificationModal) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 z-50">
+      <div className="w-full max-w-md">
+        {verificationStatus === "loading" && (
+          <Card className="p-8 space-y-6 shadow-lg">
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                </div>
+              </div>
+              <p className="text-muted-foreground">Verifying your email...</p>
+            </div>
+          </Card>
+        )}
+
+        {verificationStatus === "success" && (
+          <Card className="border-2 border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 p-8 space-y-6 shadow-lg">
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center animate-in fade-in scale-in duration-500">
+                  <svg
+                    className="w-8 h-8 text-green-600 dark:text-green-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold text-green-900 dark:text-green-100">
+                  Email Verified!
+                </h1>
+                <p className="text-green-800 dark:text-green-200">
+                  Your email has been successfully verified. You can now log in
+                  from the Cosmara app.
+                </p>
+              </div>
+
+              <div className="bg-white dark:bg-black/20 rounded-lg p-4 space-y-2 text-left">
+                <p className="text-sm font-semibold text-foreground">
+                  What's next?
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold">
+                      ✓
+                    </span>
+                    <span>Open the Cosmara app on your device</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold">
+                      ✓
+                    </span>
+                    <span>Log in with your verified email</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold">
+                      ✓
+                    </span>
+                    <span>
+                      Start managing your rentals and transactions more
+                      efficiently
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                onClick={closeModal}
+                className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white font-semibold py-6"
+              >
+                Continue
+              </Button>
+              <p className="text-xs text-center text-muted-foreground">
+                Questions? Contact our support team
+              </p>
+            </div>
+          </Card>
+        )}
+
+        {verificationStatus === "error" && (
+          <Card className="border-2 border-red-200 dark:border-red-800 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/30 p-8 space-y-6 shadow-lg">
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center animate-in fade-in scale-in duration-500">
+                  <svg
+                    className="w-8 h-8 text-red-600 dark:text-red-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold text-red-900 dark:text-red-100">
+                  Verification Failed
+                </h1>
+                <p className="text-red-800 dark:text-red-200">
+                  {verificationMessage}
+                </p>
+              </div>
+
+              <div className="bg-white dark:bg-black/20 rounded-lg p-4 text-left">
+                <p className="text-sm font-semibold text-foreground mb-2">
+                  What you can do:
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-red-600 dark:text-red-400">•</span>
+                    <span>
+                      Check that the link hasn't expired (links expire after 24
+                      hours)
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-red-600 dark:text-red-400">•</span>
+                    <span>Request a new verification email from the app</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-red-600 dark:text-red-400">•</span>
+                    <span>Contact our support team for assistance</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                onClick={closeModal}
+                className="w-full bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white font-semibold py-6"
+              >
+                Close
+              </Button>
+              <p className="text-xs text-center text-muted-foreground">
+                Need help? Contact our support team
+              </p>
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const [cars, setCars] = useState<Car[]>([]);
@@ -25,7 +248,7 @@ export default function Home() {
 
   useEffect(() => {
     db.getCars().then(setCars).catch(console.error);
-  }, []);
+  }, [db]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -160,6 +383,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+
       <Button
         onClick={() => setHelpModalOpen(true)}
         className="fixed bottom-4 right-4 bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-110 z-40"
@@ -169,6 +393,11 @@ export default function Home() {
       </Button>
 
       <HelpSupportModal open={helpModalOpen} onOpenChange={setHelpModalOpen} />
+
+      {/* Suspense boundary wrapping the component that uses useSearchParams */}
+      <Suspense fallback={null}>
+        <VerificationModal />
+      </Suspense>
 
       <Footer />
     </div>
