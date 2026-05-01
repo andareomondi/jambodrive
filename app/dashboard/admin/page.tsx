@@ -63,9 +63,14 @@ export default function AdminDashboardPage() {
       setDataLoading(false);
       return;
     }
-    db.getCars().then(setCars).catch(console.error);
-    db.getBookings().then(setBookings).catch(console.error);
-    db.getProfiles().then(setUsers).catch(console.error);
+    Promise.all([db.getCars(), db.getBookings(), db.getProfiles()])
+      .then(([carsData, bookingsData, usersData]) => {
+        setCars(carsData);
+        setBookings(bookingsData);
+        setUsers(usersData);
+      })
+      .catch(console.error)
+      .finally(() => setDataLoading(false));
   }, [isAdmin, authLoading, db]);
 
   const totalCars = cars.length;

@@ -58,7 +58,7 @@ export default function DashboardPage() {
       })
       .catch(console.error)
       .finally(() => setProfileLoading(false));
-  }, [user]);
+  }, [user, authLoading, db]);
 
   const activeBookings = bookings.filter(
     (b) => b.status === "confirmed" || b.status === "pending",

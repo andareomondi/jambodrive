@@ -1,5 +1,4 @@
 "use client";
-
 import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import type { User, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -26,7 +25,6 @@ const AuthContext = createContext<AuthContextValue>({
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
-
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<UserRole>(null);
@@ -39,46 +37,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select("role")
         .eq("id", userId)
         .single();
-
       setRole(!error && data ? (data.role as UserRole) : "user");
     } catch {
-      setRole("user"); // always fallback, never hang
+      setRole("user");
     }
   };
 
   useEffect(() => {
     let mounted = true;
 
-    // Safety net — if nothing resolves in 5s, unblock the UI
-    const timeout = setTimeout(() => {
-      if (mounted) setLoading(false);
-    }, 5000);
-
-    // Initial session check
-    supabase.auth
-      .getSession()
-      .then(async ({ data: { session } }) => {
-        if (!mounted) return;
-
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          await fetchRole(session.user.id);
-        }
-
-        clearTimeout(timeout);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (mounted) setLoading(false);
-        clearTimeout(timeout);
-      });
-
-    // Auth state changes AFTER initial load (login, logout, token refresh)
+    // onAuthStateChange fires INITIAL_SESSION on mount — no need for a
+    // separate getSession() call which is what was causing the lock conflict
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
       setSession(session);
@@ -92,6 +64,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setLoading(false);
     });
+
+    // Safety net — if INITIAL_SESSION never fires in 5s, unblock UI
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 5000);
 
     return () => {
       mounted = false;
