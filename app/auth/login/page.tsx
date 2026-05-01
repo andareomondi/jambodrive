@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect, Suspense } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
@@ -14,172 +14,6 @@ import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { toast } from "sonner";
 import { Car } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
-
-// 1. Extract the verification logic into its own component
-function VerificationHandler() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-
-  const [showVerificationModal, setShowVerificationModal] = useState(false);
-  const [verificationMessage, setVerificationMessage] = useState("");
-  const [verificationStatus, setVerificationStatus] = useState<
-    "loading" | "success" | "error"
-  >("loading");
-
-  useEffect(() => {
-    const handleEmailVerification = async () => {
-      const code = searchParams.get("code");
-      const error = searchParams.get("error");
-      const errorCode = searchParams.get("error_code");
-      const errorDescription = searchParams.get("error_description");
-
-      // Only proceed if we have either a code or an error in the URL
-      if (!code && !error) {
-        return;
-      }
-
-      setShowVerificationModal(true);
-
-      // Handle error case
-      if (error) {
-        setVerificationStatus("error");
-
-        if (errorCode === "otp_expired") {
-          setVerificationMessage(
-            "This verification link has expired. Please request a new one.",
-          );
-        } else if (errorCode === "otp_disabled") {
-          setVerificationMessage("Email verification is not enabled.");
-        } else {
-          setVerificationMessage(
-            errorDescription || "Email verification failed. Please try again.",
-          );
-        }
-        return;
-      }
-
-      // Handle success case
-      if (code) {
-        setVerificationStatus("success");
-      }
-    };
-
-    handleEmailVerification();
-  }, [searchParams]);
-
-  const closeModal = () => {
-    setShowVerificationModal(false);
-    // Clean up URL by removing query params, keeping them on the login page
-    router.replace(pathname);
-  };
-
-  if (!showVerificationModal) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 z-50">
-      <div className="w-full max-w-md">
-        {verificationStatus === "loading" && (
-          <Card className="p-8 space-y-6 shadow-lg">
-            <div className="text-center space-y-4">
-              <div className="flex justify-center">
-                <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
-                </div>
-              </div>
-              <p className="text-muted-foreground">Verifying your email...</p>
-            </div>
-          </Card>
-        )}
-
-        {verificationStatus === "success" && (
-          <Card className="border-2 border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 p-8 space-y-6 shadow-lg">
-            <div className="text-center space-y-4">
-              <div className="flex justify-center">
-                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center animate-in fade-in scale-in duration-500">
-                  <svg
-                    className="w-8 h-8 text-green-600 dark:text-green-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-green-900 dark:text-green-100">
-                  Email Verified!
-                </h1>
-                <p className="text-green-800 dark:text-green-200">
-                  Your email has been successfully verified. You can now log in
-                  below.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Button
-                onClick={closeModal}
-                className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white font-semibold py-6"
-              >
-                Log In Now
-              </Button>
-            </div>
-          </Card>
-        )}
-
-        {verificationStatus === "error" && (
-          <Card className="border-2 border-red-200 dark:border-red-800 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/30 p-8 space-y-6 shadow-lg">
-            <div className="text-center space-y-4">
-              <div className="flex justify-center">
-                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center animate-in fade-in scale-in duration-500">
-                  <svg
-                    className="w-8 h-8 text-red-600 dark:text-red-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-red-900 dark:text-red-100">
-                  Verification Failed
-                </h1>
-                <p className="text-red-800 dark:text-red-200">
-                  {verificationMessage}
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Button
-                onClick={closeModal}
-                className="w-full bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white font-semibold py-6"
-              >
-                Close
-              </Button>
-            </div>
-          </Card>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -355,11 +189,6 @@ export default function LoginPage() {
       </div>
 
       <Footer />
-
-      {/* 2. Mount the Suspense boundary with the verification handler */}
-      <Suspense fallback={null}>
-        <VerificationHandler />
-      </Suspense>
     </div>
   );
 }
