@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { toast } from "sonner";
 import {
@@ -123,6 +123,7 @@ export function CarModal({
   onSuccess,
 }: CarModalProps) {
   const supabase = createClient();
+  const abortRef = useRef<AbortController | null>(null);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -196,17 +197,21 @@ export function CarModal({
   }, [car, reset, open]);
 
   const onSubmit = async (data: CarFormData) => {
+    abortRef.current = new AbortController();
+    const { signal } = abortRef.current;
+
     setIsLoading(true);
     setUploading(true);
-    setProgress(5); // Initial start
+    setProgress(5);
 
     try {
       let coverUrl = car?.image ?? "";
       if (coverImageFile) {
+        if (signal.aborted) return;
         coverUrl = await uploadCarImage(coverImageFile);
-        setProgress(30); // Cover uploaded
+        setProgress(30);
       } else {
-        setProgress(20); // Skip cover
+        setProgress(20);
       }
 
       let galleryUrls: string[] = car?.images ?? [];
@@ -215,14 +220,17 @@ export function CarModal({
         const newGallery: string[] = [];
 
         for (let i = 0; i < galleryFiles.length; i++) {
+          if (signal.aborted) return;
           const url = await uploadCarImage(galleryFiles[i]);
           newGallery.push(url);
           setProgress((prev) => prev + stepSize);
         }
         galleryUrls = [...galleryUrls, ...newGallery];
       } else {
-        setProgress(70); // Skip gallery
+        setProgress(70);
       }
+
+      if (signal.aborted) return;
 
       const payload = {
         name: data.name,
@@ -256,9 +264,19 @@ export function CarModal({
         ({ error } = await supabase.from("cars").insert(payload));
       }
 
-      if (error) throw error;
+      if (signal.aborted) return;
 
-      setProgress(100); // Database complete
+      if (error) {
+        if (error.code === "42501") {
+          toast.error("Permission denied. Only admins can manage listings.");
+        } else {
+          toast.error(error.message);
+        }
+        setProgress(0);
+        return;
+      }
+
+      setProgress(100);
       toast.success(isEditing ? "Car updated!" : "Car added!");
 
       setTimeout(() => {
@@ -268,14 +286,16 @@ export function CarModal({
         onSuccess?.();
       }, 400);
     } catch (err: any) {
+      if (signal.aborted) return;
       toast.error(err.message || "Action failed.");
       setProgress(0);
     } finally {
-      setIsLoading(false);
-      setUploading(false);
+      if (!signal.aborted) {
+        setIsLoading(false);
+        setUploading(false);
+      }
     }
   };
-
   const SectionHeader = ({
     icon: Icon,
     title,
@@ -292,7 +312,7 @@ export function CarModal({
   );
 
   return (
-    <Dialog open={open} onOpenChange={isLoading ? () => {} : onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[650px] p-0 overflow-hidden border-none rounded-3xl sm:max-h-[85vh] flex flex-col h-full">
         {/* Header */}
         <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
@@ -577,12 +597,20 @@ export function CarModal({
           <div className="py-4 mt-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex gap-3">
             <Button
               variant="ghost"
-              onClick={() => onOpenChange(false)}
-              disabled={isLoading}
+              onClick={() => {
+                if (isLoading) {
+                  abortRef.current?.abort();
+                  setIsLoading(false);
+                  setUploading(false);
+                  setProgress(0);
+                  toast.info("Upload cancelled.");
+                }
+                onOpenChange(false);
+              }}
               className="flex-1 rounded-xl h-12 font-bold"
             >
-              Cancel
-            </Button>
+              {isLoading ? "Cancel Upload" : "Cancel"}
+            </Button>{" "}
             <Button
               type="submit"
               form="car-form"

@@ -73,9 +73,10 @@ export default function CarDetailsPage() {
     const phoneNumber = "254758500943";
     const message = `Hi, I'm interested in booking the following vehicle:
 *Vehicle:* ${car.name} (${car.model})
-*Price:* $${car.price}/day
+*Price:* Ksh ${car.price}/day
 *Type:* ${formatCarType(car.type)}
 *Link:* ${window.location.href}
+*Status:* ${car.available ? "Available" : "Currently Unavailable"}
 
 Could you please provide more details on the booking process?`;
 
