@@ -48,8 +48,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
-        <AuthGuard>{children}</AuthGuard>
-        <Toaster position="top-right" />
+        <AuthProvider>
+          <AuthGuard>{children}</AuthGuard>
+          <Toaster position="top-right" />
+        </AuthProvider>
       </body>
     </html>
   );
