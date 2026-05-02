@@ -16,6 +16,8 @@ const publicRoutes = [
   "/about",
   "/contact",
   "/auth/login",
+  "/auth/forgot-password",
+  "/auth/update-password",
   "/auth/register",
   "/auth/callback",
   "/forgot-password",
