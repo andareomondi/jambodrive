@@ -49,7 +49,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="font-sans antialiased">
         <AuthProvider>
-          {children}
+          <AuthGuard>{children}</AuthGuard>
           <Toaster position="top-right" />
         </AuthProvider>
       </body>

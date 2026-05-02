@@ -1,12 +1,15 @@
 "use client";
-
 import type React from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/components/auth/auth-context";
+import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Lock, LogIn } from "lucide-react";
 import Link from "next/link";
+import type { User } from "@supabase/supabase-js";
+
+const supabase = createClient();
 
 const publicRoutes = [
   "/",
@@ -22,17 +25,30 @@ const publicRoutes = [
 ];
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const pathname = usePathname();
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const isPublicRoute = publicRoutes.some((route) => {
     const regexPattern = route
       .replace(/\//g, "\\/")
       .replace(/\[.*?\]/g, "[^/]+");
-    return new RegExp(`^${regexPattern}$`).test(pathname);
+    const regex = new RegExp(`^${regexPattern}$`);
+    return regex.test(pathname);
   });
 
-  if (authLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600" />

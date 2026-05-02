@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Navbar } from "@/components/layout/navbar";
@@ -39,11 +39,11 @@ import {
 } from "@/components/ui/table";
 
 export default function AdminDashboardPage() {
-  const { user, isAdmin, loading: authLoading } = useAuth();
-
-  const supabase = useMemo(() => createClient(), []);
-  const db = useMemo(() => new DatabaseService(supabase), [supabase]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(true);
+  const supabase = createClient();
+  const db = new DatabaseService(supabase);
   const [cars, setCars] = useState<Car[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -58,21 +58,43 @@ export default function AdminDashboardPage() {
   const revenueStatuses = ["confirmed", "completed"];
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!isAdmin) {
-      setDataLoading(false);
-      return;
-    }
-    Promise.all([db.getCars(), db.getBookings(), db.getProfiles()])
-      .then(([carsData, bookingsData, usersData]) => {
-        setCars(carsData);
-        setBookings(bookingsData);
-        setUsers(usersData);
-      })
-      .catch(console.error)
-      .finally(() => setDataLoading(false));
-  }, [isAdmin, authLoading, db]);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session?.user) {
+        setIsAdmin(false);
+        setAuthLoading(false);
+        setDataLoading(false);
+        return;
+      }
 
+      const { data } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .single();
+
+      const admin = data?.role === "admin";
+      setIsAdmin(admin);
+      setAuthLoading(false);
+
+      if (!admin) {
+        setDataLoading(false);
+        return;
+      }
+
+      Promise.all([db.getCars(), db.getBookings(), db.getProfiles()])
+        .then(([carsData, bookingsData, usersData]) => {
+          setCars(carsData);
+          setBookings(bookingsData);
+          setUsers(usersData);
+        })
+        .catch(console.error)
+        .finally(() => setDataLoading(false));
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
   const totalCars = cars.length;
   const totalBookings = bookings.length;
   const totalUsers = users.filter((u) => u.role === "customer").length;

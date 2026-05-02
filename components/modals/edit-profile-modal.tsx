@@ -1,56 +1,75 @@
-'use client'
+"use client";
 
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { toast } from 'sonner'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { UserCircle, Save } from 'lucide-react'
-import { createClient } from '@/lib/supabase-client'
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { UserCircle, Save } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 interface EditProfileModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  profile: any
-  onSuccess: (updated: any) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  profile: any;
+  onSuccess: (updated: any) => void;
 }
 
 interface ProfileFormData {
-  full_name: string
-  phone: string
-  email: string
+  full_name: string;
+  phone: string;
+  email: string;
 }
 
-export function EditProfileModal({ open, onOpenChange, profile, onSuccess }: EditProfileModalProps) {
-  const supabase = createClient()
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ProfileFormData>()
+export function EditProfileModal({
+  open,
+  onOpenChange,
+  profile,
+  onSuccess,
+}: EditProfileModalProps) {
+  const supabase = createClient();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<ProfileFormData>();
 
   useEffect(() => {
     if (profile) {
       reset({
-        full_name: profile.full_name ?? '',
-        phone: profile.phone ?? '',
-        email: profile.email ?? '',
-      })
+        full_name: profile.full_name ?? "",
+        phone: profile.phone ?? "",
+        email: profile.email ?? "",
+      });
     }
-  }, [profile, open])
+  }, [profile, open]);
 
   const onSubmit = async (data: ProfileFormData) => {
     const { data: updated, error } = await supabase
-      .from('profiles')
+      .from("profiles")
       .update({ full_name: data.full_name, phone: data.phone })
-      .eq('id', profile.id)
+      .eq("id", profile.id)
       .select()
-      .single()
+      .single();
 
-    if (error) { toast.error(error.message); return }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
 
-    toast.success('Profile updated successfully!')
-    onSuccess(updated)
-    onOpenChange(false)
-  }
+    toast.success("Profile updated successfully!");
+    onSuccess(updated);
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,7 +81,9 @@ export function EditProfileModal({ open, onOpenChange, profile, onSuccess }: Edi
             </div>
             <div>
               <DialogTitle className="text-xl">Edit Profile</DialogTitle>
-              <DialogDescription>Update your personal information</DialogDescription>
+              <DialogDescription>
+                Update your personal information
+              </DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -73,9 +94,13 @@ export function EditProfileModal({ open, onOpenChange, profile, onSuccess }: Edi
             <Input
               id="full_name"
               className="transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-              {...register('full_name', { required: 'Name is required' })}
+              {...register("full_name", { required: "Name is required" })}
             />
-            {errors.full_name && <p className="text-xs text-destructive">{errors.full_name.message}</p>}
+            {errors.full_name && (
+              <p className="text-xs text-destructive">
+                {errors.full_name.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -84,9 +109,11 @@ export function EditProfileModal({ open, onOpenChange, profile, onSuccess }: Edi
               id="email"
               disabled
               className="opacity-60 cursor-not-allowed"
-              {...register('email')}
+              {...register("email")}
             />
-            <p className="text-xs text-muted-foreground">Email cannot be changed here.</p>
+            <p className="text-xs text-muted-foreground">
+              Email cannot be changed here.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -95,21 +122,31 @@ export function EditProfileModal({ open, onOpenChange, profile, onSuccess }: Edi
               id="phone"
               placeholder="+254..."
               className="transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-              {...register('phone')}
+              {...register("phone")}
             />
           </div>
 
           <div className="flex gap-3 pt-2">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground gap-2">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
+            >
               <Save className="h-4 w-4" />
-              {isSubmitting ? 'Saving...' : 'Save Changes'}
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

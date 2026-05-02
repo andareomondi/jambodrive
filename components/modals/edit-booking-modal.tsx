@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Booking } from '@/lib/mock-data'
+import { useState } from "react";
+import { Booking } from "@/lib/mock-data";
 import {
   Dialog,
   DialogContent,
@@ -9,62 +9,90 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Calendar, MapPin } from 'lucide-react'
-import { toast } from 'sonner'
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Calendar, MapPin } from "lucide-react";
+import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 
 interface EditBookingModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  booking: Booking | null
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  booking: Booking | null;
 }
 
-export function EditBookingModal({ open, onOpenChange, booking }: EditBookingModalProps) {
-  const [isProcessing, setIsProcessing] = useState(false)
+export function EditBookingModal({
+  open,
+  onOpenChange,
+  booking,
+}: EditBookingModalProps) {
+  const supabase = createClient();
+  const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
-    pickupDate: booking?.pickupDate || '',
-    returnDate: booking?.returnDate || '',
-    pickupLocation: booking?.pickupLocation || '',
-    returnLocation: booking?.returnLocation || '',
-  })
+    pickupDate: booking?.pickupDate || "",
+    returnDate: booking?.returnDate || "",
+    pickupLocation: booking?.pickupLocation || "",
+    returnLocation: booking?.returnLocation || "",
+  });
 
-  if (!booking) return null
+  if (!booking) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-    }))
-  }
+    }));
+  };
 
   const handleSaveChanges = async () => {
-    if (!formData.pickupDate || !formData.returnDate || !formData.pickupLocation || !formData.returnLocation) {
-      toast.error('Please fill in all fields')
-      return
+    if (
+      !formData.pickup_date ||
+      !formData.return_date ||
+      !formData.pickup_location
+    ) {
+      toast.error("Please fill in all fields");
+      return;
     }
 
-    setIsProcessing(true)
+    if (new Date(formData.return_date) <= new Date(formData.pickup_date)) {
+      toast.error("Return date must be after pickup date");
+      return;
+    }
+
+    setIsProcessing(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      toast.success('Booking updated successfully')
-      onOpenChange(false)
-    } finally {
-      setIsProcessing(false)
-    }
-  }
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          pickup_date: formData.pickupDate,
+          return_date: formData.returnDate,
+          pickup_location: formData.pickupLocation,
+          return_location: formData.returnLocation,
+        })
+        .eq("id", booking!.id);
 
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.success("Booking updated successfully");
+      onOpenChange(false);
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-full max-w-2xl mx-auto">
         <DialogHeader>
           <DialogTitle>Edit Booking</DialogTitle>
-          <DialogDescription>
-            Modify your booking details
-          </DialogDescription>
+          <DialogDescription>Modify your booking details</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -148,10 +176,10 @@ export function EditBookingModal({ open, onOpenChange, booking }: EditBookingMod
             disabled={isProcessing}
             className="bg-accent hover:bg-accent/90"
           >
-            {isProcessing ? 'Saving...' : 'Save Changes'}
+            {isProcessing ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

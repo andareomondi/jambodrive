@@ -1,53 +1,56 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useParams } from 'next/navigation'
-import Link from 'next/link'
-import { Navbar } from '@/components/layout/navbar'
-import { Footer } from '@/components/layout/footer'
-import { BookingForm, BookingFormData } from '@/components/booking/booking-form'
-import { BookingSummary } from '@/components/booking/booking-summary'
-import { EmptyState } from '@/components/common/empty-state'
-import { toast } from 'sonner'
-import { Card } from '@/components/ui/card'
-import { CheckCircle } from 'lucide-react'
-import { useEffect } from 'react'
-import { createClient } from '@/lib/supabase-client'
-import { DatabaseService } from '@/lib/services'
-import type { Car } from '@/lib/mock-data'
+import { useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
+import {
+  BookingForm,
+  BookingFormData,
+} from "@/components/booking/booking-form";
+import { BookingSummary } from "@/components/booking/booking-summary";
+import { EmptyState } from "@/components/common/empty-state";
+import { toast } from "sonner";
+import { Card } from "@/components/ui/card";
+import { CheckCircle } from "lucide-react";
+import { useEffect } from "react";
+import { createClient } from "@/lib/supabase-client";
+import { DatabaseService } from "@/lib/services";
+import type { Car } from "@/lib/mock-data";
 
 export default function BookingPage() {
-  const params = useParams()
-  const carId = params.carId as string
-  const [bookingData, setBookingData] = useState<BookingFormData | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [pickupDate, setPickupDate] = useState('')
-  const [returnDate, setReturnDate] = useState('')
-  const [insurance, setInsurance] = useState(false)
-  const [addOns, setAddOns] = useState<string[]>([])
+  const params = useParams();
+  const carId = params.carId as string;
+  const [bookingData, setBookingData] = useState<BookingFormData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [pickupDate, setPickupDate] = useState("");
+  const [returnDate, setReturnDate] = useState("");
+  const [insurance, setInsurance] = useState(false);
+  const [addOns, setAddOns] = useState<string[]>([]);
 
-const [car, setCar] = useState<Car | null>(null)
-const [loading, setLoading] = useState(true)
+  const db = new DatabaseService(createClient());
+  const [car, setCar] = useState<Car | null>(null);
+  const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-  const db = new DatabaseService(createClient())
-  db.getCarById(carId)
-    .then(setCar)
-    .catch(console.error)
-    .finally(() => setLoading(false))
-}, [carId])
+  useEffect(() => {
+    db.getCarById(carId)
+      .then(setCar)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [carId]);
 
-if (loading) {
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
-      <div className="flex-1 flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+        <Footer />
       </div>
-      <Footer />
-    </div>
-  )
-}
+    );
+  }
 
   if (!car) {
     return (
@@ -56,13 +59,13 @@ if (loading) {
         <div className="flex-1 flex items-center justify-center">
           <EmptyState
             title="Car Not Found"
-            description="The car you&apos;re trying to book doesn&apos;t exist."
-            action={{ label: 'Back to Cars', href: '/cars' }}
+            description="The car you're trying to book doesn't exist."
+            action={{ label: "Back to Cars", href: "/cars" }}
           />
         </div>
         <Footer />
       </div>
-    )
+    );
   }
 
   if (!car.available) {
@@ -73,82 +76,91 @@ if (loading) {
           <EmptyState
             title="Car Not Available"
             description={`The ${car.name} is currently unavailable for booking. Please choose another vehicle.`}
-            action={{ label: 'Browse Other Cars', href: '/cars' }}
+            action={{ label: "Browse Other Cars", href: "/cars" }}
           />
         </div>
         <Footer />
       </div>
-    )
+    );
   }
 
-const handleBooking = async (data: BookingFormData) => {
-  setIsLoading(true)
-  try {
-    const supabase = createClient()
+  const handleBooking = async (data: BookingFormData) => {
+    setIsLoading(true);
+    try {
+      const supabase = createClient();
 
-    // Get the current logged in user
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      toast.error('You must be logged in to book a car.')
-      return
+      // Get the current logged in user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("You must be logged in to book a car.");
+        return;
+      }
+
+      const days = Math.ceil(
+        (new Date(data.returnDate).getTime() -
+          new Date(data.pickupDate).getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
+      const subtotal = days * car!.price;
+      const insurancePrice = data.insurance ? days * 25 : 0;
+      const addOnsPrice = data.additionalFeatures.length * 50;
+      const total = subtotal + insurancePrice + addOnsPrice;
+
+      const { error } = await supabase.from("bookings").insert({
+        car_id: car!.id,
+        profile_id: user.id,
+        pickup_date: new Date(data.pickupDate).toISOString(),
+        return_date: new Date(data.returnDate).toISOString(),
+        pickup_location: data.pickupLocation,
+        return_location: data.returnLocation ?? data.pickupLocation,
+        total_price: total,
+        insurance: data.insurance,
+        additional_features: data.additionalFeatures,
+        status: "pending",
+      });
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      setBookingData(data);
+      toast.success("Booking confirmed!");
+
+      setTimeout(() => {
+        document
+          .getElementById("booking-confirmation")
+          ?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    } catch (err) {
+      toast.error("Failed to confirm booking. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    const days = Math.ceil(
-      (new Date(data.returnDate).getTime() - new Date(data.pickupDate).getTime()) /
-        (1000 * 60 * 60 * 24)
-    )
-    const subtotal = days * car!.price
-    const insurancePrice = data.insurance ? days * 25 : 0
-    const addOnsPrice = data.additionalFeatures.length * 50
-    const total = subtotal + insurancePrice + addOnsPrice
-
-    const { error } = await supabase.from('bookings').insert({
-      car_id: car!.id,
-      profile_id: user.id,
-      pickup_date: new Date(data.pickupDate).toISOString(),
-      return_date: new Date(data.returnDate).toISOString(),
-      pickup_location: data.pickupLocation,
-      return_location: data.returnLocation ?? data.pickupLocation,
-      total_price: total,
-      insurance: data.insurance,
-      additional_features: data.additionalFeatures,
-      status: 'pending',
-    })
-
-    if (error) {
-      toast.error(error.message)
-      return
-    }
-
-    setBookingData(data)
-    toast.success('Booking confirmed!')
-
-    setTimeout(() => {
-      document.getElementById('booking-confirmation')?.scrollIntoView({ behavior: 'smooth' })
-    }, 100)
-  } catch (err) {
-    toast.error('Failed to confirm booking. Please try again.')
-  } finally {
-    setIsLoading(false)
-  }
-}
+  };
   if (bookingData) {
     const days = Math.ceil(
-      (new Date(bookingData.returnDate).getTime() - new Date(bookingData.pickupDate).getTime()) /
-        (1000 * 60 * 60 * 24)
-    )
+      (new Date(bookingData.returnDate).getTime() -
+        new Date(bookingData.pickupDate).getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
 
-    const subtotal = days * car.price
-    const insurancePrice = bookingData.insurance ? days * 25 : 0
-    const addOnsPrice = bookingData.additionalFeatures.length * 50
-    const total = subtotal + insurancePrice + addOnsPrice
+    const subtotal = days * car.price;
+    const insurancePrice = bookingData.insurance ? days * 25 : 0;
+    const addOnsPrice = bookingData.additionalFeatures.length * 50;
+    const total = subtotal + insurancePrice + addOnsPrice;
 
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
 
         <div className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
-          <Link href="/cars" className="inline-flex items-center text-accent hover:text-accent/80 mb-8 transition-colors">
+          <Link
+            href="/cars"
+            className="inline-flex items-center text-accent hover:text-accent/80 mb-8 transition-colors"
+          >
             ← Back to Cars
           </Link>
 
@@ -160,7 +172,9 @@ const handleBooking = async (data: BookingFormData) => {
                 </div>
               </div>
 
-              <h1 className="text-3xl font-bold text-center text-foreground mb-2">Booking Confirmed!</h1>
+              <h1 className="text-3xl font-bold text-center text-foreground mb-2">
+                Booking Confirmed!
+              </h1>
               <p className="text-center text-muted-foreground mb-8">
                 Your reservation for {car.name} has been confirmed.
               </p>
@@ -168,27 +182,47 @@ const handleBooking = async (data: BookingFormData) => {
               {/* Confirmation Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 p-6 bg-background rounded-lg">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Confirmation Number</p>
-                  <p className="text-lg font-semibold text-foreground">BK{Math.random().toString(36).substr(2, 6).toUpperCase()}</p>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Confirmation Number
+                  </p>
+                  <p className="text-lg font-semibold text-foreground">
+                    BK{Math.random().toString(36).substr(2, 6).toUpperCase()}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Vehicle</p>
-                  <p className="text-lg font-semibold text-foreground">{car.name} {car.model}</p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {car.name} {car.model}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Pickup Date</p>
-                  <p className="text-lg font-semibold text-foreground">{bookingData.pickupDate}</p>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Pickup Date
+                  </p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {bookingData.pickupDate}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Return Date</p>
-                  <p className="text-lg font-semibold text-foreground">{bookingData.returnDate}</p>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Return Date
+                  </p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {bookingData.returnDate}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Pickup Location</p>
-                  <p className="text-lg font-semibold text-foreground capitalize">{bookingData.pickupLocation}</p>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Pickup Location
+                  </p>
+                  <p className="text-lg font-semibold text-foreground capitalize">
+                    {bookingData.pickupLocation}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Guest Name</p>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Guest Name
+                  </p>
                   <p className="text-lg font-semibold text-foreground">
                     {bookingData.firstName} {bookingData.lastName}
                   </p>
@@ -197,28 +231,40 @@ const handleBooking = async (data: BookingFormData) => {
 
               {/* Price Summary */}
               <div className="p-6 bg-secondary rounded-lg mb-8">
-                <h3 className="font-semibold text-foreground mb-4">Price Summary</h3>
+                <h3 className="font-semibold text-foreground mb-4">
+                  Price Summary
+                </h3>
                 <div className="space-y-2 text-sm mb-4">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">${car.price} × {days} days</span>
-                    <span className="text-foreground font-medium">${subtotal}</span>
+                    <span className="text-muted-foreground">
+                      ${car.price} × {days} days
+                    </span>
+                    <span className="text-foreground font-medium">
+                      ${subtotal}
+                    </span>
                   </div>
                   {bookingData.insurance && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Insurance</span>
-                      <span className="text-foreground font-medium">${insurancePrice}</span>
+                      <span className="text-foreground font-medium">
+                        ${insurancePrice}
+                      </span>
                     </div>
                   )}
                   {bookingData.additionalFeatures.length > 0 && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Add-ons</span>
-                      <span className="text-foreground font-medium">${addOnsPrice}</span>
+                      <span className="text-foreground font-medium">
+                        ${addOnsPrice}
+                      </span>
                     </div>
                   )}
                 </div>
                 <div className="border-t border-border pt-2 flex justify-between">
                   <span className="font-semibold text-foreground">Total</span>
-                  <span className="text-xl font-bold text-accent">${total}</span>
+                  <span className="text-xl font-bold text-accent">
+                    ${total}
+                  </span>
                 </div>
               </div>
 
@@ -246,7 +292,7 @@ const handleBooking = async (data: BookingFormData) => {
 
         <Footer />
       </div>
-    )
+    );
   }
 
   return (
@@ -254,27 +300,44 @@ const handleBooking = async (data: BookingFormData) => {
       <Navbar />
 
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
-        <Link href={`/cars/${car.id}`} className="inline-flex items-center text-accent hover:text-accent/80 mb-8 transition-colors">
+        <Link
+          href={`/cars/${car.id}`}
+          className="inline-flex items-center text-accent hover:text-accent/80 mb-8 transition-colors"
+        >
           ← Back to Car
         </Link>
 
-        <h1 className="text-4xl font-bold text-foreground mb-2">Complete Your Booking</h1>
-        <p className="text-muted-foreground mb-8">Review the details and confirm your reservation for {car.name}</p>
+        <h1 className="text-4xl font-bold text-foreground mb-2">
+          Complete Your Booking
+        </h1>
+        <p className="text-muted-foreground mb-8">
+          Review the details and confirm your reservation for {car.name}
+        </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Booking Form */}
           <div className="lg:col-span-2">
-            <BookingForm carName={car.name} onSubmit={handleBooking} isLoading={isLoading} />
+            <BookingForm
+              carName={car.name}
+              onSubmit={handleBooking}
+              isLoading={isLoading}
+            />
           </div>
 
           {/* Booking Summary */}
           <div className="lg:col-span-1">
-            <BookingSummary car={car} pickupDate={pickupDate} returnDate={returnDate} insurance={insurance} addOns={addOns} />
+            <BookingSummary
+              car={car}
+              pickupDate={pickupDate}
+              returnDate={returnDate}
+              insurance={insurance}
+              addOns={addOns}
+            />
           </div>
         </div>
       </div>
 
       <Footer />
     </div>
-  )
+  );
 }

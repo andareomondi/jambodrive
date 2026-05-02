@@ -25,8 +25,8 @@ function CarsContent() {
     search: "",
   });
   const [cars, setCars] = useState<Car[]>([]);
-  const supabase = useMemo(() => createClient(), []);
-  const db = useMemo(() => new DatabaseService(supabase), [supabase]);
+  const supabase = createClient();
+  const db = new DatabaseService(supabase);
 
   const days = useMemo(() => {
     const from = searchParams.get("from");

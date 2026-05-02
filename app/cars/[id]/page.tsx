@@ -39,10 +39,9 @@ export default function CarDetailsPage() {
   const [car, setCar] = useState<Car | null>(null);
   const [relatedCars, setRelatedCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
+  const db = new DatabaseService(createClient());
 
   useEffect(() => {
-    const db = new DatabaseService(createClient());
-
     const fetchData = async () => {
       try {
         const carData = await db.getCarById(carId);

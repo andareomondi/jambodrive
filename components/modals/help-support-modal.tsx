@@ -1,86 +1,99 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { toast } from 'sonner'
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { HelpCircle, Send } from 'lucide-react'
-import { createClient } from '@/lib/supabase-client'
+} from "@/components/ui/select";
+import { HelpCircle, Send } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 interface HelpSupportModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 interface HelpFormData {
-  subject: string
-  category: 'technical' | 'booking' | 'car_issue' | 'payment' | 'other'
-  message: string
+  subject: string;
+  category: "technical" | "booking" | "car_issue" | "payment" | "other";
+  message: string;
 }
 
 const categoryLabels: Record<string, string> = {
-  technical: 'Technical Issue',
-  booking: 'Booking Issue',
-  car_issue: 'Car Issue',
-  payment: 'Payment Issue',
-  other: 'Other',
-}
+  technical: "Technical Issue",
+  booking: "Booking Issue",
+  car_issue: "Car Issue",
+  payment: "Payment Issue",
+  other: "Other",
+};
 
-export function HelpSupportModal({ open, onOpenChange }: HelpSupportModalProps) {
-  const supabase = createClient()
-  const [isLoading, setIsLoading] = useState(false)
-  const { register, handleSubmit, reset, formState: { errors }, watch } = useForm<HelpFormData>({
+export function HelpSupportModal({
+  open,
+  onOpenChange,
+}: HelpSupportModalProps) {
+  const supabase = createClient();
+  const [isLoading, setIsLoading] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+    watch,
+  } = useForm<HelpFormData>({
     defaultValues: {
-      subject: '',
-      category: 'technical',
-      message: '',
+      subject: "",
+      category: "technical",
+      message: "",
     },
-  })
+  });
 
-  const messageLength = watch('message').length
-  const maxMessageLength = 1000
+  const messageLength = watch("message").length;
+  const maxMessageLength = 1000;
 
   const onSubmit = async (data: HelpFormData) => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const { error } = await supabase.from('support_requests').insert({
+      const { error } = await supabase.from("support_requests").insert({
         subject: data.subject,
         category: data.category,
         message: data.message,
-      })
+      });
 
       if (error) {
-        toast.error(error.message || 'An error occurred while submitting your request.')
-        return
+        toast.error(
+          error.message || "An error occurred while submitting your request.",
+        );
+        return;
       }
-      
-      toast.success('Support request submitted successfully! Our team will respond within 24 hours.')
-      
-      reset()
-      onOpenChange(false)
+
+      toast.success(
+        "Support request submitted successfully! Our team will respond within 24 hours.",
+      );
+
+      reset();
+      onOpenChange(false);
     } catch (error) {
-      toast.error('Failed to submit support request. Please try again.')
+      toast.error("Failed to submit support request. Please try again.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,7 +105,9 @@ export function HelpSupportModal({ open, onOpenChange }: HelpSupportModalProps) 
             </div>
             <div>
               <DialogTitle className="text-xl">Help & Support</DialogTitle>
-              <DialogDescription>Get assistance from our support team</DialogDescription>
+              <DialogDescription>
+                Get assistance from our support team
+              </DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -106,16 +121,18 @@ export function HelpSupportModal({ open, onOpenChange }: HelpSupportModalProps) 
               id="subject"
               placeholder="Brief description of your issue"
               className="transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-              {...register('subject', {
-                required: 'Subject is required',
+              {...register("subject", {
+                required: "Subject is required",
                 minLength: {
                   value: 5,
-                  message: 'Subject must be at least 5 characters',
+                  message: "Subject must be at least 5 characters",
                 },
               })}
             />
             {errors.subject && (
-              <p className="text-xs text-destructive mt-1">{errors.subject.message}</p>
+              <p className="text-xs text-destructive mt-1">
+                {errors.subject.message}
+              </p>
             )}
           </div>
 
@@ -142,11 +159,13 @@ export function HelpSupportModal({ open, onOpenChange }: HelpSupportModalProps) 
               <Label htmlFor="message" className="text-sm font-medium">
                 Message
               </Label>
-              <span className={`text-xs transition-colors ${
-                messageLength > maxMessageLength * 0.9
-                  ? 'text-destructive'
-                  : 'text-muted-foreground'
-              }`}>
+              <span
+                className={`text-xs transition-colors ${
+                  messageLength > maxMessageLength * 0.9
+                    ? "text-destructive"
+                    : "text-muted-foreground"
+                }`}
+              >
                 {messageLength}/{maxMessageLength}
               </span>
             </div>
@@ -156,11 +175,11 @@ export function HelpSupportModal({ open, onOpenChange }: HelpSupportModalProps) 
               rows={4}
               maxLength={maxMessageLength}
               className="resize-none transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-              {...register('message', {
-                required: 'Message is required',
+              {...register("message", {
+                required: "Message is required",
                 minLength: {
                   value: 10,
-                  message: 'Message must be at least 10 characters',
+                  message: "Message must be at least 10 characters",
                 },
                 maxLength: {
                   value: maxMessageLength,
@@ -169,7 +188,9 @@ export function HelpSupportModal({ open, onOpenChange }: HelpSupportModalProps) 
               })}
             />
             {errors.message && (
-              <p className="text-xs text-destructive mt-1">{errors.message.message}</p>
+              <p className="text-xs text-destructive mt-1">
+                {errors.message.message}
+              </p>
             )}
           </div>
 
@@ -178,7 +199,8 @@ export function HelpSupportModal({ open, onOpenChange }: HelpSupportModalProps) 
               <span className="text-xs font-semibold text-accent">i</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Our support team typically responds within 24 hours. You&apos;ll receive updates via email.
+              Our support team typically responds within 24 hours. You&apos;ll
+              receive updates via email.
             </p>
           </div>
 
@@ -187,8 +209,8 @@ export function HelpSupportModal({ open, onOpenChange }: HelpSupportModalProps) 
               type="button"
               variant="outline"
               onClick={() => {
-                reset()
-                onOpenChange(false)
+                reset();
+                onOpenChange(false);
               }}
               disabled={isLoading}
               className="flex-1"
@@ -201,11 +223,11 @@ export function HelpSupportModal({ open, onOpenChange }: HelpSupportModalProps) 
               className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
             >
               <Send className="h-4 w-4" />
-              {isLoading ? 'Sending...' : 'Send'}
+              {isLoading ? "Sending..." : "Send"}
             </Button>
           </div>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

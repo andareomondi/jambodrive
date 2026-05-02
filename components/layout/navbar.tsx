@@ -6,8 +6,10 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/components/auth/auth-context";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+
+const supabase = createClient();
 
 const carTypes = [
   { id: "compact", name: "Compact" },
@@ -20,13 +22,38 @@ const carTypes = [
 ];
 
 export function Navbar() {
-  const { user, isAdmin, loading, signOut } = useAuth();
+  const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [isFleetOpen, setIsFleetOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const fleetRef = useRef<HTMLDivElement>(null);
 
-  // Close mobile menu on route change / resize
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", currentUser.id)
+          .single();
+        setIsAdmin(data?.role === "admin");
+      } else {
+        setIsAdmin(false);
+      }
+
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) setIsOpen(false);
@@ -35,14 +62,12 @@ export function Navbar() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Subtle scroll shadow
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 4);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Close fleet dropdown on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (fleetRef.current && !fleetRef.current.contains(e.target as Node)) {
@@ -55,7 +80,7 @@ export function Navbar() {
 
   const handleLogout = async () => {
     try {
-      await signOut();
+      await supabase.auth.signOut();
       setIsOpen(false);
       toast.success("Logged out successfully!");
     } catch {
@@ -69,7 +94,6 @@ export function Navbar() {
   };
 
   const isLoggedIn = !loading && !!user;
-  const showAdmin = !loading && isAdmin && !!user;
 
   return (
     <nav
@@ -96,7 +120,7 @@ export function Navbar() {
             <span className="font-bold text-xl text-foreground">Cosmara</span>
           </Link>
 
-          {/* Desktop Nav Links */}
+          {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
             <Link
               href="/"
@@ -105,7 +129,6 @@ export function Navbar() {
               Home
             </Link>
 
-            {/* Fleet Dropdown */}
             <div
               ref={fleetRef}
               className="relative"
@@ -150,22 +173,19 @@ export function Navbar() {
               Browse All
             </Link>
 
-            {/* Admin link — hidden while loading to avoid flicker, not conditionally mounted */}
-            <Link
-              href="/dashboard/admin"
-              className={cn(
-                "text-foreground hover:text-accent transition-colors font-medium text-sm",
-                !showAdmin && "hidden",
-              )}
-            >
-              Super Admin
-            </Link>
+            {!loading && isAdmin && (
+              <Link
+                href="/dashboard/admin"
+                className="text-foreground hover:text-accent transition-colors font-medium text-sm"
+              >
+                Super Admin
+              </Link>
+            )}
           </div>
 
-          {/* Desktop Auth — fixed width so layout never shifts */}
+          {/* Desktop Auth */}
           <div className="hidden md:flex items-center gap-3 w-[180px] justify-end">
             {loading ? (
-              // Skeleton placeholder — same width, no layout shift
               <div className="flex gap-3 w-full justify-end">
                 <div className="h-9 w-20 rounded-md bg-muted animate-pulse" />
                 <div className="h-9 w-20 rounded-md bg-muted animate-pulse" />
@@ -199,7 +219,7 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile Menu Toggle */}
+          {/* Mobile Toggle */}
           <button
             onClick={() => setIsOpen((v) => !v)}
             className="md:hidden p-2 hover:bg-secondary rounded-md transition-colors"
@@ -222,7 +242,6 @@ export function Navbar() {
                 Home
               </Link>
 
-              {/* Fleet section */}
               <div className="flex flex-col">
                 <div className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground border-t border-border mt-2">
                   Our Fleet
@@ -249,7 +268,7 @@ export function Navbar() {
                 Browse All Cars
               </Link>
 
-              {showAdmin && (
+              {!loading && isAdmin && (
                 <Link
                   href="/dashboard/admin"
                   onClick={closeAll}
@@ -260,7 +279,6 @@ export function Navbar() {
               )}
             </div>
 
-            {/* Mobile Auth */}
             <div className="mt-4 pt-4 border-t border-border flex gap-2 px-1">
               {loading ? (
                 <>

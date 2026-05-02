@@ -13,19 +13,17 @@ import type { Car } from "@/lib/mock-data";
 
 export default function CategoryPage() {
   const params = useParams();
-  const type = params.type as string; // Captures the 'type' from the URL[cite: 4]
+  const type = params.type as string;
 
   const [cars, setCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const supabase = useMemo(() => createClient(), []);
-  const db = useMemo(() => new DatabaseService(supabase), [supabase]);
+  const supabase = createClient();
+  const db = new DatabaseService(supabase);
 
   useEffect(() => {
     const fetchCars = async () => {
       try {
         const allCars = await db.getCars();
-        // Filter cars strictly by the URL category[cite: 4]
         const filtered = allCars.filter(
           (car) => car.type.toLowerCase() === type.toLowerCase(),
         );

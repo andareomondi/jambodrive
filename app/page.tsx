@@ -20,8 +20,8 @@ export default function Home() {
   const [cars, setCars] = useState<Car[]>([]);
   const featuredCars = cars.slice(0, 3);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
-  const supabase = useMemo(() => createClient(), []);
-  const db = useMemo(() => new DatabaseService(supabase), [supabase]);
+  const supabase = createClient();
+  const db = new DatabaseService(supabase);
 
   useEffect(() => {
     db.getCars().then(setCars).catch(console.error);

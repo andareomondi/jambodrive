@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/components/auth/auth-context";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -29,14 +29,12 @@ import { DatabaseService } from "@/lib/services";
 import type { Booking } from "@/lib/mock-data";
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
-  const supabase = useMemo(() => createClient(), []);
-  const db = useMemo(() => new DatabaseService(supabase), [supabase]);
-
+  const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+  const db = new DatabaseService(supabase);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [profileLoading, setProfileLoading] = useState(true);
-
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [manageModalOpen, setManageModalOpen] = useState(false);
@@ -44,21 +42,31 @@ export default function DashboardPage() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      setProfileLoading(false);
-      return;
-    }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
 
-    setProfileLoading(true);
-    Promise.all([db.getUserProfile(user.id), db.getUserBookings(user.id)])
-      .then(([profileData, bookingsData]) => {
-        setProfile(profileData);
-        setBookings(bookingsData);
-      })
-      .catch(console.error)
-      .finally(() => setProfileLoading(false));
-  }, [user, authLoading, db]);
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+
+      Promise.all([
+        db.getUserProfile(currentUser.id),
+        db.getUserBookings(currentUser.id),
+      ])
+        .then(([profileData, bookingsData]) => {
+          setProfile(profileData);
+          setBookings(bookingsData);
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const activeBookings = bookings.filter(
     (b) => b.status === "confirmed" || b.status === "pending",
@@ -76,7 +84,7 @@ export default function DashboardPage() {
     setSummaryModalOpen(true);
   };
 
-  if (authLoading || profileLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent" />
