@@ -91,7 +91,7 @@ function CarsContent() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {filteredCars.map((car) => (
-                  <CarCard key={car.id} car={car} />
+                  <CarCard key={car.id} car={car} days={days} />
                 ))}
               </div>
             </>

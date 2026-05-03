@@ -615,7 +615,7 @@ export default function AdminDashboardPage() {
                             </p>
                           </div>
                           <p className="font-bold text-accent">
-                            ${car.price}
+                            Ksh {car.price}
                             <span className="text-xs text-muted-foreground font-normal">
                               /d
                             </span>

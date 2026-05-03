@@ -13,7 +13,7 @@ interface CarCardProps {
   days?: number;
 }
 
-export function CarCard({ car }: CarCardProps) {
+export function CarCard({ car, days }: CarCardProps) {
   const fuelIcons = {
     petrol: <Fuel className="w-4 h-4" />,
     diesel: <Fuel className="w-4 h-4" />,
@@ -76,8 +76,17 @@ export function CarCard({ car }: CarCardProps) {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-lg font-bold text-accent">${car.price}</p>
-              <p className="text-xs text-muted-foreground">/per day</p>
+              <p className="text-lg font-bold text-accent">
+                Ksh {car.price.toLocaleString()}
+              </p>
+              {days && days > 1 ? (
+                <p className="text-xs text-accent/70 font-semibold">
+                  Ksh {(car.price * days).toLocaleString()} for {days} day
+                  {days > 1 ? "s" : ""}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">/per day</p>
+              )}
             </div>
             <Button
               size="sm"
