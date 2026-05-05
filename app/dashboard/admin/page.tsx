@@ -585,7 +585,7 @@ export default function AdminDashboardPage() {
                   </Button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {cars.slice(0, 6).map((car) => (
+                  {cars.map((car) => (
                     <div
                       key={car.id}
                       className="group rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
