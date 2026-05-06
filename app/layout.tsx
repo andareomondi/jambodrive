@@ -10,28 +10,48 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Cosmara",
+  title: {
+    default: "Cosmara | Premium Car Hire in Nairobi, Kenya",
+    template: "%s | Cosmara Car Hire",
+  },
   description:
-    "Experience premium car rental services with us. Book luxury and affordable vehicles for your next journey.",
-  icons: {
-    icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
-    ],
-    apple: "/apple-icon.png",
+    "Cosmara offers premium car hire in Nairobi and across Kenya. Compact, executive, SUV, luxury, safari and wedding vehicles available. Book online or via WhatsApp.",
+  keywords: [
+    "car hire Nairobi",
+    "car rental Kenya",
+    "luxury car hire Nairobi",
+    "SUV hire Nairobi",
+    "safari car hire Kenya",
+    "wedding car hire Nairobi",
+    "Cosmara car hire",
+    "airport car hire Nairobi",
+    "JKIA car hire",
+    "premium car hire Nairobi",
+    "car rental Nairobi",
+    "car hire Nairobi Kenya",
+    "car hire Kenya",
+    "car hire and tours Nairobi",
+  ],
+  metadataBase: new URL("https://cosmara.co.ke"),
+  openGraph: {
+    title: "Cosmara | Premium Car Hire in Nairobi",
+    description:
+      "Book premium cars in Nairobi. Executive, SUV, safari and wedding vehicles available.",
+    url: "https://cosmara.co.ke",
+    siteName: "Cosmara",
+    locale: "en_KE",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Cosmara | Premium Car Hire in Nairobi",
+    description: "Book premium cars in Nairobi, Kenya.",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
-
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
