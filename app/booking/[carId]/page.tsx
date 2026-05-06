@@ -237,10 +237,10 @@ export default function BookingPage() {
                 <div className="space-y-2 text-sm mb-4">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
-                      ${car.price} × {days} days
+                      Ksh {car.price} × {days} days
                     </span>
                     <span className="text-foreground font-medium">
-                      ${subtotal}
+                      Ksh {subtotal}
                     </span>
                   </div>
                   {bookingData.insurance && (

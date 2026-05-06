@@ -19,18 +19,9 @@ import {
   Calendar,
   Shield,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase-client";
+import { createClient } from "@/lib/supabase/client";
 import { DatabaseService } from "@/lib/services";
 import type { Car } from "@/lib/mock-data";
-
-// Helper function to format the car types nicely
-const formatCarType = (type: string) => {
-  if (!type) return "";
-  const lower = type.toLowerCase();
-  if (lower === "ssuv") return "Luxury SUV";
-  if (lower === "suv") return "SUV";
-  return type.charAt(0).toUpperCase() + type.slice(1);
-};
 
 export default function CarDetailsPage() {
   const params = useParams();
@@ -39,9 +30,10 @@ export default function CarDetailsPage() {
   const [car, setCar] = useState<Car | null>(null);
   const [relatedCars, setRelatedCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
-  const db = new DatabaseService(createClient());
 
   useEffect(() => {
+    const db = new DatabaseService(createClient());
+
     const fetchData = async () => {
       try {
         const carData = await db.getCarById(carId);
@@ -73,10 +65,9 @@ export default function CarDetailsPage() {
     const phoneNumber = "254758500943";
     const message = `Hi, I'm interested in booking the following vehicle:
 *Vehicle:* ${car.name} (${car.model})
-*Price:* Ksh ${car.price}/day
-*Type:* ${formatCarType(car.type)}
+*Price:* $${car.price}/day
+*Status:* ${car.available ? "Available" : "Currently Booked/Inquiry"}
 *Link:* ${window.location.href}
-*Status:* ${car.available ? "Available" : "Currently Unavailable"}
 
 Could you please provide more details on the booking process?`;
 
@@ -163,7 +154,6 @@ Could you please provide more details on the booking process?`;
                       src={image}
                       alt={`${car.name} ${idx + 1}`}
                       fill
-                      loading="lazy"
                       className="object-cover"
                     />
                   </button>
@@ -200,16 +190,11 @@ Could you please provide more details on the booking process?`;
 
           <div className="lg:col-span-1">
             <Card className="p-6 shadow-medium sticky top-32">
-              <div className="mb-4 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-foreground">
-                    {car.name}
-                  </h2>
-                  <p className="text-muted-foreground text-sm">{car.model}</p>
-                </div>
-                <div className="bg-accent/10 text-accent border border-accent/20 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase whitespace-nowrap">
-                  {formatCarType(car.type)}
-                </div>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-foreground">
+                  {car.name}
+                </h2>
+                <p className="text-muted-foreground text-sm">{car.model}</p>
               </div>
 
               <div className="space-y-3 mb-6 pb-6 border-b border-border">
@@ -276,20 +261,18 @@ Could you please provide more details on the booking process?`;
                 })}
               </div>
 
+              {/* BOOKING BUTTON LOGIC */}
               <div className="space-y-3">
-                <Button
-                  onClick={handleWhatsAppInquiry}
-                  className={`w-full text-base ${
-                    car.available
-                      ? "bg-green-600 hover:bg-green-700 text-white"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {car.available
-                    ? "Book Now via WhatsApp"
-                    : "Inquire Availability"}
-                </Button>
+                {car.available && (
+                  <Button
+                    asChild
+                    className="w-full bg-accent hover:bg-accent/90 text-base"
+                  >
+                    <Link href={`/booking/${car.id}`}>Book Now</Link>
+                  </Button>
+                )}
 
+                {/* TEMPORARY WHATSAPP BOOKING LOGIC */}
                 {!car.available && (
                   <p className="text-center text-xs text-muted-foreground mt-2">
                     This vehicle is currently unavailable. You can still message

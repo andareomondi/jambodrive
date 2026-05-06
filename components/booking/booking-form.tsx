@@ -42,7 +42,6 @@ export function BookingForm({
     defaultValues: {
       insurance: false,
       additionalFeatures: [],
-      pickupLocation: "downtown",
     },
   });
 
@@ -82,13 +81,6 @@ export function BookingForm({
     { id: "uthiru", name: "Uthiru" },
     { id: "ruaka", name: "Ruaka" },
     { id: "kiambu", name: "Kiambu" },
-  ];
-
-  const addOns = [
-    { id: "gps", label: "GPS Navigation", price: 50 },
-    { id: "child-seat", label: "Child Seat", price: 50 },
-    { id: "roof-rack", label: "Roof Rack", price: 50 },
-    { id: "cleaning", label: "Premium Cleaning", price: 50 },
   ];
 
   return (
@@ -143,60 +135,13 @@ export function BookingForm({
               className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground transition-all duration-300 hover:border-border focus:outline-none focus:ring-2 focus:ring-accent/50"
             >
               {locations.map((loc) => (
-                <option key={loc.id} value={loc.id}>
+                <option key={loc.id} value={loc.name}>
                   {loc.name}
                 </option>
               ))}
             </select>
           </div>
         </FieldGroup>
-      </Card>
-
-      <Card className="p-6 shadow-sm mb-6">
-        <h3 className="font-semibold text-lg text-foreground mb-4">
-          Insurance & Add-ons
-        </h3>
-
-        <div className="mb-6">
-          <div className="flex items-center space-x-2">
-            <Checkbox id="insurance" {...register("insurance")} />
-            <Label htmlFor="insurance" className="cursor-pointer">
-              <div>
-                <p className="font-medium text-foreground">
-                  Insurance Coverage
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  $25 per day - Comprehensive protection
-                </p>
-              </div>
-            </Label>
-          </div>
-        </div>
-
-        <div className="border-t border-border pt-6">
-          <p className="font-medium text-foreground mb-4">
-            Additional Features
-          </p>
-          <div className="space-y-3">
-            {addOns.map((addon) => (
-              <div key={addon.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={addon.id}
-                  value={addon.id}
-                  {...register("additionalFeatures")}
-                />
-                <Label htmlFor={addon.id} className="cursor-pointer">
-                  <div>
-                    <p className="text-foreground">{addon.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      ${addon.price} per rental
-                    </p>
-                  </div>
-                </Label>
-              </div>
-            ))}
-          </div>
-        </div>
       </Card>
 
       <Card className="p-6 shadow-sm mb-6">
