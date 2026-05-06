@@ -1,48 +1,55 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { Navbar } from '@/components/layout/navbar'
-import { Footer } from '@/components/layout/footer'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Mail, Phone, MapPin, Send } from 'lucide-react'
-import { toast } from 'sonner'
+import { useState } from "react";
+import Link from "next/link";
+import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Mail, Phone, MapPin, Send } from "lucide-react";
+import { toast } from "sonner";
 
 export default function ContactPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: '',
-  })
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-    }))
-  }
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
-      toast.error('Please fill in all fields')
-      return
+    e.preventDefault();
+    if (
+      !formData.name ||
+      !formData.email ||
+      !formData.subject ||
+      !formData.message
+    ) {
+      toast.error("Please fill in all fields");
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      toast.success('Message sent successfully! We will get back to you soon.')
-      setFormData({ name: '', email: '', subject: '', message: '' })
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      toast.success("Message sent successfully! We will get back to you soon.");
+      setFormData({ name: "", email: "", subject: "", message: "" });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -56,7 +63,8 @@ export default function ContactPage() {
               Get in Touch with Us
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl text-balance">
-              Have questions about JamboDrive? We&apos;re here to help. Contact our support team and we&apos;ll get back to you as soon as possible.
+              Have questions about Cosmara? We&apos;re here to help. Contact our
+              support team and we&apos;ll get back to you as soon as possible.
             </p>
           </div>
         </section>
@@ -69,43 +77,57 @@ export default function ContactPage() {
               {[
                 {
                   icon: Phone,
-                  title: 'Phone',
-                  info: '+1 (555) 123-4567',
-                  subtext: 'Available 9 AM - 6 PM EST',
+                  title: "Phone",
+                  info: "+2547 585 009431",
+                  subtext: "Available 9 AM - 9 PM EST",
                 },
                 {
                   icon: Mail,
-                  title: 'Email',
-                  info: 'support@jambodrives.com',
-                  subtext: 'Response within 24 hours',
+                  title: "Email",
+                  info: "support@cosmara.com",
+                  subtext: "Response within 24 hours",
                 },
                 {
                   icon: MapPin,
-                  title: 'Office',
-                  info: '123 Auto Drive, City, State 12345',
-                  subtext: 'Visit us during business hours',
+                  title: "Office",
+                  info: "Nairobi, Kenya",
+                  subtext: "Visit us during business hours",
                 },
               ].map((item, i) => {
-                const Icon = item.icon
+                const Icon = item.icon;
                 return (
-                  <Card key={i} className="p-6 shadow-sm hover:shadow-md transition-shadow">
+                  <Card
+                    key={i}
+                    className="p-6 shadow-sm hover:shadow-md transition-shadow"
+                  >
                     <Icon className="h-8 w-8 text-accent mb-4" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
-                    <p className="text-foreground font-medium mb-1">{item.info}</p>
-                    <p className="text-sm text-muted-foreground">{item.subtext}</p>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      {item.title}
+                    </h3>
+                    <p className="text-foreground font-medium mb-1">
+                      {item.info}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {item.subtext}
+                    </p>
                   </Card>
-                )
+                );
               })}
             </div>
 
             {/* Contact Form */}
             <div className="max-w-2xl mx-auto">
               <Card className="p-8 shadow-sm">
-                <h2 className="text-2xl font-bold text-foreground mb-6">Send us a Message</h2>
+                <h2 className="text-2xl font-bold text-foreground mb-6">
+                  Send us a Message
+                </h2>
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {/* Name */}
                   <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-foreground mb-2">
+                    <label
+                      htmlFor="name"
+                      className="block text-sm font-medium text-foreground mb-2"
+                    >
                       Full Name
                     </label>
                     <Input
@@ -121,7 +143,10 @@ export default function ContactPage() {
 
                   {/* Email */}
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-foreground mb-2"
+                    >
                       Email Address
                     </label>
                     <Input
@@ -137,7 +162,10 @@ export default function ContactPage() {
 
                   {/* Subject */}
                   <div>
-                    <label htmlFor="subject" className="block text-sm font-medium text-foreground mb-2">
+                    <label
+                      htmlFor="subject"
+                      className="block text-sm font-medium text-foreground mb-2"
+                    >
                       Subject
                     </label>
                     <Input
@@ -153,7 +181,10 @@ export default function ContactPage() {
 
                   {/* Message */}
                   <div>
-                    <label htmlFor="message" className="block text-sm font-medium text-foreground mb-2">
+                    <label
+                      htmlFor="message"
+                      className="block text-sm font-medium text-foreground mb-2"
+                    >
                       Message
                     </label>
                     <textarea
@@ -174,7 +205,7 @@ export default function ContactPage() {
                     className="w-full bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
                   >
                     <Send className="h-4 w-4" />
-                    {isSubmitting ? 'Sending...' : 'Send Message'}
+                    {isSubmitting ? "Sending..." : "Send Message"}
                   </Button>
                 </form>
               </Card>
@@ -185,5 +216,5 @@ export default function ContactPage() {
 
       <Footer />
     </div>
-  )
+  );
 }

@@ -25,7 +25,7 @@ export interface FilterState {
 export function CarFilters({ onFilterChange }: CarFiltersProps) {
   const [filters, setFilters] = useState<FilterState>({
     priceMin: 0,
-    priceMax: 1000000,
+    priceMax: 100000,
     carType: [],
     transmission: [],
     fuel: [],
@@ -35,6 +35,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const carTypes = [
+    "economy",
     "compact",
     "executive",
     "suv",
@@ -79,7 +80,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
   const handleReset = () => {
     const reset = {
       priceMin: 0,
-      priceMax: 1000000,
+      priceMax: 100000,
       carType: [],
       transmission: [],
       fuel: [],
@@ -183,8 +184,8 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
                 </span>
               </div>
               <Slider
-                defaultValue={[0, 1000000]}
-                max={1000000}
+                defaultValue={[0, 100000]}
+                max={100000}
                 step={1000} // Increased step for massive performance boost
                 value={[filters.priceMin, filters.priceMax]}
                 onValueChange={(vals) => {

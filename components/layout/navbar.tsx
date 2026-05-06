@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X, ChevronDown, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ const supabase = createClient();
 
 const carTypes = [
   { id: "compact", name: "Compact" },
+  { id: "economy", name: "Economy" },
   { id: "executive", name: "Executive" },
   { id: "suv", name: "SUV" },
   { id: "ssuv", name: "Luxury SUV" },
@@ -124,7 +125,7 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-8">
             <Link
               href="/"
-              className="text-foreground hover:text-accent transition-colors font-medium text-sm"
+              className="text-foreground hover:text-accent transition-colors font-small "
             >
               Home
             </Link>
@@ -136,7 +137,7 @@ export function Navbar() {
               onMouseLeave={() => setIsFleetOpen(false)}
             >
               <button
-                className="flex items-center gap-1 text-foreground hover:text-accent transition-colors font-medium text-sm py-4"
+                className="flex items-center gap-1 text-foreground hover:text-accent transition-colors font-small  py-4"
                 onClick={() => setIsFleetOpen((v) => !v)}
                 aria-expanded={isFleetOpen}
                 aria-haspopup="true"
@@ -156,7 +157,7 @@ export function Navbar() {
                     <Link
                       key={type.id}
                       href={`/cars/category/${type.id}`}
-                      className="block px-4 py-2.5 text-sm hover:bg-secondary hover:text-accent transition-colors"
+                      className="block px-4 py-2.5  hover:bg-secondary hover:text-accent transition-colors"
                       onClick={closeAll}
                     >
                       {type.name}
@@ -168,7 +169,7 @@ export function Navbar() {
 
             <Link
               href="/cars"
-              className="text-foreground hover:text-accent transition-colors font-medium text-sm"
+              className="text-foreground hover:text-accent transition-colors font-small "
             >
               Browse All
             </Link>
@@ -176,11 +177,27 @@ export function Navbar() {
             {!loading && isAdmin && (
               <Link
                 href="/dashboard/admin"
-                className="text-foreground hover:text-accent transition-colors font-medium text-sm"
+                className="text-foreground hover:text-accent transition-colors font-small"
               >
                 Super Admin
               </Link>
             )}
+            <Link
+              href="/contact"
+              className="text-foreground hover:text-accent transition-colors font-small "
+            >
+              Contact Us
+            </Link>
+            {/* Phone number */}
+            <div className="lg:flex items-center  ">
+              <a
+                href="tel:+2547585009431"
+                className="hover:text-accent transition-colors"
+              >
+                <Phone className="w-4 h-4 inline-block mr-1" />
+                +2547 585 009431
+              </a>
+            </div>
           </div>
 
           {/* Desktop Auth */}
@@ -237,7 +254,7 @@ export function Navbar() {
               <Link
                 href="/"
                 onClick={closeAll}
-                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md text-sm"
+                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md "
               >
                 Home
               </Link>
@@ -252,7 +269,7 @@ export function Navbar() {
                       key={type.id}
                       href={`/cars/category/${type.id}`}
                       onClick={closeAll}
-                      className="px-3 py-2 text-sm text-foreground hover:bg-secondary rounded-md"
+                      className="px-3 py-2  text-foreground hover:bg-secondary rounded-md"
                     >
                       {type.name}
                     </Link>
@@ -263,7 +280,7 @@ export function Navbar() {
               <Link
                 href="/cars"
                 onClick={closeAll}
-                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md border-t border-border mt-2 text-sm"
+                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md border-t border-border mt-2 "
               >
                 Browse All Cars
               </Link>
@@ -272,11 +289,29 @@ export function Navbar() {
                 <Link
                   href="/dashboard/admin"
                   onClick={closeAll}
-                  className="px-3 py-3 text-foreground hover:bg-secondary rounded-md text-sm"
+                  className="px-3 py-3 text-foreground hover:bg-secondary rounded-md "
                 >
                   Super Admin
                 </Link>
               )}
+
+              <Link
+                href="/contact"
+                onClick={closeAll}
+                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md border-t border-border mt-2 "
+              >
+                Contact Us
+              </Link>
+              {/* Phone number */}
+              <div className="px-3 py-3  border-t border-border mt-2">
+                <a
+                  href="tel:+2547585009431"
+                  className="hover:text-accent transition-colors"
+                >
+                  <Phone className="w-4 h-4 inline-block mr-1" />
+                  +254 758 5009431
+                </a>
+              </div>
             </div>
 
             <div className="mt-4 pt-4 border-t border-border flex gap-2 px-1">
