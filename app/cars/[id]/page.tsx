@@ -236,7 +236,7 @@ Could you please provide more details on the booking process?`;
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-4xl font-bold text-accent">
-                    ${car.price}
+                    Ksh {car.price}
                   </span>
                   <span className="text-muted-foreground">/day</span>
                 </div>

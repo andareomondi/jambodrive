@@ -151,7 +151,7 @@ export function ManageBookingModal({
                 </p>
                 {car && (
                   <p className="text-xs md:text-sm text-muted-foreground">
-                    {car.model} • ${car.price}/day
+                    {car.model} • Ksh {car.price}/day
                   </p>
                 )}
               </div>
@@ -223,7 +223,7 @@ export function ManageBookingModal({
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Daily Rate:</span>
                   <span className="font-medium text-foreground">
-                    ${car?.price || 0}/day
+                    Ksh {car?.price || 0}/day
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -237,7 +237,7 @@ export function ManageBookingModal({
                     Total Price:
                   </span>
                   <span className="font-bold text-accent">
-                    ${booking.total_price}
+                    Ksh {booking.total_price}
                   </span>
                 </div>
               </div>
