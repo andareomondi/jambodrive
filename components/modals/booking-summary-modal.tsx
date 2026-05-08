@@ -59,10 +59,12 @@ export function BookingSummaryModal({
   // Calculate total days
   const pickupDate = new Date(booking.pickup_date);
   const returnDate = new Date(booking.return_date);
-  const totalDays = Math.ceil(
-    (returnDate.getTime() - pickupDate.getTime()) / (1000 * 60 * 60 * 24),
-  );
 
+  const totalDays = Math.ceil(
+    (new Date(booking.return_date).getTime() -
+      new Date(booking.pickup_date).getTime()) /
+      (1000 * 60 * 60 * 24),
+  );
   const handleDownloadReceipt = () => {
     toast.success("Receipt downloaded successfully");
   };
@@ -138,8 +140,8 @@ export function BookingSummaryModal({
                 {car?.name}
               </p>
               {car && (
-                <p className="text-xs md:text-sm text-muted-foreground">
-                  {car.model} • ${car.price}/day
+                <p className="text- xs md:text-sm text-muted-foreground">
+                  {car.model} • Ksh{car.price}/day
                 </p>
               )}
             </div>
@@ -195,7 +197,7 @@ export function BookingSummaryModal({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Daily Rate:</span>
                 <span className="font-medium text-foreground">
-                  ${car?.price || 0}/day
+                  Ksh {car?.price || 0}/day
                 </span>
               </div>
               <div className="flex justify-between">
@@ -204,58 +206,16 @@ export function BookingSummaryModal({
                   {totalDays} days
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal:</span>
-                <span className="font-medium text-foreground">
-                  ${(car?.price || 0) * totalDays}
-                </span>
-              </div>
-              {booking.insurance && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    Insurance Coverage:
-                  </span>
-                  <span className="font-medium text-foreground">Included</span>
-                </div>
-              )}
-              {booking.additional_features.length > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Add-ons:</span>
-                  <span className="font-medium text-foreground">
-                    ${Math.round(booking.total_price * 0.1)}
-                  </span>
-                </div>
-              )}
               <div className="border-t border-accent/20 pt-1 md:pt-2 mt-1 md:mt-2 flex justify-between">
                 <span className="font-semibold text-foreground">
                   Total Amount Paid:
                 </span>
                 <span className="font-bold text-accent text-base md:text-lg">
-                  ${booking.total_price}
+                  Ksh {booking.total_price}
                 </span>
               </div>
             </div>
           </Card>
-
-          {/* Additional Features */}
-          {booking.additional_features.length > 0 && (
-            <div>
-              <label className="text-xs md:text-sm text-muted-foreground block mb-2">
-                Additional Services
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {booking.additional_features.map((feature) => (
-                  <Badge
-                    key={feature}
-                    variant="secondary"
-                    className="text-xs md:text-sm"
-                  >
-                    {feature}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         <DialogFooter className="flex flex-col-reverse md:flex-row gap-2 justify-end">

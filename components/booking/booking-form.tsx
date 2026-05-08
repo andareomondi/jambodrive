@@ -20,8 +20,7 @@ export interface BookingFormData {
   pickupDate: string;
   returnDate: string;
   pickupLocation: string;
-  insurance: boolean;
-  additionalFeatures: string[];
+  returnLocation: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -38,14 +37,7 @@ export function BookingForm({
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<BookingFormData>({
-    defaultValues: {
-      insurance: false,
-      additionalFeatures: [],
-    },
-  });
-
-  const additionalFeatures = watch("additionalFeatures");
+  } = useForm<BookingFormData>({});
 
   const onSubmitForm = (data: BookingFormData) => {
     // Validate dates
@@ -86,12 +78,12 @@ export function BookingForm({
   return (
     <form onSubmit={handleSubmit(onSubmitForm)}>
       <Card className="p-6 shadow-sm mb-6">
-        <h3 className="font-semibold text-lg text-foreground mb-6">
+        <h3 className="font-semibold text-lg text-foreground mb-2">
           Rental Details
         </h3>
 
         <FieldGroup>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
             <div>
               <FieldLabel htmlFor="pickupDate">Pickup Date</FieldLabel>
               <Input
@@ -126,12 +118,25 @@ export function BookingForm({
               )}
             </div>
           </div>
-
-          <div className="mb-6">
+          <div className="mb-2">
             <FieldLabel htmlFor="pickupLocation">Pickup Location</FieldLabel>
             <select
               id="pickupLocation"
               {...register("pickupLocation")}
+              className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground transition-all duration-300 hover:border-border focus:outline-none focus:ring-2 focus:ring-accent/50"
+            >
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.name}>
+                  {loc.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-2">
+            <FieldLabel htmlFor="returnLocation">Return Location</FieldLabel>
+            <select
+              id="returnLocation"
+              {...register("returnLocation")}
               className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground transition-all duration-300 hover:border-border focus:outline-none focus:ring-2 focus:ring-accent/50"
             >
               {locations.map((loc) => (

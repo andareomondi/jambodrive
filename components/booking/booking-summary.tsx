@@ -5,18 +5,14 @@ import { Star } from "lucide-react";
 
 interface BookingSummaryProps {
   car: Car;
-  pickupDate?: string;
-  returnDate?: string;
-  insurance: boolean;
-  addOns: string[];
+  pickupDate: string;
+  returnDate: string;
 }
 
 export function BookingSummary({
   car,
   pickupDate,
   returnDate,
-  insurance,
-  addOns,
 }: BookingSummaryProps) {
   const calculateDays = () => {
     if (!pickupDate || !returnDate) return 0;
@@ -29,10 +25,7 @@ export function BookingSummary({
 
   const days = calculateDays();
   const dailyRate = car.price;
-  const subtotal = days * dailyRate;
-  const insurancePrice = insurance ? days * 25 : 0;
-  const addOnsPrice = addOns.length * 50;
-  const total = subtotal + insurancePrice + addOnsPrice;
+  const total = days * dailyRate;
 
   return (
     <Card className="p-6 shadow-md sticky top-32">
@@ -67,34 +60,6 @@ export function BookingSummary({
               <span className="text-muted-foreground">Duration</span>
               <span className="text-foreground font-medium">{days} day(s)</span>
             </div>
-          </div>
-
-          {/* Price Breakdown */}
-          <div className="space-y-2 text-sm mb-4 pb-4 border-b border-border">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">
-                ${dailyRate} × {days} days
-              </span>
-              <span className="text-foreground font-medium">${subtotal}</span>
-            </div>
-            {insurance && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Insurance</span>
-                <span className="text-foreground font-medium">
-                  ${insurancePrice}
-                </span>
-              </div>
-            )}
-            {addOns.length > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  Add-ons ({addOns.length})
-                </span>
-                <span className="text-foreground font-medium">
-                  ${addOnsPrice}
-                </span>
-              </div>
-            )}
           </div>
 
           {/* Total */}

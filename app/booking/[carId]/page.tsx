@@ -28,8 +28,8 @@ export default function BookingPage() {
   const [returnDate, setReturnDate] = useState("");
   const [insurance, setInsurance] = useState(false);
   const [addOns, setAddOns] = useState<string[]>([]);
-
-  const db = new DatabaseService(createClient());
+  const supabase = createClient();
+  const db = new DatabaseService(supabase);
   const [car, setCar] = useState<Car | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -87,9 +87,6 @@ export default function BookingPage() {
   const handleBooking = async (data: BookingFormData) => {
     setIsLoading(true);
     try {
-      const supabase = createClient();
-
-      // Get the current logged in user
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -103,10 +100,7 @@ export default function BookingPage() {
           new Date(data.pickupDate).getTime()) /
           (1000 * 60 * 60 * 24),
       );
-      const subtotal = days * car!.price;
-      const insurancePrice = data.insurance ? days * 25 : 0;
-      const addOnsPrice = data.additionalFeatures.length * 50;
-      const total = subtotal + insurancePrice + addOnsPrice;
+      const total = days * car!.price;
 
       const { error } = await supabase.from("bookings").insert({
         car_id: car!.id,
@@ -114,11 +108,10 @@ export default function BookingPage() {
         pickup_date: new Date(data.pickupDate).toISOString(),
         return_date: new Date(data.returnDate).toISOString(),
         pickup_location: data.pickupLocation,
-        return_location: data.returnLocation ?? data.pickupLocation,
+        return_location: data.returnLocation,
         total_price: total,
-        insurance: data.insurance,
-        additional_features: data.additionalFeatures,
         status: "pending",
+        days: days,
       });
 
       if (error) {
@@ -147,10 +140,7 @@ export default function BookingPage() {
         (1000 * 60 * 60 * 24),
     );
 
-    const subtotal = days * car.price;
-    const insurancePrice = bookingData.insurance ? days * 25 : 0;
-    const addOnsPrice = bookingData.additionalFeatures.length * 50;
-    const total = subtotal + insurancePrice + addOnsPrice;
+    const total = days * car.price;
 
     return (
       <div className="min-h-screen flex flex-col bg-background">
@@ -239,31 +229,12 @@ export default function BookingPage() {
                     <span className="text-muted-foreground">
                       Ksh {car.price} × {days} days
                     </span>
-                    <span className="text-foreground font-medium">
-                      Ksh {subtotal}
-                    </span>
                   </div>
-                  {bookingData.insurance && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Insurance</span>
-                      <span className="text-foreground font-medium">
-                        ${insurancePrice}
-                      </span>
-                    </div>
-                  )}
-                  {bookingData.additionalFeatures.length > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Add-ons</span>
-                      <span className="text-foreground font-medium">
-                        ${addOnsPrice}
-                      </span>
-                    </div>
-                  )}
                 </div>
                 <div className="border-t border-border pt-2 flex justify-between">
                   <span className="font-semibold text-foreground">Total</span>
                   <span className="text-xl font-bold text-accent">
-                    ${total}
+                    Ksh {total}
                   </span>
                 </div>
               </div>
@@ -330,8 +301,6 @@ export default function BookingPage() {
               car={car}
               pickupDate={pickupDate}
               returnDate={returnDate}
-              insurance={insurance}
-              addOns={addOns}
             />
           </div>
         </div>
