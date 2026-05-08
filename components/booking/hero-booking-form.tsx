@@ -27,6 +27,9 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
   const router = useRouter();
   const [useWhatsApp, setUseWhatsApp] = useState(false);
   const today = new Date().toISOString().split("T")[0];
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
 
   const {
     register,
@@ -35,6 +38,8 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
   } = useForm<QuickBookingData>({
     defaultValues: {
       type: "economy",
+      pickupDate: today,
+      dropOffDate: tomorrow,
     },
   });
 
@@ -130,9 +135,8 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
       onSubmit={handleSubmit(onSubmit)}
       className="max-w-7xl mx-auto w-full"
     >
-      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-2xl p-6 border border-white/20 dark:border-slate-800/50">
+      <div className="bg-white/65 dark:bg-slate-900/95 rounded-xl shadow-2xl p-6 border  dark:border-slate-800/50">
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-5 items-end">
-          {/* Pickup Location (Native Type-or-Select) */}
           <div className="group">
             <Label
               htmlFor="pickupLocation"
@@ -145,7 +149,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
               list="pickup-locations"
               placeholder="Select or type..."
               {...register("pickupLocation", { required: true })}
-              className={`text-sm px-3 py-2.5 rounded-md ${errors.pickupLocation ? "border-red-500" : ""}`}
+              className={`text-sm px-3 py-2.5 rounded-md border focus:border-red-500 ${errors.pickupLocation ? "border-red-500" : ""}`}
             />
             <datalist id="pickup-locations">
               {locations.map((loc) => (
@@ -167,7 +171,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
               list="dropoff-locations"
               placeholder="Select or type..."
               {...register("dropOffLocation", { required: true })}
-              className={`text-sm px-3 py-2.5 rounded-md ${errors.dropOffLocation ? "border-red-500" : ""}`}
+              className={`text-sm px-3 py-2.5 border focus:border-red-500 rounded-md ${errors.dropOffLocation ? "border-red-500" : ""}`}
             />
             <datalist id="dropoff-locations">
               {locations.map((loc) => (
@@ -188,7 +192,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
               id="pickupDate"
               type="date"
               {...register("pickupDate", { required: true })}
-              className={`text-sm px-3 py-2.5 rounded-md ${errors.pickupDate ? "border-red-500" : ""}`}
+              className={`text-sm px-3 py-2.5 focus:border-red-500 rounded-md ${errors.pickupDate ? "border-red-500" : ""}`}
             />
           </div>
 
@@ -204,7 +208,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
               id="pickupTime"
               type="time"
               {...register("pickupTime")}
-              className="text-sm px-3 py-2.5 rounded-md"
+              className="text-sm px-3 py-2.5 rounded-md focus:border-red-500"
             />
           </div>
 
@@ -219,7 +223,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
               id="dropOffDate"
               type="date"
               {...register("dropOffDate", { required: true })}
-              className={`text-sm px-3 py-2.5 rounded-md ${errors.dropOffDate ? "border-red-500" : ""}`}
+              className={`text-sm px-3 py-2.5 focus:border-red-500 rounded-md ${errors.dropOffDate ? "border-red-500" : ""}`}
             />
           </div>
 
@@ -235,7 +239,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
               id="dropOffTime"
               type="time"
               {...register("dropOffTime")}
-              className="text-sm px-3 py-2.5 rounded-md"
+              className="text-sm px-3 py-2.5 rounded-md focus:border-red-500"
             />
           </div>
 
@@ -250,7 +254,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             <select
               id="type"
               {...register("type")}
-              className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-red-500/40 focus:border-red-500"
+              className="w-full px-3 py-2.5 border dark:border-slate-700 rounded-md  dark:bg-slate-800 text-sm focus:border-red-500"
             >
               {types.map((cat) => (
                 <option key={cat.id} value={cat.id}>
@@ -283,7 +287,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
             <MessageCircle className="w-4 h-4 mr-1.5" />
             WhatsApp Me
           </Button>
-          <p className="text-[10px] text-muted-foreground mt-1 ">
+          <p className="text-[10px] mt-1 ">
             Details will be sent to the admin and he will reach out to you.
           </p>
         </div>

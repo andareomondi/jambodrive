@@ -130,7 +130,7 @@ export default function DashboardPage() {
           </div>
           <Button
             onClick={() => setDepositModalOpen(true)}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-sm rounded-full px-6 transition-transform active:scale-95"
+            className="hidden bg-accent hover:bg-accent/90 text-accent-foreground shadow-sm rounded-full px-6 transition-transform active:scale-95"
           >
             <Plus className="h-4 w-4 mr-2" /> Deposit Funds
           </Button>

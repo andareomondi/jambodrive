@@ -22,6 +22,8 @@ import { createClient } from "@/lib/supabase/client";
 import { DatabaseService } from "@/lib/services";
 import type { Car } from "@/lib/mock-data";
 
+export const dynamic = "auto";
+
 const HERO_IMAGES = [
   { src: "/hero/car1.jpg", alt: "Premium sedan on open road" },
   { src: "/hero/car2.jpg", alt: "SUV at sunset" },
@@ -38,7 +40,6 @@ function HeroCarousel() {
   const [current, setCurrent] = useState(0);
   const [prev, setPrev] = useState<number | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [paused, setPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const goTo = useCallback(
@@ -65,18 +66,15 @@ function HeroCarousel() {
 
   // Auto-advance
   useEffect(() => {
-    if (paused) return;
     timerRef.current = setTimeout(next, SLIDE_DURATION);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [next, paused, current]);
+  }, [next, current]);
 
   return (
     <section
       className="relative px-4 sm:px-6 lg:px-8 py-16 md:py-28 overflow-hidden min-h-[620px]"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
       aria-label="Hero section with image carousel"
     >
       {/* ── Background slides ── */}
@@ -106,9 +104,8 @@ function HeroCarousel() {
                 src={img.src}
                 alt={img.alt}
                 className="absolute inset-0 w-full h-full object-cover"
-                // Eager-load first image; lazy-load rest
-                loading={i === 0 ? "eager" : "lazy"}
-                fetchPriority={i === 0 ? "high" : "auto"}
+                loading="eager"
+                fetchPriority="high"
                 decoding="async"
               />
             </div>
@@ -116,7 +113,7 @@ function HeroCarousel() {
         })}
 
         {/* Overlay */}
-        <div className="absolute inset-0 bg-black/55 backdrop-blur-[1px]" />
+        <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px]" />
 
         {/* Subtle gradient at bottom for text legibility */}
         <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/40 to-transparent" />
@@ -127,7 +124,7 @@ function HeroCarousel() {
         {/* Hero Text */}
         <div className="mb-16 max-w-2xl">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-black mb-8 text-balance leading-tight tracking-tight drop-shadow-lg text-orange-400">
-            Search Your <br className="hidden md:block" />
+            Search Your <br className="block" />
             Best Cars <br />
             Here.
           </h1>
@@ -193,17 +190,6 @@ function HeroCarousel() {
       </div>
 
       {/* Progress bar */}
-      {!paused && (
-        <div className="absolute bottom-0 left-0 right-0 z-20 h-[3px] bg-white/10">
-          <div
-            key={current} // re-mount on slide change to restart animation
-            className="h-full bg-orange-400/80 origin-left"
-            style={{
-              animation: `carousel-progress ${SLIDE_DURATION}ms linear forwards`,
-            }}
-          />
-        </div>
-      )}
 
       <style jsx>{`
         @keyframes carousel-progress {

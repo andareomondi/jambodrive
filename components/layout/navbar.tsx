@@ -99,7 +99,7 @@ export function Navbar() {
   return (
     <nav
       className={cn(
-        "sticky top-0 z-50 bg-background border-b border-border transition-shadow duration-200",
+        "sticky top-0 z-50 bg-background border-b border-border transition-shadow duration-200 backdrop-blur-sm",
         scrolled && "shadow-sm",
       )}
     >
