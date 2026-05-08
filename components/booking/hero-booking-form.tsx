@@ -26,6 +26,7 @@ interface HeroBookingFormProps {
 export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
   const router = useRouter();
   const [useWhatsApp, setUseWhatsApp] = useState(false);
+  const today = new Date().toISOString().split("T")[0];
 
   const {
     register,
@@ -80,6 +81,14 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
   };
 
   const onSubmit = (data: QuickBookingData) => {
+    if (data.pickupDate < today) {
+      toast.error("Pickup date cannot be in the past");
+      return;
+    }
+    if (data.dropOffDate < today) {
+      toast.error("Drop-off date cannot be in the past");
+      return;
+    }
     if (!data.pickupDate || !data.dropOffDate) {
       toast.error("Please select both dates");
       return;
@@ -104,8 +113,6 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
       setUseWhatsApp(false);
     } else {
       const queryParams = new URLSearchParams({
-        pickup_loc: data.pickupLocation,
-        dropoff_loc: data.dropOffLocation,
         from: data.pickupDate,
         pickup_time: data.pickupTime,
         to: data.dropOffDate,

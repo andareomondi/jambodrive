@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Navbar } from "@/components/layout/navbar";
@@ -26,6 +26,8 @@ import {
   Trash2,
   MessageCircle,
   Filter,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DeleteCarModal } from "@/components/modals/delete-car-modal";
@@ -37,6 +39,134 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+function usePagination<T>(items: T[], pageSize: number) {
+  const [page, setPage] = useState(1);
+
+  // Reset to page 1 whenever the source array changes (e.g. after a filter)
+  useEffect(() => {
+    setPage(1);
+  }, [items.length]);
+
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+
+  const paged = useMemo(
+    () => items.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [items, safePage, pageSize],
+  );
+
+  return { paged, page: safePage, totalPages, setPage };
+}
+
+// ─── Pagination controls ─────────────────────────────────────────────────────
+
+interface PaginationProps {
+  page: number;
+  totalPages: number;
+  onPageChange: (p: number) => void;
+  totalItems: number;
+  pageSize: number;
+}
+
+function Pagination({
+  page,
+  totalPages,
+  onPageChange,
+  totalItems,
+  pageSize,
+}: PaginationProps) {
+  if (totalPages <= 1) return null;
+
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, totalItems);
+
+  // Build visible page numbers with ellipsis
+  const getPages = () => {
+    const pages: (number | "…")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (page > 3) pages.push("…");
+      for (
+        let i = Math.max(2, page - 1);
+        i <= Math.min(totalPages - 1, page + 1);
+        i++
+      )
+        pages.push(i);
+      if (page < totalPages - 2) pages.push("…");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+      <p className="text-xs text-muted-foreground">
+        Showing{" "}
+        <span className="font-medium text-foreground">
+          {from}–{to}
+        </span>{" "}
+        of <span className="font-medium text-foreground">{totalItems}</span>
+      </p>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-lg"
+          disabled={page === 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+
+        {getPages().map((p, i) =>
+          p === "…" ? (
+            <span
+              key={`ellipsis-${i}`}
+              className="px-1 text-muted-foreground text-sm"
+            >
+              …
+            </span>
+          ) : (
+            <Button
+              key={p}
+              variant={p === page ? "default" : "ghost"}
+              size="icon"
+              className={`h-8 w-8 rounded-lg text-sm ${
+                p === page
+                  ? "bg-accent hover:bg-accent/90 text-accent-foreground"
+                  : ""
+              }`}
+              onClick={() => onPageChange(p as number)}
+            >
+              {p}
+            </Button>
+          ),
+        )}
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-lg"
+          disabled={page === totalPages}
+          onClick={() => onPageChange(page + 1)}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Page sizes ───────────────────────────────────────────────────────────────
+
+const BOOKINGS_PAGE_SIZE = 8;
+const USERS_PAGE_SIZE = 6;
+const FLEET_PAGE_SIZE = 6;
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function AdminDashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -95,6 +225,8 @@ export default function AdminDashboardPage() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // ── Derived totals ────────────────────────────────────────────────────────
   const totalCars = cars.length;
   const totalBookings = bookings.length;
   const totalUsers = users.filter((u) => u.role === "customer").length;
@@ -102,17 +234,31 @@ export default function AdminDashboardPage() {
     .filter((b) => revenueStatuses.includes(b.status))
     .reduce((sum, b) => sum + b.total_price, 0);
 
-  const filteredBookings = bookings.filter((booking) => {
-    const matchesSearch =
-      booking.car?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.profiles?.full_name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      booking.id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = !statusFilter || booking.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // ── Filtered data ─────────────────────────────────────────────────────────
+  const filteredBookings = useMemo(
+    () =>
+      bookings.filter((booking) => {
+        const matchesSearch =
+          booking.car?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          booking.profiles?.full_name
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          booking.id.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = !statusFilter || booking.status === statusFilter;
+        return matchesSearch && matchesStatus;
+      }),
+    [bookings, searchQuery, statusFilter],
+  );
 
+  // ── Pagination ────────────────────────────────────────────────────────────
+  const bookingsPagination = usePagination(
+    filteredBookings,
+    BOOKINGS_PAGE_SIZE,
+  );
+  const usersPagination = usePagination(users, USERS_PAGE_SIZE);
+  const fleetPagination = usePagination(cars, FLEET_PAGE_SIZE);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const refreshCars = () => db.getCars().then(setCars).catch(console.error);
 
   const handleBookingStatus = async (
@@ -206,6 +352,7 @@ export default function AdminDashboardPage() {
     setDeleteModalOpen(true);
   };
 
+  // ── Auth guards ───────────────────────────────────────────────────────────
   if (authLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
@@ -243,7 +390,7 @@ export default function AdminDashboardPage() {
         <div className="flex-1 overflow-auto">
           <main className="p-4 sm:p-6 md:p-8">
             <div className="max-w-7xl mx-auto space-y-8">
-              {/* HEADER */}
+              {/* ── HEADER ─────────────────────────────────────────────── */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
@@ -255,7 +402,7 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* STATS */}
+              {/* ── STATS ──────────────────────────────────────────────── */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {[
                   {
@@ -315,7 +462,7 @@ export default function AdminDashboardPage() {
                 })}
               </div>
 
-              {/* BOOKINGS */}
+              {/* ── BOOKINGS ───────────────────────────────────────────── */}
               <Card className="shadow-sm border-none bg-white dark:bg-card rounded-2xl overflow-hidden">
                 <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
@@ -384,8 +531,8 @@ export default function AdminDashboardPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredBookings.length > 0 ? (
-                        filteredBookings.map((booking) => (
+                      {bookingsPagination.paged.length > 0 ? (
+                        bookingsPagination.paged.map((booking) => (
                           <TableRow
                             key={booking.id}
                             className="border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50"
@@ -402,12 +549,18 @@ export default function AdminDashboardPage() {
                             <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                               {new Date(booking.pickup_date).toLocaleDateString(
                                 undefined,
-                                { month: "short", day: "numeric" },
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                },
                               )}{" "}
                               -{" "}
                               {new Date(booking.return_date).toLocaleDateString(
                                 undefined,
-                                { month: "short", day: "numeric" },
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                },
                               )}
                             </TableCell>
                             <TableCell className="font-semibold text-foreground whitespace-nowrap">
@@ -499,150 +652,188 @@ export default function AdminDashboardPage() {
                     </TableBody>
                   </Table>
                 </div>
+
+                <Pagination
+                  page={bookingsPagination.page}
+                  totalPages={bookingsPagination.totalPages}
+                  onPageChange={bookingsPagination.setPage}
+                  totalItems={filteredBookings.length}
+                  pageSize={BOOKINGS_PAGE_SIZE}
+                />
               </Card>
 
-              {/* USERS */}
-              <Card className="p-4 sm:p-6 shadow-sm border-none bg-white dark:bg-card rounded-2xl">
-                <h2 className="text-xl font-bold text-foreground mb-6">
-                  User Directory
-                </h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {users.map((u) => (
-                    <div
-                      key={u.id}
-                      className="group border border-slate-100 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 transition-all hover:shadow-md hover:border-accent/30 bg-slate-50/50 dark:bg-slate-900/20"
-                    >
-                      <div className="flex items-center gap-4 w-full sm:w-auto">
-                        <div className="relative w-14 h-14 rounded-full overflow-hidden flex-shrink-0 bg-slate-200 dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                          {u.profile_image ? (
-                            <Image
-                              src={u.profile_image}
-                              alt={u.full_name ?? ""}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <Users className="h-6 w-6 text-slate-400" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground truncate">
-                            {u.full_name}
-                          </h3>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {u.email}
-                          </p>
-                          <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] uppercase tracking-wider font-semibold bg-white dark:bg-slate-900"
-                            >
-                              {u.role?.replace(/_/g, " ")}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {u.total_bookings} trips
-                            </span>
+              {/* ── USERS ──────────────────────────────────────────────── */}
+              <Card className="shadow-sm border-none bg-white dark:bg-card rounded-2xl overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800">
+                  <h2 className="text-xl font-bold text-foreground">
+                    User Directory
+                  </h2>
+                </div>
+
+                <div className="p-4 sm:p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {usersPagination.paged.map((u) => (
+                      <div
+                        key={u.id}
+                        className="group border border-slate-100 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 transition-all hover:shadow-md hover:border-accent/30 bg-slate-50/50 dark:bg-slate-900/20"
+                      >
+                        <div className="flex items-center gap-4 w-full sm:w-auto">
+                          <div className="relative w-14 h-14 rounded-full overflow-hidden flex-shrink-0 bg-slate-200 dark:bg-slate-800 flex items-center justify-center shadow-sm">
+                            {u.profile_image ? (
+                              <Image
+                                src={u.profile_image}
+                                alt={u.full_name ?? ""}
+                                fill
+                                className="object-cover"
+                              />
+                            ) : (
+                              <Users className="h-6 w-6 text-slate-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-foreground truncate">
+                              {u.full_name}
+                            </h3>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {u.email}
+                            </p>
+                            <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] uppercase tracking-wider font-semibold bg-white dark:bg-slate-900"
+                              >
+                                {u.role?.replace(/_/g, " ")}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {u.total_bookings} trips
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
-                        <Button
-                          size="sm"
-                          className="flex-1 sm:flex-none bg-[#25D366] hover:bg-[#20bd5a] text-white gap-2 rounded-xl"
-                          onClick={() => handleWhatsApp(u.phone ?? "")}
-                        >
-                          <MessageCircle className="h-4 w-4" /> Message
-                        </Button>
-                        <select
-                          value={u.role ?? "customer"}
-                          onChange={(e) =>
-                            handleRoleChange(u.id, e.target.value)
-                          }
-                          className="flex-1 sm:flex-none text-xs px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-foreground focus:ring-2 focus:ring-accent/50 cursor-pointer"
-                        >
-                          <option value="customer">Customer</option>
-                          <option value="facilitator">Facilitator</option>
-                          <option value="admin">Super Admin</option>
-                        </select>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-
-              {/* FLEET */}
-              <Card className="p-4 sm:p-6 shadow-sm border-none bg-white dark:bg-card rounded-2xl">
-                <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <h2 className="text-xl font-bold text-foreground">
-                    Fleet Management
-                  </h2>
-                  <Button
-                    onClick={handleAddCar}
-                    className="w-full sm:w-auto bg-accent hover:bg-accent/90 rounded-xl"
-                  >
-                    <Plus className="h-4 w-4 mr-2" /> Add Vehicle
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {cars.map((car) => (
-                    <div
-                      key={car.id}
-                      className="group rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
-                    >
-                      <div className="relative h-48 w-full overflow-hidden bg-slate-200 dark:bg-slate-800">
-                        <img
-                          src={car.image}
-                          alt={car.name}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                        <div className="absolute top-3 right-3">
-                          <Badge
-                            className={`${car.available ? "bg-white/90 text-black" : "bg-black/80 text-white"} backdrop-blur-sm border-none shadow-sm`}
+                        <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
+                          <Button
+                            size="sm"
+                            className="flex-1 sm:flex-none bg-[#25D366] hover:bg-[#20bd5a] text-white gap-2 rounded-xl"
+                            onClick={() => handleWhatsApp(u.phone ?? "")}
                           >
-                            {car.available ? "Available" : "Rented"}
-                          </Badge>
+                            <MessageCircle className="h-4 w-4" /> Message
+                          </Button>
+                          <select
+                            value={u.role ?? "customer"}
+                            onChange={(e) =>
+                              handleRoleChange(u.id, e.target.value)
+                            }
+                            className="flex-1 sm:flex-none text-xs px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-foreground focus:ring-2 focus:ring-accent/50 cursor-pointer"
+                          >
+                            <option value="customer">Customer</option>
+                            <option value="facilitator">Facilitator</option>
+                            <option value="admin">Super Admin</option>
+                          </select>
                         </div>
                       </div>
-                      <div className="p-5">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h3 className="font-bold text-lg text-foreground leading-tight">
-                              {car.name}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              {car.model}
+                    ))}
+                  </div>
+                </div>
+
+                <Pagination
+                  page={usersPagination.page}
+                  totalPages={usersPagination.totalPages}
+                  onPageChange={usersPagination.setPage}
+                  totalItems={users.length}
+                  pageSize={USERS_PAGE_SIZE}
+                />
+              </Card>
+
+              {/* ── FLEET ──────────────────────────────────────────────── */}
+              <Card className="shadow-sm border-none bg-white dark:bg-card rounded-2xl overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <h2 className="text-xl font-bold text-foreground">
+                      Fleet Management
+                    </h2>
+                    <Button
+                      onClick={handleAddCar}
+                      className="w-full sm:w-auto bg-accent hover:bg-accent/90 rounded-xl"
+                    >
+                      <Plus className="h-4 w-4 mr-2" /> Add Vehicle
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="p-4 sm:p-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {fleetPagination.paged.map((car) => (
+                      <div
+                        key={car.id}
+                        className="group rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+                      >
+                        <div className="relative h-48 w-full overflow-hidden bg-slate-200 dark:bg-slate-800">
+                          <img
+                            src={car.image}
+                            alt={car.name}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          <div className="absolute top-3 right-3">
+                            <Badge
+                              className={`${
+                                car.available
+                                  ? "bg-white/90 text-black"
+                                  : "bg-black/80 text-white"
+                              } backdrop-blur-sm border-none shadow-sm`}
+                            >
+                              {car.available ? "Available" : "Rented"}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="p-5">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h3 className="font-bold text-lg text-foreground leading-tight">
+                                {car.name}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                {car.model}
+                              </p>
+                            </div>
+                            <p className="font-bold text-accent">
+                              Ksh {car.price}
+                              <span className="text-xs text-muted-foreground font-normal">
+                                /d
+                              </span>
                             </p>
                           </div>
-                          <p className="font-bold text-accent">
-                            Ksh {car.price}
-                            <span className="text-xs text-muted-foreground font-normal">
-                              /d
-                            </span>
-                          </p>
-                        </div>
-                        <div className="mt-5 grid grid-cols-2 gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent"
-                            onClick={() => handleEditCar(car)}
-                          >
-                            <Edit className="h-3.5 w-3.5 mr-2" /> Edit
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-transparent"
-                            onClick={() => openDeleteConfirm(car)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
-                          </Button>
+                          <div className="mt-5 grid grid-cols-2 gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent"
+                              onClick={() => handleEditCar(car)}
+                            >
+                              <Edit className="h-3.5 w-3.5 mr-2" /> Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-transparent"
+                              onClick={() => openDeleteConfirm(car)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
+
+                <Pagination
+                  page={fleetPagination.page}
+                  totalPages={fleetPagination.totalPages}
+                  onPageChange={fleetPagination.setPage}
+                  totalItems={cars.length}
+                  pageSize={FLEET_PAGE_SIZE}
+                />
               </Card>
             </div>
           </main>
