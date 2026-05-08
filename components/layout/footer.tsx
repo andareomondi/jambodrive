@@ -13,9 +13,7 @@ export function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Car className="w-6 h-6 text-accent" />
-              <span className="font-bold text-lg text-foreground">
-                Cosmara
-              </span>
+              <span className="font-bold text-lg text-foreground">Cosmara</span>
             </div>
             <p className="text-muted-foreground text-sm">
               Premium car rental service offering luxury and affordable vehicles
@@ -79,7 +77,7 @@ export function Footer() {
               </li>
               <li className="flex gap-2 items-start text-muted-foreground">
                 <Mail className="w-4 h-4 mt-1 flex-shrink-0" />
-                <span>cozymaxm@gmail.com</span>
+                <span>team@cosmara.co.ke</span>
               </li>
               <li className="flex gap-2 items-start text-muted-foreground">
                 <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
@@ -94,7 +92,10 @@ export function Footer() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
             <p>&copy; {currentYear} Cosmara. All rights reserved.</p>
             <div className="flex gap-6">
-              <Link href="/terms" className="hover:text-accent transition-colors">
+              <Link
+                href="/terms"
+                className="hover:text-accent transition-colors"
+              >
                 Terms of Service
               </Link>
             </div>

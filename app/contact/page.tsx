@@ -84,7 +84,7 @@ export default function ContactPage() {
                 {
                   icon: Mail,
                   title: "Email",
-                  info: "support@cosmara.com",
+                  info: "team@cosmara.co.ke",
                   subtext: "Response within 24 hours",
                 },
                 {
