@@ -231,7 +231,13 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-3">
                         <MapPin className="w-4 h-4 text-accent flex-shrink-0" />
                         <span className="text-muted-foreground truncate">
-                          PickUp: {booking.pickup_location}
+                          PickUp Location: {booking.pickup_location}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <MapPin className="w-4 h-4 text-accent flex-shrink-0" />
+                        <span className="text-muted-foreground truncate">
+                          Return Location: {booking.return_location}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">

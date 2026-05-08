@@ -64,23 +64,6 @@ export function ManageBookingModal({
   const today = new Date();
   const pickupDate = new Date(booking.pickup_date);
   const returnDate = new Date(booking.return_date);
-  const isActive = today >= pickupDate && today <= returnDate;
-
-  // Calculate running cost for active bookings
-  let runningCost = 0;
-  if (isActive && car) {
-    const daysElapsed =
-      Math.floor(
-        (today.getTime() - pickupDate.getTime()) / (1000 * 60 * 60 * 24),
-      ) + 1;
-    runningCost = daysElapsed * car.price;
-  }
-
-  // Calculate total days
-  const totalDays =
-    Math.floor(
-      (returnDate.getTime() - pickupDate.getTime()) / (1000 * 60 * 60 * 24),
-    ) + 1;
 
   const handleModifyBooking = () => {
     setEditModalOpen(true);
@@ -127,23 +110,6 @@ export function ManageBookingModal({
           </DialogHeader>
 
           <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-            {/* Booking Status Banner */}
-            {isActive && (
-              <div className="flex gap-3 items-start p-3 md:p-4 bg-green-50 border border-green-200 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-semibold text-sm md:text-base text-green-900">
-                    Booking Active
-                  </p>
-                  <p className="text-xs md:text-sm text-green-800">
-                    Your booking is currently active. Running cost is being
-                    calculated daily.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Booking Details Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <div>
                 <label className="text-xs md:text-sm text-muted-foreground">
@@ -263,17 +229,9 @@ export function ManageBookingModal({
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Days:</span>
                   <span className="font-medium text-foreground">
-                    {totalDays} days
+                    {booking.days} days
                   </span>
                 </div>
-                {booking.insurance && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Insurance:</span>
-                    <span className="font-medium text-foreground">
-                      Included
-                    </span>
-                  </div>
-                )}
                 <div className="border-t border-accent/20 pt-1 md:pt-2 mt-1 md:mt-2 flex justify-between">
                   <span className="font-semibold text-foreground">
                     Total Price:
@@ -282,70 +240,35 @@ export function ManageBookingModal({
                     ${booking.total_price}
                   </span>
                 </div>
-                {isActive && (
-                  <div className="border-t border-green-200 pt-1 md:pt-2 mt-1 md:mt-2 flex justify-between bg-green-50 p-2 -mx-3 md:-mx-4 -mb-3 md:-mb-4 rounded">
-                    <span className="font-semibold text-green-900">
-                      Running Cost:
-                    </span>
-                    <span className="font-bold text-green-600">
-                      ${runningCost}
-                    </span>
-                  </div>
-                )}
               </div>
             </Card>
           </div>
 
           <DialogFooter className="flex flex-col-reverse md:flex-row gap-2 justify-end">
-            {isActive ? (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={handleExtendBooking}
-                  disabled={isProcessing}
-                  className="w-full md:w-auto text-xs md:text-sm"
-                >
-                  <Clock className="h-4 w-4 mr-2" />
-                  Extend
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleCancelBooking}
-                  disabled={isProcessing}
-                  className="w-full md:w-auto text-xs md:text-sm"
-                >
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  className="w-full md:w-auto text-xs md:text-sm"
-                >
-                  Close
-                </Button>
-                <Button
-                  onClick={handleModifyBooking}
-                  disabled={booking.status === "confirmed"}
-                  className={`w-full md:w-auto text-xs md:text-sm ${
-                    booking.status === "confirmed"
-                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      : "bg-accent hover:bg-accent/90"
-                  }`}
-                >
-                  {booking.status === "confirmed"
-                    ? "Cannot Modify"
-                    : "Modify Booking"}
-                </Button>
-              </>
-            )}
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full md:w-auto text-xs md:text-sm"
+            >
+              Close
+            </Button>
+            <Button
+              onClick={handleModifyBooking}
+              disabled={booking.status === "confirmed"}
+              className={`w-full md:w-auto text-xs md:text-sm ${
+                booking.status === "confirmed"
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-accent hover:bg-accent/90"
+              }`}
+            >
+              {booking.status === "confirmed"
+                ? "Cannot Modify"
+                : "Modify Booking"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Booking Modal */}
       <EditBookingModal
         open={editModalOpen}
         onOpenChange={setEditModalOpen}

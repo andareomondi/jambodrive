@@ -31,10 +31,8 @@ export function EditBookingModal({
   const supabase = createClient();
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
-    pickupDate: booking?.pickupDate || "",
-    returnDate: booking?.returnDate || "",
-    pickupLocation: booking?.pickupLocation || "",
-    returnLocation: booking?.returnLocation || "",
+    pickupLocation: booking?.pickup_location || "",
+    returnLocation: booking?.return_location || "",
   });
 
   if (!booking) return null;
@@ -48,17 +46,8 @@ export function EditBookingModal({
   };
 
   const handleSaveChanges = async () => {
-    if (
-      !formData.pickup_date ||
-      !formData.return_date ||
-      !formData.pickup_location
-    ) {
+    if (!formData.pickupLocation || !formData.returnLocation) {
       toast.error("Please fill in all fields");
-      return;
-    }
-
-    if (new Date(formData.return_date) <= new Date(formData.pickup_date)) {
-      toast.error("Return date must be after pickup date");
       return;
     }
 
@@ -67,8 +56,6 @@ export function EditBookingModal({
       const { error } = await supabase
         .from("bookings")
         .update({
-          pickup_date: formData.pickupDate,
-          return_date: formData.returnDate,
           pickup_location: formData.pickupLocation,
           return_location: formData.returnLocation,
         })
@@ -96,39 +83,6 @@ export function EditBookingModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Pickup Date */}
-          <div className="space-y-2">
-            <Label htmlFor="pickupDate" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Pickup Date
-            </Label>
-            <Input
-              id="pickupDate"
-              name="pickupDate"
-              type="date"
-              value={formData.pickupDate}
-              onChange={handleChange}
-              className="w-full"
-            />
-          </div>
-
-          {/* Return Date */}
-          <div className="space-y-2">
-            <Label htmlFor="returnDate" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Return Date
-            </Label>
-            <Input
-              id="returnDate"
-              name="returnDate"
-              type="date"
-              value={formData.returnDate}
-              onChange={handleChange}
-              className="w-full"
-            />
-          </div>
-
-          {/* Pickup Location */}
           <div className="space-y-2">
             <Label htmlFor="pickupLocation" className="flex items-center gap-2">
               <MapPin className="h-4 w-4" />
@@ -145,7 +99,6 @@ export function EditBookingModal({
             />
           </div>
 
-          {/* Return Location */}
           <div className="space-y-2">
             <Label htmlFor="returnLocation" className="flex items-center gap-2">
               <MapPin className="h-4 w-4" />

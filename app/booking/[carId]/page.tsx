@@ -9,7 +9,6 @@ import {
   BookingForm,
   BookingFormData,
 } from "@/components/booking/booking-form";
-import { BookingSummary } from "@/components/booking/booking-summary";
 import { EmptyState } from "@/components/common/empty-state";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -292,15 +291,6 @@ export default function BookingPage() {
               carName={car.name}
               onSubmit={handleBooking}
               isLoading={isLoading}
-            />
-          </div>
-
-          {/* Booking Summary */}
-          <div className="lg:col-span-1">
-            <BookingSummary
-              car={car}
-              pickupDate={pickupDate}
-              returnDate={returnDate}
             />
           </div>
         </div>
