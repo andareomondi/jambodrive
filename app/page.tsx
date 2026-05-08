@@ -228,7 +228,12 @@ export default function Home() {
   const db = new DatabaseService(supabase);
 
   useEffect(() => {
-    db.getCars().then(setCars).catch(console.error);
+    db.getCars()
+      .then((allCars) => {
+        const ssuvCars = allCars.filter((car) => car.type === "ssuv");
+        setCars(ssuvCars);
+      })
+      .catch(console.error);
   }, []);
 
   return (
