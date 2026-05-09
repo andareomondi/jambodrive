@@ -136,7 +136,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
       className="max-w-7xl mx-auto w-full"
     >
       <div className="bg-white/70 dark:bg-slate-900/95 rounded-xl shadow-2xl p-6 border  dark:border-slate-800/50">
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-5 items-end">
+        <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-2 gap-3 mb-5 items-end">
           <div className="group">
             <Label
               htmlFor="pickupLocation"

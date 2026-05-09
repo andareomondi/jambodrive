@@ -28,6 +28,7 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DeleteCarModal } from "@/components/modals/delete-car-modal";
@@ -820,6 +821,16 @@ export default function AdminDashboardPage() {
                             >
                               <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
                             </Button>
+                          </div>
+                          <hr />
+                          <div className="mt-4">
+                            <Link
+                              href={`/cars/${car.id}`}
+                              className="text-sm text-accent hover:underline flex items-center gap-1"
+                            >
+                              View Details{" "}
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
                           </div>
                         </div>
                       </div>
