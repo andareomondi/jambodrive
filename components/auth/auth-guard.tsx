@@ -14,6 +14,7 @@ const supabase = createClient();
 const publicRoutes = [
   "/",
   "/about",
+  "/gallery",
   "/contact",
   "/auth/login",
   "/auth/forgot-password",
@@ -22,7 +23,7 @@ const publicRoutes = [
   "/auth/callback",
   "/forgot-password",
   "/reset-password",
-  "/cars",
+  "/cars/",
   "/cars/[slug]",
 ];
 
