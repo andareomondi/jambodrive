@@ -64,19 +64,6 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
     onFilterChange(newFilters);
   };
 
-  // Debounce search to prevent performance lag on keystrokes
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setFilters((prev) => {
-      const next = { ...prev, search: val };
-      if (searchTimeout.current) clearTimeout(searchTimeout.current);
-      searchTimeout.current = setTimeout(() => {
-        onFilterChange(next);
-      }, 300); // Waits 300ms after user stops typing
-      return next;
-    });
-  };
-
   const handleReset = () => {
     const reset = {
       priceMin: 0,
@@ -129,7 +116,11 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
           <Input
             placeholder="Search cars..."
             value={filters.search}
-            onChange={handleSearchChange}
+            onChange={(e) => {
+              const newFilters = { ...filters, search: e.target.value };
+              setFilters(newFilters);
+              onFilterChange(newFilters);
+            }}
             className="pl-10 h-11 rounded-xl bg-white border-slate-200"
           />
         </div>
@@ -197,7 +188,6 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
                   }));
                 }}
                 onValueCommit={(vals) => {
-                  // Triggers fetch ONLY when user stops dragging
                   const newFilters = {
                     ...filters,
                     priceMin: vals[0],
