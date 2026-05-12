@@ -19,7 +19,7 @@ const publicRoutes = [
   "/auth/callback",
   "/forgot-password",
   "/reset-password",
-  "/cars/",
+  "/cars",
   "/cars/[slug]",
   "/cars/category/[slug]",
 ];
