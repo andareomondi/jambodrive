@@ -24,8 +24,6 @@ import { createClient } from "@/lib/supabase/client";
 import { DatabaseService } from "@/lib/services";
 import type { Car } from "@/lib/mock-data";
 
-export const dynamic = "force-dynamic";
-
 const HERO_IMAGES = [
   { src: "/hero/car1.jpg", alt: "Premium sedan" },
   { src: "/hero/car2.jpg", alt: "SUV at sunset" },
