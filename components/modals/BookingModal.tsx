@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar, Car, User, MapPin, DollarSign, Loader2 } from "lucide-react";
-import { createClient } from "@/lib/supabase-client";
+import { createClient } from "@/lib/supabase/client";
 
 interface BookingFormData {
   car_id: string;

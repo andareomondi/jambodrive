@@ -21,7 +21,7 @@ import {
   Share2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase-client";
+import { createClient } from "@/lib/supabase/client";
 import { DatabaseService } from "@/lib/services";
 import { useState, useEffect } from "react";
 

@@ -34,7 +34,7 @@ import {
   Info,
   Loader2,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase-client";
+import { createClient } from "@/lib/supabase/client";
 import { uploadCarImage } from "@/lib/upload-image";
 import { cn } from "@/lib/utils";
 

@@ -23,7 +23,7 @@ import {
   ShieldCheck,
   CreditCard,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase-client";
+import { createClient } from "@/lib/supabase/client";
 import { DatabaseService } from "@/lib/services";
 import type { Car } from "@/lib/mock-data";
 

@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { toast } from "sonner";
 import { Car, Mail, CheckCircle2 } from "lucide-react";
-import { createClient } from "@/lib/supabase-client";
+import { createClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
   const supabase = createClient();
