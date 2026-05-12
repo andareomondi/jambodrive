@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useMemo, useEffect, Suspense } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { FieldGroup, FieldLabel } from "@/components/ui/field";
-import { toast } from "sonner";
-import { Car, ArrowRight, Loader2, XCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase-client";
+import { ArrowRight, Car, Loader2, XCircle, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 function VerificationHandler() {
   const router = useRouter();
@@ -82,12 +82,18 @@ function VerificationHandler() {
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
+  const searchParams = useSearchParams();
+  const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [hasSession, setHasSession] = useState(false);
+  const [showUnverifiedWarning, setShowUnverifiedWarning] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState("");
+
+  // Get returnUrl from query params, default to /dashboard
+  const returnUrl = searchParams.get("returnUrl") || "/dashboard";
 
   useEffect(() => {
     const checkSession = async () => {
@@ -100,6 +106,31 @@ export default function LoginPage() {
     checkSession();
   }, [supabase]);
 
+  const handleResendVerification = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: unverifiedEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.success("Verification email sent! Please check your inbox.");
+      setShowUnverifiedWarning(false);
+    } catch {
+      toast.error("Failed to resend verification email.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -108,17 +139,42 @@ export default function LoginPage() {
     }
 
     setIsLoading(true);
+    setShowUnverifiedWarning(false);
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
       if (error) {
+        // Check for unverified email error
+        if (
+          error.message.includes("Email not confirmed") ||
+          error.message.includes("verify")
+        ) {
+          setUnverifiedEmail(email);
+          setShowUnverifiedWarning(true);
+          return;
+        }
+
         toast.error(error.message);
         return;
       }
+
+      // Double-check if email is verified
+      if (data.user && !data.user.email_confirmed_at) {
+        setUnverifiedEmail(email);
+        setShowUnverifiedWarning(true);
+        await supabase.auth.signOut();
+        return;
+      }
+
       toast.success("Logged in successfully!");
-      router.push("/dashboard");
+
+      // Decode and redirect to returnUrl
+      const decodedUrl = decodeURIComponent(returnUrl);
+      router.push(decodedUrl);
     } catch {
       toast.error("Failed to login. Please try again.");
     } finally {
@@ -153,10 +209,39 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {/* Unverified Email Warning */}
+          {showUnverifiedWarning && (
+            <Card className="mb-6 p-4 border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-amber-50">
+              <div className="flex gap-3">
+                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-yellow-900 text-sm">
+                      Email Not Verified
+                    </h3>
+                    <p className="text-xs text-yellow-800 mt-1">
+                      Please verify your email address before signing in. Check
+                      your inbox for the verification link.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleResendVerification}
+                    disabled={isLoading}
+                    size="sm"
+                    variant="outline"
+                    className="w-full border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                  >
+                    {isLoading ? "Sending..." : "Resend Verification Email"}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
           {hasSession ? (
             <div className="space-y-4">
               <Button
-                onClick={() => router.push("/dashboard")}
+                onClick={() => router.push(decodeURIComponent(returnUrl))}
                 className="w-full bg-accent hover:bg-accent/90 py-6 text-lg"
               >
                 Continue Browsing

@@ -24,6 +24,8 @@ import { createClient } from "@/lib/supabase/client";
 import { DatabaseService } from "@/lib/services";
 import type { Car } from "@/lib/mock-data";
 
+export const dynamic = "force-dynamic";
+
 const HERO_IMAGES = [
   { src: "/hero/car1.jpg", alt: "Premium sedan" },
   { src: "/hero/car2.jpg", alt: "SUV at sunset" },
@@ -93,12 +95,14 @@ function HeroCarousel() {
 
             <div className="flex flex-wrap gap-6">
               {[
-                { label: "Fleet Size", value: "500+" },
-                { label: "Happy Clients", value: "50k+" },
+                { label: "Fleet Size", value: "100+" },
+                { label: "Happy Clients", value: "10k+" },
                 { label: "Support", value: "24/7" },
               ].map((stat) => (
                 <div key={stat.label}>
-                  <p className="text-3xl font-bold text-white">{stat.value}</p>
+                  <p className="text-3xl font-bold text-orange-400">
+                    {stat.value}
+                  </p>
                   <p className="text-sm text-slate-400 font-medium uppercase tracking-wider">
                     {stat.label}
                   </p>

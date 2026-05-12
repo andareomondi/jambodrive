@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { toast } from "sonner";
-import { Car } from "lucide-react";
+import { Car, Mail, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 
 export default function RegisterPage() {
@@ -26,6 +26,8 @@ export default function RegisterPage() {
     agreeTerms: false,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessCard, setShowSuccessCard] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, checked, type } = e.target;
@@ -66,7 +68,22 @@ export default function RegisterPage() {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      // Check if user already exists
+      const { data: existingUser } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", formData.email)
+        .single();
+
+      if (existingUser) {
+        toast.error(
+          "An account with this email already exists. Please sign in.",
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -78,16 +95,27 @@ export default function RegisterPage() {
       });
 
       if (error) {
-        toast.error(error.message);
+        // Check for user already registered error from Supabase
+        if (error.message.includes("already registered")) {
+          toast.error(
+            "An account with this email already exists. Please sign in.",
+          );
+        } else {
+          toast.error(error.message);
+        }
         return;
       }
 
-      toast.success(
-        "Account created successfully! Please check your email to confirm your account.",
-      );
-      setTimeout(() => {
-        router.push("/auth/login");
-      }, 500);
+      // Check if user was created but email confirmation is disabled
+      if (data?.user && !data.user.identities?.length) {
+        toast.error(
+          "An account with this email already exists. Please sign in.",
+        );
+        return;
+      }
+
+      setRegisteredEmail(formData.email);
+      setShowSuccessCard(true);
     } catch (error) {
       toast.error("Failed to create account. Please try again.");
     } finally {
@@ -95,9 +123,64 @@ export default function RegisterPage() {
     }
   };
 
-  const handleGoogleSignup = () => {
-    toast.info("Google signup is coming soon");
-  };
+  if (showSuccessCard) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <div className="flex-1 max-w-md mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 flex items-center">
+          <Card className="w-full p-8 shadow-medium border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+            <div className="text-center space-y-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-8 h-8 text-green-600" />
+              </div>
+
+              <div>
+                <h1 className="text-2xl font-bold text-green-900 mb-2">
+                  Check Your Email
+                </h1>
+                <p className="text-green-800">
+                  We've sent a confirmation email to
+                </p>
+                <p className="text-green-900 font-semibold mt-1">
+                  {registeredEmail}
+                </p>
+              </div>
+
+              <div className="bg-white/50 rounded-lg p-4 text-left space-y-2">
+                <div className="flex items-start gap-3">
+                  <Mail className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-green-800">
+                    Click the verification link in the email to activate your
+                    account
+                  </p>
+                </div>
+                <p className="text-xs text-green-700 ml-8">
+                  Can't find it? Check your spam folder
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-4">
+                <Button
+                  onClick={() => router.push("/auth/login")}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  Go to Sign In
+                </Button>
+                <Button
+                  onClick={() => setShowSuccessCard(false)}
+                  variant="outline"
+                  className="w-full border-green-300 text-green-700 hover:bg-green-50"
+                >
+                  Back to Registration
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -189,6 +272,7 @@ export default function RegisterPage() {
                       agreeTerms: checked as boolean,
                     }))
                   }
+                  disabled={isLoading}
                 />
                 <Label htmlFor="agreeTerms" className="text-sm cursor-pointer">
                   I agree to the Terms & Conditions and Privacy Policy

@@ -9,8 +9,6 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-const supabase = createClient();
-
 const carTypes = [
   { id: "compact", name: "Compact" },
   { id: "economy", name: "Economy" },
@@ -30,8 +28,37 @@ export function Navbar() {
   const [isFleetOpen, setIsFleetOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const fleetRef = useRef<HTMLDivElement>(null);
+  const supabaseRef = useRef(createClient());
 
   useEffect(() => {
+    const supabase = supabaseRef.current;
+
+    // Check initial session
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", currentUser.id)
+          .single();
+        setIsAdmin(data?.role === "admin");
+      } else {
+        setIsAdmin(false);
+      }
+
+      setLoading(false);
+    };
+
+    checkSession();
+
+    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -81,7 +108,7 @@ export function Navbar() {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      await supabaseRef.current.auth.signOut();
       setIsOpen(false);
       toast.success("Logged out successfully!");
     } catch {
