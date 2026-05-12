@@ -49,12 +49,11 @@ function VerificationHandler() {
                 Your email is verified. Please sign in to continue.
               </p>
             </div>
-            <Button
-              onClick={closeModal}
-              className="w-full bg-green-600 hover:bg-green-700"
-            >
-              Sign In Now
-            </Button>
+            <Link href="/auth/login">
+              <Button className="w-full bg-green-600 hover:bg-green-700">
+                Sign In Now
+              </Button>
+            </Link>
           </Card>
         ) : (
           <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-rose-50 p-8 space-y-6 shadow-lg">
@@ -67,12 +66,11 @@ function VerificationHandler() {
               </h1>
               <p className="text-red-800">{errorMessage}</p>
             </div>
-            <Button
-              onClick={closeModal}
-              className="w-full bg-red-600 hover:bg-red-700"
-            >
-              Back to Sign In
-            </Button>
+            <Link href="/auth/register">
+              <Button className="w-full bg-red-600 hover:bg-red-700">
+                Back to Sign In
+              </Button>
+            </Link>
           </Card>
         )}
       </div>
