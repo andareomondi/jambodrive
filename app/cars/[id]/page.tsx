@@ -19,7 +19,7 @@ import {
   Calendar,
   Shield,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 import { DatabaseService } from "@/lib/services";
 import type { Car } from "@/lib/mock-data";
 
@@ -30,10 +30,10 @@ export default function CarDetailsPage() {
   const [car, setCar] = useState<Car | null>(null);
   const [relatedCars, setRelatedCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
+  const { supabase } = useSupabase();
+  const db = new DatabaseService(supabase);
 
   useEffect(() => {
-    const db = new DatabaseService(createClient());
-
     const fetchData = async () => {
       try {
         const carData = await db.getCarById(carId);

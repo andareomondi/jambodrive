@@ -20,7 +20,7 @@ import { Footer } from "@/components/layout/footer";
 import { CarCard } from "@/components/cars/car-card";
 import { HeroBookingForm } from "@/components/booking/hero-booking-form";
 import { HelpSupportModal } from "@/components/modals/help-support-modal";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 import { DatabaseService } from "@/lib/services";
 import type { Car } from "@/lib/mock-data";
 
@@ -137,8 +137,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
 
-  const supabase = useMemo(() => createClient(), []);
-  const db = useMemo(() => new DatabaseService(supabase), [supabase]);
+  const supabase = useSupabase();
+  const db = new DatabaseService(supabase.supabase);
 
   useEffect(() => {
     db.getCars()

@@ -24,7 +24,7 @@ import {
   ChevronRight,
   Clock,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 import { DatabaseService } from "@/lib/services";
 import type { Booking } from "@/lib/mock-data";
 
@@ -32,8 +32,8 @@ export default function DashboardPage() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
-  const db = new DatabaseService(supabase);
+  const supabase = useSupabase();
+  const db = new DatabaseService(supabase.supabase);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
@@ -44,7 +44,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
 

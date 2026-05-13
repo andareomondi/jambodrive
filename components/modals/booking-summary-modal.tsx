@@ -21,7 +21,7 @@ import {
   Share2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 import { DatabaseService } from "@/lib/services";
 import { useState, useEffect } from "react";
 
@@ -36,7 +36,8 @@ export function BookingSummaryModal({
   onOpenChange,
   booking,
 }: BookingSummaryModalProps) {
-  const db = new DatabaseService(createClient());
+  const { supabase } = useSupabase();
+  const db = new DatabaseService(supabase.supabase);
   const [car, setCar] = useState<Car | null>(null);
 
   useEffect(() => {

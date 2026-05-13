@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { AuthProvider } from "@/components/auth/auth-context";
+import SupabaseProvider from "@/components/auth/supabase-provider";
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
@@ -70,9 +71,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
-        <AuthProvider>
+        <SupabaseProvider>
           <AuthGuard>{children}</AuthGuard>
-        </AuthProvider>
+        </SupabaseProvider>
         <Toaster position="top-right" />
       </body>
     </html>

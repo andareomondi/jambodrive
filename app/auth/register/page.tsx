@@ -13,10 +13,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { toast } from "sonner";
 import { Car, Mail, CheckCircle2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-
+import { useSupabase } from "@/components/auth/supabase-provider";
 export default function RegisterPage() {
-  const supabase = createClient();
+  const supabase = useSupabase();
   const router = useRouter();
   const [formData, setFormData] = useState({
     fullName: "",
@@ -69,7 +68,7 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       // Check if user already exists
-      const { data: existingUser } = await supabase
+      const { data: existingUser } = await supabase.supabase
         .from("profiles")
         .select("id")
         .eq("email", formData.email)
@@ -83,7 +82,7 @@ export default function RegisterPage() {
         return;
       }
 
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {

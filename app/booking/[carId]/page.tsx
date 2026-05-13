@@ -23,7 +23,7 @@ import {
   ShieldCheck,
   CreditCard,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 import { DatabaseService } from "@/lib/services";
 import type { Car } from "@/lib/mock-data";
 
@@ -37,8 +37,8 @@ export default function BookingPage() {
   const [bookingData, setBookingData] = useState<BookingFormData | null>(null);
   const [paymentState, setPaymentState] = useState<PaymentState>("idle");
   const [paymentMessage, setPaymentMessage] = useState("");
-  const supabase = createClient();
-  const db = new DatabaseService(supabase);
+  const supabase = useSupabase();
+  const db = new DatabaseService(supabase.supabase);
   const [car, setCar] = useState<Car | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -111,7 +111,7 @@ export default function BookingPage() {
     try {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await supabase.supabase.auth.getUser();
 
       if (!user) {
         toast.error("Please log in to secure this vehicle.");
@@ -133,13 +133,13 @@ export default function BookingPage() {
     try {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await supabase.supabase.auth.getUser();
       if (!user) throw new Error("User not found");
 
       const days = calcDays(bookingData);
       const total = days * car.price;
 
-      const { error } = await supabase.from("bookings").insert({
+      const { error } = await supabase.supabase.from("bookings").insert({
         car_id: car.id,
         profile_id: user.id,
         pickup_date: new Date(bookingData.pickupDate).toISOString(),

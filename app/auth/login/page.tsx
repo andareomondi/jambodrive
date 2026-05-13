@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 import { ArrowRight, Car, Loader2, XCircle, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -81,7 +81,7 @@ function VerificationHandler() {
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -97,7 +97,7 @@ export default function LoginPage() {
     const checkSession = async () => {
       const {
         data: { session },
-      } = await supabase.auth.getSession();
+      } = await supabase.supabase.auth.getSession();
       setHasSession(!!session);
       setIsCheckingSession(false);
     };
@@ -107,7 +107,7 @@ export default function LoginPage() {
   const handleResendVerification = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.resend({
+      const { error } = await supabase.supabase.auth.resend({
         type: "signup",
         email: unverifiedEmail,
         options: {
@@ -140,7 +140,7 @@ export default function LoginPage() {
     setShowUnverifiedWarning(false);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -164,7 +164,7 @@ export default function LoginPage() {
       if (data.user && !data.user.email_confirmed_at) {
         setUnverifiedEmail(email);
         setShowUnverifiedWarning(true);
-        await supabase.auth.signOut();
+        await supabase.supabase.auth.signOut();
         return;
       }
 
@@ -248,7 +248,7 @@ export default function LoginPage() {
               <Button
                 variant="outline"
                 onClick={async () => {
-                  await supabase.auth.signOut();
+                  await supabase.supabase.auth.signOut();
                   setHasSession(false);
                 }}
                 className="w-full"

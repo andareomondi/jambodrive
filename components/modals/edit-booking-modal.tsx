@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar, MapPin } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 
 interface EditBookingModalProps {
   open: boolean;
@@ -28,7 +28,7 @@ export function EditBookingModal({
   onOpenChange,
   booking,
 }: EditBookingModalProps) {
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
     pickupLocation: booking?.pickup_location || "",
@@ -53,7 +53,7 @@ export function EditBookingModal({
 
     setIsProcessing(true);
     try {
-      const { error } = await supabase
+      const { error } = await supabase.supabase
         .from("bookings")
         .update({
           pickup_location: formData.pickupLocation,

@@ -7,7 +7,7 @@ import { CarCard } from "@/components/cars/car-card";
 import { CarFilters, FilterState } from "@/components/cars/car-filters";
 import { EmptyState } from "@/components/common/empty-state";
 import { Car as CarIcon } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 import { DatabaseService } from "@/lib/services";
 import type { Car } from "@/lib/mock-data";
 import { useSearchParams } from "next/navigation";
@@ -26,7 +26,7 @@ function CarsContent() {
     search: "",
   });
   const [cars, setCars] = useState<Car[]>([]);
-  const supabase = createClient();
+  const { supabase } = useSupabase();
   const db = new DatabaseService(supabase);
 
   const days = useMemo(() => {

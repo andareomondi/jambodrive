@@ -7,7 +7,7 @@ import { Footer } from "@/components/layout/footer";
 import { CarCard } from "@/components/cars/car-card";
 import { EmptyState } from "@/components/common/empty-state";
 import { Car as CarIcon } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 import { DatabaseService } from "@/lib/services";
 import type { Car } from "@/lib/mock-data";
 
@@ -17,8 +17,8 @@ export default function CategoryPage() {
 
   const [cars, setCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
-  const db = new DatabaseService(supabase);
+  const supabase = useSupabase();
+  const db = new DatabaseService(supabase.supabase);
 
   useEffect(() => {
     const fetchCars = async () => {

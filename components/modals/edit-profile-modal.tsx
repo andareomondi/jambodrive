@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserCircle, Save } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 
 interface EditProfileModalProps {
   open: boolean;
@@ -35,7 +35,7 @@ export function EditProfileModal({
   profile,
   onSuccess,
 }: EditProfileModalProps) {
-  const supabase = createClient();
+  const supabase = useSupabase();
   const {
     register,
     handleSubmit,
@@ -54,7 +54,7 @@ export function EditProfileModal({
   }, [profile, open]);
 
   const onSubmit = async (data: ProfileFormData) => {
-    const { data: updated, error } = await supabase
+    const { data: updated, error } = await supabase.supabase
       .from("profiles")
       .update({ full_name: data.full_name, phone: data.phone })
       .eq("id", profile.id)

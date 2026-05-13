@@ -23,7 +23,7 @@ import {
   Clock,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 import { DatabaseService } from "@/lib/services";
 import { useMemo } from "react";
 
@@ -41,7 +41,7 @@ export function ManageBookingModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [car, setCar] = useState<Car | null>(null);
-  const supabase = createClient();
+  const supabase = useSupabase();
   const db = new DatabaseService(supabase);
 
   useEffect(() => {

@@ -34,9 +34,9 @@ import {
   Info,
   Loader2,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { uploadCarImage } from "@/lib/upload-image";
 import { cn } from "@/lib/utils";
+import { useSupabase } from "@/components/auth/supabase-provider";
 
 type CarType =
   | "economy"
@@ -122,7 +122,7 @@ export function CarModal({
   car,
   onSuccess,
 }: CarModalProps) {
-  const supabase = createClient();
+  const supabase = useSupabase();
   const abortRef = useRef<AbortController | null>(null);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
@@ -256,12 +256,12 @@ export function CarModal({
 
       let error;
       if (isEditing) {
-        ({ error } = await supabase
+        ({ error } = await supabase.supabase
           .from("cars")
           .update(payload)
           .eq("id", car!.id));
       } else {
-        ({ error } = await supabase.from("cars").insert(payload));
+        ({ error } = await supabase.supabase.from("cars").insert(payload));
       }
 
       if (signal.aborted) return;

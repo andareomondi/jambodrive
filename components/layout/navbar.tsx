@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, ChevronDown, Phone } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 import { cn } from "@/lib/utils";
 
 const carTypes = [
@@ -28,22 +28,20 @@ export function Navbar() {
   const [isFleetOpen, setIsFleetOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const fleetRef = useRef<HTMLDivElement>(null);
-  const supabaseRef = useRef(createClient());
+  const supabase = useSupabase();
 
   useEffect(() => {
-    const supabase = supabaseRef.current;
-
     // Check initial session
     const checkSession = async () => {
       const {
         data: { session },
-      } = await supabase.auth.getSession();
+      } = await supabase.supabase.auth.getSession();
 
       const currentUser = session?.user ?? null;
       setUser(currentUser);
 
       if (currentUser) {
-        const { data } = await supabase
+        const { data } = await supabase.supabase
           .from("profiles")
           .select("role")
           .eq("id", currentUser.id)
@@ -61,12 +59,12 @@ export function Navbar() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
 
       if (currentUser) {
-        const { data } = await supabase
+        const { data } = await supabase.supabase
           .from("profiles")
           .select("role")
           .eq("id", currentUser.id)
@@ -108,7 +106,7 @@ export function Navbar() {
 
   const handleLogout = async () => {
     try {
-      await supabaseRef.current.auth.signOut();
+      await supabase.supabase.auth.signOut();
       setIsOpen(false);
       toast.success("Logged out successfully!");
     } catch {

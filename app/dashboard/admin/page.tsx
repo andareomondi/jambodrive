@@ -11,7 +11,7 @@ import { BadgeStatus } from "@/components/common/badge-status";
 import { CarModal } from "@/components/modals/car-modal";
 import { BookingModal } from "@/components/modals/BookingModal";
 import { Input } from "@/components/ui/input";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 import { DatabaseService } from "@/lib/services";
 import { useAuth } from "@/components/auth/auth-context";
 import type { Car, Booking, User } from "@/lib/mock-data";
@@ -173,8 +173,8 @@ export default function AdminDashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(true);
-  const supabase = createClient();
-  const db = new DatabaseService(supabase);
+  const supabase = useSupabase();
+  const db = new DatabaseService(supabase.supabase);
   const [cars, setCars] = useState<Car[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -191,7 +191,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
         setIsAdmin(false);
         setAuthLoading(false);
@@ -199,7 +199,7 @@ export default function AdminDashboardPage() {
         return;
       }
 
-      const { data } = await supabase
+      const { data } = await supabase.supabase
         .from("profiles")
         .select("role")
         .eq("id", session.user.id)
@@ -266,7 +266,7 @@ export default function AdminDashboardPage() {
     id: string,
     status: "confirmed" | "cancelled",
   ) => {
-    const { data: bookingData, error: bookingError } = await supabase
+    const { data: bookingData, error: bookingError } = await supabase.supabase
       .from("bookings")
       .update({ status })
       .eq("id", id)
@@ -279,7 +279,7 @@ export default function AdminDashboardPage() {
     }
 
     if (status === "confirmed" && bookingData?.car_id) {
-      const { error: carError } = await supabase
+      const { error: carError } = await supabase.supabase
         .from("cars")
         .update({ available: false })
         .eq("id", bookingData.car_id);
@@ -306,7 +306,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleRoleChange = async (userId: string, role: string) => {
-    const { error } = await supabase
+    const { error } = await supabase.supabase
       .from("profiles")
       .update({ role })
       .eq("id", userId);

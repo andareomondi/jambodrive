@@ -12,8 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, Trash2, Loader2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { useSupabase } from "@/components/auth/supabase-provider";
 
 interface DeleteCarModalProps {
   isOpen: boolean;
@@ -34,7 +34,7 @@ export function DeleteCarModal({
 }: DeleteCarModalProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [progress, setProgress] = useState(0);
-  const supabase = createClient();
+  const supabase = useSupabase();
 
   const handleDelete = async () => {
     if (!carId) return;
@@ -43,7 +43,7 @@ export function DeleteCarModal({
 
     try {
       // 1. Delete from Database first
-      const { error: dbError } = await supabase
+      const { error: dbError } = await supabase.supabase
         .from("cars")
         .delete()
         .eq("id", carId);
@@ -60,7 +60,7 @@ export function DeleteCarModal({
         const stepSize = 60 / paths.length;
 
         for (let i = 0; i < paths.length; i++) {
-          const { error: storageError } = await supabase.storage
+          const { error: storageError } = await supabase.supabase.storage
             .from("car-images")
             .remove([paths[i]]);
 

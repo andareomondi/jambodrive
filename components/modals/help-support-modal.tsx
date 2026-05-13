@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { HelpCircle, Send } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 
 interface HelpSupportModalProps {
   open: boolean;
@@ -47,7 +47,7 @@ export function HelpSupportModal({
   open,
   onOpenChange,
 }: HelpSupportModalProps) {
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [isLoading, setIsLoading] = useState(false);
   const {
     register,
@@ -69,11 +69,13 @@ export function HelpSupportModal({
   const onSubmit = async (data: HelpFormData) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.from("support_requests").insert({
-        subject: data.subject,
-        category: data.category,
-        message: data.message,
-      });
+      const { error } = await supabase.supabase
+        .from("support_requests")
+        .insert({
+          subject: data.subject,
+          category: data.category,
+          message: data.message,
+        });
 
       if (error) {
         toast.error(

@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar, Car, User, MapPin, DollarSign, Loader2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/components/auth/supabase-provider";
 
 interface BookingFormData {
   car_id: string;
@@ -43,7 +43,7 @@ export function BookingModal({
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }) {
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [isLoading, setIsLoading] = useState(false);
   const [availableCars, setAvailableCars] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -62,11 +62,11 @@ export function BookingModal({
     if (open) {
       const fetchData = async () => {
         const [carsRes, profilesRes] = await Promise.all([
-          supabase
+          supabase.supabase
             .from("cars")
             .select("id, name, model, price")
             .eq("available", true),
-          supabase.from("profiles").select("id, full_name, email"),
+          supabase.supabase.from("profiles").select("id, full_name, email"),
         ]);
         if (carsRes.data) setAvailableCars(carsRes.data);
         if (profilesRes.data) setProfiles(profilesRes.data);
@@ -81,18 +81,20 @@ export function BookingModal({
     setIsLoading(true);
     try {
       // 1. Create the booking record
-      const { error: bookingError } = await supabase.from("bookings").insert([
-        {
-          ...data,
-          profile_id: data.profile_id === "none" ? null : data.profile_id,
-          status: "confirmed", // Admin bookings usually skip 'pending'
-        },
-      ]);
+      const { error: bookingError } = await supabase.supabase
+        .from("bookings")
+        .insert([
+          {
+            ...data,
+            profile_id: data.profile_id === "none" ? null : data.profile_id,
+            status: "confirmed", // Admin bookings usually skip 'pending'
+          },
+        ]);
 
       if (bookingError) throw bookingError;
 
       // 2. Mark the car as rented (available = false)
-      const { error: carError } = await supabase
+      const { error: carError } = await supabase.supabase
         .from("cars")
         .update({ available: false })
         .eq("id", data.car_id);
