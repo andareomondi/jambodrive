@@ -17,12 +17,14 @@ const publicRoutes = [
 ];
 
 export async function updateSession(request: NextRequest) {
+  // Create an initial response object
   let supabaseResponse = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
 
+  // 1. Initialize the Server-Side Client for Cookie Synchronization
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
@@ -46,24 +48,19 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
+  // 2. CRITICAL: Refreshes token automatically if expired (Required for Server Components)
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
 
-  const isAuthPage =
-    pathname === "/auth/login" || pathname === "/auth/register";
-
-  if (user && isAuthPage) {
-    const returnUrl = request.nextUrl.searchParams.get("returnUrl") || "/";
-    return NextResponse.redirect(new URL(returnUrl, request.url));
-  }
-
+  // 3. Match against static public paths or dynamic paths like /cars/[slug]
   const isPublicRoute =
     publicRoutes.some((route) => pathname === route) ||
     pathname.startsWith("/cars/");
 
+  // 4. Perform instant Server-Side redirection if unauthenticated on private layouts
   if (!user && !isPublicRoute) {
     const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("returnUrl", pathname);
