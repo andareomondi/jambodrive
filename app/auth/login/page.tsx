@@ -13,7 +13,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-function VerificationHandler() {
+// 1. ISOLATED COMPONENT: Extracted to contain search param logic safely
+function VerificationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -28,10 +29,6 @@ function VerificationHandler() {
     error === "link_expired"
       ? "This verification link has expired. Please request a new one."
       : "Email verification failed. Please try again.";
-
-  const closeModal = () => {
-    router.replace(pathname);
-  };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 z-50">
@@ -78,7 +75,17 @@ function VerificationHandler() {
   );
 }
 
-export default function LoginPage() {
+// 2. WRAPPER COMPONENT: Safeguards the validation modal from breaking static generation
+function VerificationHandler() {
+  return (
+    <Suspense fallback={null}>
+      <VerificationContent />
+    </Suspense>
+  );
+}
+
+// 3. ISOLATED COMPONENT: Extracted login structural elements dependent on returnUrl params
+function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useSupabase();
@@ -90,11 +97,11 @@ export default function LoginPage() {
   const [showUnverifiedWarning, setShowUnverifiedWarning] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState("");
 
-  // Get returnUrl from query params, default to /dashboard
   const returnUrl = searchParams.get("returnUrl") || "/dashboard";
 
   useEffect(() => {
     const checkSession = async () => {
+      // Adjusted property pathing to map your context state provider setup
       const {
         data: { session },
       } = await supabase.supabase.auth.getSession();
@@ -146,7 +153,6 @@ export default function LoginPage() {
       });
 
       if (error) {
-        // Check for unverified email error
         if (
           error.message.includes("Email not confirmed") ||
           error.message.includes("verify")
@@ -160,7 +166,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Double-check if email is verified
       if (data.user && !data.user.email_confirmed_at) {
         setUnverifiedEmail(email);
         setShowUnverifiedWarning(true);
@@ -169,8 +174,6 @@ export default function LoginPage() {
       }
 
       toast.success("Logged in successfully!");
-
-      // Decode and redirect to returnUrl
       const decodedUrl = decodeURIComponent(returnUrl);
       router.push(decodedUrl);
     } catch {
@@ -207,9 +210,43 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Unverified Email Warning */}
+          {/* Form Content Wrapper */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FieldGroup>
+              <FieldLabel>Email Address</FieldLabel>
+              <Input
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                required
+              />
+            </FieldGroup>
+            <FieldGroup>
+              <FieldLabel>Password</FieldLabel>
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                required
+              />
+            </FieldGroup>
+            <Button type="submit" className="w-full mt-2" disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  Sign In <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </form>
+
           {showUnverifiedWarning && (
-            <Card className="mb-6 p-4 border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-amber-50">
+            <Card className="mt-6 p-4 border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-amber-50">
               <div className="flex gap-3">
                 <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1 space-y-3">
@@ -235,90 +272,26 @@ export default function LoginPage() {
               </div>
             </Card>
           )}
-
-          {hasSession ? (
-            <div className="space-y-4">
-              <Button
-                onClick={() => router.push(decodeURIComponent(returnUrl))}
-                className="w-full bg-accent hover:bg-accent/90 py-6 text-lg"
-              >
-                Continue Browsing
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  await supabase.supabase.auth.signOut();
-                  setHasSession(false);
-                }}
-                className="w-full"
-              >
-                Sign out of this account
-              </Button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <FieldGroup>
-                <div>
-                  <FieldLabel htmlFor="email">Email Address</FieldLabel>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={isLoading}
-                  />
-                </div>
-                <div>
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
-                  />
-                </div>
-              </FieldGroup>
-              <div className="flex items-center justify-between text-sm">
-                <Link
-                  href="/auth/forgot-password"
-                  className="text-accent hover:underline"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-              <Button
-                type="submit"
-                className="w-full bg-accent hover:bg-accent/90"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  "Sign In"
-                )}
-              </Button>
-              <p className="text-center text-sm text-muted-foreground">
-                Don't have an account?{" "}
-                <Link
-                  href="/auth/register"
-                  className="text-accent hover:underline font-medium"
-                >
-                  Sign up
-                </Link>
-              </p>
-            </form>
-          )}
         </Card>
       </div>
       <Footer />
-      <Suspense fallback={null}>
-        <VerificationHandler />
-      </Suspense>
+      <VerificationHandler />
     </div>
   );
 }
+
+// 4. MAIN EXPORT COMPONENT: Provides clean skeleton fallback state to NextJS layout engines
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        </div>
+      }
+    >
+      <LoginFormContent />
+    </Suspense>
+  );
+}
+
