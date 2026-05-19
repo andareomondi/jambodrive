@@ -15,18 +15,16 @@ const publicRoutes = [
   "/reset-password",
   "/cars",
   "/api/mpesa/stkpush",
-  "/api/mpesa/callback",
+  "/api/mpesa/callback", // base path — see startsWith check below
 ];
 
 export async function updateSession(request: NextRequest) {
-  // Create an initial response object
   let supabaseResponse = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
 
-  // 1. Initialize the Server-Side Client for Cookie Synchronization
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
@@ -39,9 +37,7 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) =>
             request.cookies.set(name, value, options),
           );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
+          supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
           );
@@ -50,19 +46,23 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // 2. CRITICAL: Refreshes token automatically if expired (Required for Server Components)
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
 
-  // 3. Match against static public paths or dynamic paths like /cars/[slug]
   const isPublicRoute =
+    // Exact-match static public paths
     publicRoutes.some((route) => pathname === route) ||
-    pathname.startsWith("/cars/");
+    // Dynamic public prefixes — use startsWith for paths with segments after them
+    pathname.startsWith("/cars/") ||
+    // M-Pesa API routes — callback has a dynamic [secret] segment after it,
+    // e.g. /api/mpesa/callback/a3f9bc... which would fail an exact-match check.
+    // All /api/mpesa/* paths are hit by Safaricom's servers (no session) so
+    // they must be fully excluded from auth checks.
+    pathname.startsWith("/api/mpesa/");
 
-  // 4. Perform instant Server-Side redirection if unauthenticated on private layouts
   if (!user && !isPublicRoute) {
     const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("returnUrl", pathname);
