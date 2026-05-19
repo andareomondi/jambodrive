@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 // Uses the SERVICE ROLE key — never expose this on the client side.
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
