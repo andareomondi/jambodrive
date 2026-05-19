@@ -14,6 +14,8 @@ const publicRoutes = [
   "/forgot-password",
   "/reset-password",
   "/cars",
+  "/api/mpesa/stkpush",
+  "/api/mpesa/callback",
 ];
 
 export async function updateSession(request: NextRequest) {
