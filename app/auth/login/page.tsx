@@ -1,13 +1,13 @@
 "use client";
 
+import { useSupabase } from "@/components/auth/supabase-provider";
 import { Footer } from "@/components/layout/footer";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { useSupabase } from "@/components/auth/supabase-provider";
-import { ArrowRight, Car, Loader2, XCircle, AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowRight, Car, Loader2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -294,4 +294,3 @@ export default function LoginPage() {
     </Suspense>
   );
 }
-

@@ -1,11 +1,9 @@
+import { AuthGuard } from "@/components/auth/auth-guard";
+import SupabaseProvider from "@/components/auth/supabase-provider";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
 import "./globals.css";
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { AuthProvider } from "@/components/auth/auth-context";
-import SupabaseProvider from "@/components/auth/supabase-provider";
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
