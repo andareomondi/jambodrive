@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// ─── Supabase Admin Client ────────────────────────────────────────────────────
-
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
-// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface CallbackItem {
   Name: string;
@@ -19,72 +16,37 @@ interface StkCallback {
   CheckoutRequestID: string;
   ResultCode: number;
   ResultDesc: string;
-  CallbackMetadata?: {
-    Item: CallbackItem[];
-  };
+  CallbackMetadata?: { Item: CallbackItem[] };
 }
 
 interface DarajaCallbackBody {
-  Body: {
-    stkCallback: StkCallback;
-  };
+  Body: { stkCallback: StkCallback };
 }
-
-// ─── Helper ───────────────────────────────────────────────────────────────────
 
 function findItem(items: CallbackItem[], name: string) {
   return items.find((i) => i.Name === name)?.Value ?? null;
 }
 
-// ─── Safaricom IP Whitelist ───────────────────────────────────────────────────
-// Safaricom sends callbacks only from these ranges in production.
-// Comment this out during sandbox testing — sandbox IPs are not whitelisted.
-const SAFARICOM_IPS = [
-  "196.201.214.200",
-  "196.201.214.206",
-  "196.201.213.114",
-  "196.201.214.207",
-  "196.201.214.208",
-  "196.201.213.44",
-  "196.201.212.127",
-  "196.201.212.138",
-  "196.201.212.129",
-  "196.201.212.136",
-  "196.201.212.74",
-  "196.201.212.69",
-];
-
-// ─── Route Handler ────────────────────────────────────────────────────────────
-
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { secret: string } },
-) {
-  // ── 1. Verify the secret appended to the URL ────────────────────────────
-  if (params.secret !== process.env.MPESA_CALLBACK_SECRET) {
-    console.warn("[mpesa/callback] Invalid secret in callback URL.");
-    // Return 200 anyway — Safaricom retries on non-2xx, which wastes quota
+export async function POST(req: NextRequest) {
+  // ── 1. Validate secret from query param ─────────────────────────────────
+  // Callback URL stored in .env is: https://yourdomain.com/api/mpesa/callback?key=YOUR_SECRET
+  const key = req.nextUrl.searchParams.get("key");
+  if (key !== process.env.MPESA_CALLBACK_SECRET) {
+    console.warn("[mpesa/callback] Invalid or missing secret key.");
+    // Always 200 — non-2xx causes Safaricom to retry endlessly
     return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
   }
 
-  // ── 2. (Optional) IP whitelist — uncomment for production ───────────────
-  // const clientIp =
-  //   req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "";
-  // if (!SAFARICOM_IPS.includes(clientIp)) {
-  //   console.warn("[mpesa/callback] Blocked request from IP:", clientIp);
-  //   return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
-  // }
-
+  // ── 2. Parse body ────────────────────────────────────────────────────────
   let body: DarajaCallbackBody;
-
   try {
     body = await req.json();
   } catch {
+    console.error("[mpesa/callback] Failed to parse request body.");
     return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
   }
 
   const callback = body?.Body?.stkCallback;
-
   if (!callback) {
     console.error("[mpesa/callback] Malformed callback body:", body);
     return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
@@ -97,7 +59,7 @@ export async function POST(
     `[mpesa/callback] CheckoutRequestID=${CheckoutRequestID} ResultCode=${ResultCode}`,
   );
 
-  // ── 3. Find the booking tied to this CheckoutRequestID ──────────────────
+  // ── 3. Find booking by CheckoutRequestID ────────────────────────────────
   const { data: booking, error: findError } = await supabaseAdmin
     .from("bookings")
     .select("id")
@@ -110,40 +72,31 @@ export async function POST(
       CheckoutRequestID,
       findError,
     );
-    // Still return 200 to Safaricom — don't let them retry
     return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
   }
 
-  // ── 4. Handle success vs failure ────────────────────────────────────────
+  // ── 4. Update booking based on result ────────────────────────────────────
   if (ResultCode === 0 && CallbackMetadata) {
-    // Payment successful — extract receipt details
     const items = CallbackMetadata.Item;
-    const mpesaReceiptNumber = findItem(items, "MpesaReceiptNumber");
-    const transactionDate = findItem(items, "TransactionDate");
-    const phoneNumber = String(findItem(items, "PhoneNumber") ?? "");
-    const paidAmount = findItem(items, "Amount");
 
-    const { error: updateError } = await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from("bookings")
       .update({
         status: "confirmed",
-        mpesa_receipt_number: mpesaReceiptNumber,
-        mpesa_transaction_date: transactionDate,
-        mpesa_phone: phoneNumber,
-        paid_amount: paidAmount,
+        mpesa_receipt_number: findItem(items, "MpesaReceiptNumber"),
+        mpesa_transaction_date: findItem(items, "TransactionDate"),
+        mpesa_phone: String(findItem(items, "PhoneNumber") ?? ""),
+        paid_amount: findItem(items, "Amount"),
       })
       .eq("id", booking.id);
 
-    if (updateError) {
-      console.error("[mpesa/callback] Failed to confirm booking:", updateError);
+    if (error) {
+      console.error("[mpesa/callback] Failed to confirm booking:", error);
     } else {
-      console.log(
-        `[mpesa/callback] Booking ${booking.id} confirmed. Receipt: ${mpesaReceiptNumber}`,
-      );
+      console.log(`[mpesa/callback] Booking ${booking.id} confirmed.`);
     }
   } else {
-    // Payment failed or cancelled
-    const { error: updateError } = await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from("bookings")
       .update({
         status: "failed",
@@ -151,19 +104,15 @@ export async function POST(
       })
       .eq("id", booking.id);
 
-    if (updateError) {
-      console.error(
-        "[mpesa/callback] Failed to mark booking as failed:",
-        updateError,
-      );
+    if (error) {
+      console.error("[mpesa/callback] Failed to mark booking failed:", error);
     } else {
       console.log(
-        `[mpesa/callback] Booking ${booking.id} failed. Reason: ${ResultDesc}`,
+        `[mpesa/callback] Booking ${booking.id} failed: ${ResultDesc}`,
       );
     }
   }
 
   // ── 5. Always respond 200 to Safaricom ──────────────────────────────────
-  // If you return anything other than 2xx, Safaricom will retry the callback.
   return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
 }

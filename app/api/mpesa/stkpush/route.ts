@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
 
     // ── Build callback URL ──────────────────────────────────────────────────
     // Append a secret so your callback route rejects spoofed requests.
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/mpesa/callback/${process.env.MPESA_CALLBACK_SECRET}`;
+    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/mpesa/callback?key=${process.env.MPESA_CALLBACK_SECRET}`;
 
     // ── Fire STK Push ───────────────────────────────────────────────────────
     const stkRes = await fetch(
