@@ -22,8 +22,8 @@ const publicRoutes = [
   "/cars",
   "/cars/[slug]",
   "/cars/category/[slug]",
-  "/api/mpesa/stkpush"
-  "/api/mpesa/callback"
+  "/api/mpesa/stkpush",
+  "/api/mpesa/callback",
 ];
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
