@@ -141,12 +141,12 @@ Could you please provide more details on the booking process?`;
             </div>
 
             {car.images.length > 1 && (
-              <div className="flex gap-3">
+              <div className="flex gap-3 overflow-x-auto py-2 scroll-smooth snap-x">
                 {car.images.map((image, idx) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
-                    className={`relative h-20 w-20 rounded-md overflow-hidden border-2 transition-colors ${
+                    className={`relative h-20 w-20 flex-shrink-0 snap-start rounded-md overflow-hidden border-2 transition-colors ${
                       selectedImage === idx ? "border-accent" : "border-border"
                     }`}
                   >
