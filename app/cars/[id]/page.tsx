@@ -18,6 +18,7 @@ import {
   MapPin,
   Calendar,
   Shield,
+  X,
 } from "lucide-react";
 import { useSupabase } from "@/components/auth/supabase-provider";
 import { DatabaseService } from "@/lib/services";
@@ -32,6 +33,7 @@ export default function CarDetailsPage() {
   const [loading, setLoading] = useState(true);
   const { supabase } = useSupabase();
   const db = new DatabaseService(supabase);
+  const [isFullscreen, setIsFullScreen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -122,12 +124,15 @@ Could you please provide more details on the booking process?`;
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
           <div className="lg:col-span-2">
-            <div className="relative h-96 bg-secondary rounded-lg overflow-hidden mb-4">
+            <div
+              className="relative h-96 bg-secondary rounded-lg overflow-hidden mb-4 cursor-pointer group"
+              onClick={() => setIsFullScreen(true)}
+            >
               <Image
                 src={car.images[selectedImage]}
                 alt={car.name}
                 fill
-                className="object-cover"
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
                 priority
                 loading="eager"
               />
@@ -138,8 +143,38 @@ Could you please provide more details on the booking process?`;
                   </span>
                 </div>
               )}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 text-white font-medium bg-black/50 px-4 py-2 rounded-full transition-opacity">
+                  Click to expand
+                </span>
+              </div>
             </div>
+            {isFullscreen && (
+              <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 md:p-8">
+                <button
+                  onClick={() => setIsFullScreen(false)}
+                  className="absolute top-4 right-4 md:top-8 md:right-8 text-white hover:text-accent z-50 bg-black/50 rounded-full p-2 transition-colors"
+                >
+                  <X className="w-8 h-8" />
+                </button>
 
+                {/* Click outside to close */}
+                <div
+                  className="absolute inset-0 z-40"
+                  onClick={() => setIsFullScreen(false)}
+                />
+
+                <div className="relative w-full h-full max-w-6xl max-h-[85vh] z-50">
+                  <Image
+                    src={car.images[selectedImage]}
+                    alt={car.name}
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+              </div>
+            )}
             {car.images.length > 1 && (
               <div className="flex gap-3 overflow-x-auto py-2 scroll-smooth snap-x">
                 {car.images.map((image, idx) => (
