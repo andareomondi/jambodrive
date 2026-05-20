@@ -69,9 +69,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
-        <SupabaseProvider>
-          <AuthGuard>{children}</AuthGuard>
-        </SupabaseProvider>
+        <SupabaseProvider>{children}</SupabaseProvider>
         <Toaster position="top-right" />
       </body>
     </html>
