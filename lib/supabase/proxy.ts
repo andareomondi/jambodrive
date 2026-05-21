@@ -15,14 +15,27 @@ const publicRoutes = [
   "/reset-password",
   "/cars",
   "/api/mpesa/stkpush",
-  "/api/mpesa/callback", // base path — see startsWith check below
+  "/api/mpesa/callback",
+];
+
+// Routes only accessible when NOT authenticated
+// (logged-in users are bounced away from these)
+const authOnlyRoutes = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/forgot-password",
+  "/forgot-password",
+];
+
+// Role-gated routes — middleware fetches the profile role to enforce these
+const roleRoutes: { prefix: string; requiredRole: string }[] = [
+  { prefix: "/admin", requiredRole: "admin" },
+  { prefix: "/facilitator", requiredRole: "facilitator" },
 ];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+    request: { headers: request.headers },
   });
 
   const supabase = createServerClient(
@@ -53,20 +66,45 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const isPublicRoute =
-    // Exact-match static public paths
     publicRoutes.some((route) => pathname === route) ||
-    // Dynamic public prefixes — use startsWith for paths with segments after them
     pathname.startsWith("/cars/") ||
-    // M-Pesa API routes — callback has a dynamic [secret] segment after it,
-    // e.g. /api/mpesa/callback/a3f9bc... which would fail an exact-match check.
-    // All /api/mpesa/* paths are hit by Safaricom's servers (no session) so
-    // they must be fully excluded from auth checks.
     pathname.startsWith("/api/mpesa/");
 
+  // ── 1. Unauthenticated → redirect to login ──────────────────────────────
   if (!user && !isPublicRoute) {
     const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("returnUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // ── 2. Authenticated → bounce away from auth-only pages ─────────────────
+  if (user && authOnlyRoutes.some((route) => pathname === route)) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // ── 3. Role-gated routes ─────────────────────────────────────────────────
+  const matchedRoleRoute = roleRoutes.find(({ prefix }) =>
+    pathname.startsWith(prefix),
+  );
+
+  if (user && matchedRoleRoute) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    const userRole = profile?.role ?? "customer";
+    const { requiredRole } = matchedRoleRoute;
+
+    // Admins can access everything, including facilitator routes
+    const hasAccess = userRole === "admin" || userRole === requiredRole;
+
+    if (!hasAccess) {
+      // Send them somewhere appropriate instead of a blank 403
+      const fallback = userRole === "facilitator" ? "/facilitator" : "/";
+      return NextResponse.redirect(new URL(fallback, request.url));
+    }
   }
 
   return supabaseResponse;
