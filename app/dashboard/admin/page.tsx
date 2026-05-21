@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Navbar } from "@/components/layout/navbar";
@@ -27,9 +27,12 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   ArrowRight,
   AlertCircle,
   RotateCcw,
+  Receipt,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DeleteCarModal } from "@/components/modals/delete-car-modal";
@@ -172,18 +175,25 @@ export default function AdminDashboardPage() {
   const [carToDelete, setCarToDelete] = useState<Car | null>(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
 
-  // Only confirmed + completed count as earned revenue.
-  // Pending and failed are excluded — pending may still cancel, failed never completed.
+  // New state for expandable booking rows
+  const [expandedBookingId, setExpandedBookingId] = useState<string | null>(
+    null,
+  );
+
   const revenueStatuses = ["confirmed", "completed"];
 
   useEffect(() => {
+    let isMounted = true; // Prevent memory leaks on unmount
+
     const {
       data: { subscription },
     } = supabase.supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
-        setIsAdmin(false);
-        setAuthLoading(false);
-        setDataLoading(false);
+        if (isMounted) {
+          setIsAdmin(false);
+          setAuthLoading(false);
+          setDataLoading(false);
+        }
         return;
       }
       const { data } = await supabase.supabase
@@ -191,33 +201,55 @@ export default function AdminDashboardPage() {
         .select("role")
         .eq("id", session.user.id)
         .single();
+
       const admin = data?.role === "admin";
-      setIsAdmin(admin);
-      setAuthLoading(false);
+
+      if (isMounted) {
+        setIsAdmin(admin);
+        setAuthLoading(false);
+      }
+
       if (!admin) {
-        setDataLoading(false);
+        if (isMounted) setDataLoading(false);
         return;
       }
+
       Promise.all([db.getCars(), db.getBookings(), db.getProfiles()])
         .then(([carsData, bookingsData, usersData]) => {
-          setCars(carsData);
-          setBookings(bookingsData);
-          setUsers(usersData);
+          if (isMounted) {
+            setCars(carsData);
+            setBookings(bookingsData);
+            setUsers(usersData);
+          }
         })
         .catch(console.error)
-        .finally(() => setDataLoading(false));
+        .finally(() => {
+          if (isMounted) setDataLoading(false);
+        });
     });
-    return () => subscription.unsubscribe();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const totalCars = cars.length;
   const totalBookings = bookings.length;
   const totalUsers = users.filter((u) => u.role === "customer").length;
+
   const totalRevenue = bookings
     .filter((b) => revenueStatuses.includes(b.status))
     .reduce((sum, b) => sum + b.total_price, 0);
 
-  // ── Failed bookings count for the stats strip ─────────────────────────────
+  // Track additional fees collected during return
+  const totalAdditionalFees = bookings
+    .filter((b) => b.additional_fee_status === "confirmed")
+    .reduce(
+      (sum, b) => sum + (Number((b as any).additional_fee_amount) || 0),
+      0,
+    );
+
   const totalFailed = bookings.filter((b) => b.status === "failed").length;
 
   const filteredBookings = useMemo(
@@ -244,53 +276,59 @@ export default function AdminDashboardPage() {
   const usersPagination = usePagination(users, USERS_PAGE_SIZE);
   const fleetPagination = usePagination(cars, FLEET_PAGE_SIZE);
 
-  const refreshCars = () => db.getCars().then(setCars).catch(console.error);
-  const refreshBookings = () =>
-    db.getBookings().then(setBookings).catch(console.error);
+  const refreshCars = useCallback(
+    () => db.getCars().then(setCars).catch(console.error),
+    [],
+  );
+  const refreshBookings = useCallback(
+    () => db.getBookings().then(setBookings).catch(console.error),
+    [],
+  );
 
-  const handleBookingStatus = async (
-    id: string,
-    status: "confirmed" | "cancelled",
-  ) => {
-    const { data: bookingData, error: bookingError } = await supabase.supabase
-      .from("bookings")
-      .update({ status })
-      .eq("id", id)
-      .select("car_id")
-      .single();
-    if (bookingError) {
-      toast.error(bookingError.message);
-      return;
-    }
-    if (status === "confirmed" && bookingData?.car_id) {
-      const { error: carError } = await supabase.supabase
-        .from("cars")
-        .update({ available: false })
-        .eq("id", bookingData.car_id);
-      if (carError) {
-        toast.error(
-          "Booking confirmed, but failed to update car availability.",
-        );
-      } else {
-        setCars((prev) =>
-          prev.map((c) =>
-            c.id === bookingData.car_id ? { ...c, available: false } : c,
-          ),
-        );
+  const handleBookingStatus = useCallback(
+    async (id: string, status: "confirmed" | "cancelled") => {
+      const { data: bookingData, error: bookingError } = await supabase.supabase
+        .from("bookings")
+        .update({ status })
+        .eq("id", id)
+        .select("car_id")
+        .single();
+
+      if (bookingError) {
+        toast.error(bookingError.message);
+        return;
       }
-    }
-    toast.success(
-      `Booking ${status === "confirmed" ? "confirmed" : "rejected"}.`,
-    );
-    setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status } : b)),
-    );
-  };
 
-  // Dismiss a failed booking by marking it cancelled so it stops
-  // cluttering the pending/active views. The M-Pesa receipt was never
-  // issued so no refund logic is needed.
-  const handleDismissFailed = async (id: string) => {
+      if (status === "confirmed" && bookingData?.car_id) {
+        const { error: carError } = await supabase.supabase
+          .from("cars")
+          .update({ available: false })
+          .eq("id", bookingData.car_id);
+
+        if (carError) {
+          toast.error(
+            "Booking confirmed, but failed to update car availability.",
+          );
+        } else {
+          setCars((prev) =>
+            prev.map((c) =>
+              c.id === bookingData.car_id ? { ...c, available: false } : c,
+            ),
+          );
+        }
+      }
+
+      toast.success(
+        `Booking ${status === "confirmed" ? "confirmed" : "rejected"}.`,
+      );
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status } : b)),
+      );
+    },
+    [cars],
+  );
+
+  const handleDismissFailed = useCallback(async (id: string) => {
     const { error } = await supabase.supabase
       .from("bookings")
       .update({ status: "cancelled" })
@@ -303,9 +341,9 @@ export default function AdminDashboardPage() {
     setBookings((prev) =>
       prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)),
     );
-  };
+  }, []);
 
-  const handleRoleChange = async (userId: string, role: string) => {
+  const handleRoleChange = useCallback(async (userId: string, role: string) => {
     const { error } = await supabase.supabase
       .from("profiles")
       .update({ role })
@@ -316,28 +354,32 @@ export default function AdminDashboardPage() {
     }
     toast.success("Role updated.");
     setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
-  };
+  }, []);
 
-  const initiateWhatsApp = (phoneNumber: string, bookingDetails: any) => {
-    let formatted = phoneNumber.replace(/\D/g, "");
-    if (formatted.startsWith("0")) formatted = "254" + formatted.substring(1);
-    else if (formatted.startsWith("7")) formatted = "254" + formatted;
-    const message = encodeURIComponent(
-      `Hello, We have received your booking and confirmed it.\n\n*Booking Details:*\n🚗 Vehicle: ${bookingDetails.car_name}\n📅 Pickup: ${new Date(bookingDetails.pickup_date).toLocaleDateString()}\n📍 Location: ${bookingDetails.pickup_location}\n💰 Total: KES ${bookingDetails.total_price}\n\nPlease let us know if you have any questions!`,
-    );
-    window.open(`https://wa.me/${formatted}?text=${message}`, "_blank");
-  };
+  const initiateWhatsApp = useCallback(
+    (phoneNumber: string, bookingDetails: any) => {
+      let formatted = phoneNumber.replace(/\D/g, "");
+      if (formatted.startsWith("0")) formatted = "254" + formatted.substring(1);
+      else if (formatted.startsWith("7")) formatted = "254" + formatted;
 
-  const handleWhatsApp = (phone: string) => {
+      const message = encodeURIComponent(
+        `Hello, We have received your booking and confirmed it.\n\n*Booking Details:*\n🚗 Vehicle: ${bookingDetails.car_name}\n📅 Pickup: ${new Date(bookingDetails.pickup_date).toLocaleDateString()}\n📍 Location: ${bookingDetails.pickup_location}\n💰 Total: KES ${bookingDetails.total_price}\n\nPlease let us know if you have any questions!`,
+      );
+      window.open(`https://wa.me/${formatted}?text=${message}`, "_blank");
+    },
+    [],
+  );
+
+  const handleWhatsApp = useCallback((phone: string) => {
     if (!phone) return;
     let cleaned = phone.replace(/\D/g, "");
     if (cleaned.startsWith("0")) cleaned = "254" + cleaned.substring(1);
     else if (cleaned.startsWith("7")) cleaned = "254" + cleaned;
     window.open(
-      `https://wa.me/${cleaned}?text=${encodeURIComponent("Hello, this is the admin from Cosmara.")}`,
+      `https://wa.me/${cleaned}?text=${encodeURIComponent("Hello, this is the admin from Cozy Mobility Tours.")}`,
       "_blank",
     );
-  };
+  }, []);
 
   const handleAddCar = () => {
     setSelectedCar(null);
@@ -350,6 +392,10 @@ export default function AdminDashboardPage() {
   const openDeleteConfirm = (car: Car) => {
     setCarToDelete(car);
     setDeleteModalOpen(true);
+  };
+
+  const toggleExpandRow = (id: string) => {
+    setExpandedBookingId((prev) => (prev === id ? null : id));
   };
 
   if (authLoading) {
@@ -402,7 +448,7 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {/* ── STATS ──────────────────────────────────────────── */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
                   {[
                     {
                       icon: Calendar,
@@ -413,10 +459,17 @@ export default function AdminDashboardPage() {
                     },
                     {
                       icon: DollarSign,
-                      label: "Revenue Collected",
+                      label: "Base Revenue",
                       value: `Ksh ${totalRevenue.toLocaleString()}`,
                       color: "text-green-500",
                       bg: "bg-green-50 dark:bg-green-500/10",
+                    },
+                    {
+                      icon: Receipt,
+                      label: "Extra Fees",
+                      value: `Ksh ${totalAdditionalFees.toLocaleString()}`,
+                      color: "text-rose-500",
+                      bg: "bg-rose-50 dark:bg-rose-500/10",
                     },
                     {
                       icon: CarIcon,
@@ -444,7 +497,7 @@ export default function AdminDashboardPage() {
                             <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">
                               {stat.label}
                             </p>
-                            <p className="text-xl sm:text-2xl font-bold text-foreground">
+                            <p className="text-lg sm:text-xl font-bold text-foreground">
                               {stat.value}
                             </p>
                           </div>
@@ -514,7 +567,6 @@ export default function AdminDashboardPage() {
                           <option value="pending">Pending</option>
                           <option value="completed">Completed</option>
                           <option value="cancelled">Cancelled</option>
-                          {/* ↓ new */}
                           <option value="failed">Failed</option>
                         </select>
                       </div>
@@ -522,7 +574,7 @@ export default function AdminDashboardPage() {
                   </div>
 
                   <div className="overflow-x-auto">
-                    <Table className="min-w-[800px]">
+                    <Table className="min-w-[900px]">
                       <TableHeader className="bg-slate-50/50 dark:bg-slate-900/20">
                         <TableRow className="border-none hover:bg-transparent">
                           <TableHead className="font-semibold whitespace-nowrap pl-6">
@@ -551,166 +603,322 @@ export default function AdminDashboardPage() {
                       <TableBody>
                         {bookingsPagination.paged.length > 0 ? (
                           bookingsPagination.paged.map((booking) => (
-                            <TableRow
-                              key={booking.id}
-                              className={`border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50 ${
-                                booking.status === "failed"
-                                  ? "bg-destructive/5 dark:bg-destructive/10"
-                                  : ""
-                              }`}
-                            >
-                              <TableCell className="font-medium text-foreground whitespace-nowrap pl-6">
-                                #{booking.id.slice(0, 6).toUpperCase()}
-                              </TableCell>
-                              <TableCell className="text-foreground whitespace-nowrap">
-                                {booking.cars?.name}
-                              </TableCell>
-                              <TableCell className="text-foreground whitespace-nowrap">
-                                {booking.profiles?.full_name}
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                                {new Date(
-                                  booking.pickup_date,
-                                ).toLocaleDateString(undefined, {
-                                  month: "short",
-                                  day: "numeric",
-                                })}{" "}
-                                -{" "}
-                                {new Date(
-                                  booking.return_date,
-                                ).toLocaleDateString(undefined, {
-                                  month: "short",
-                                  day: "numeric",
-                                })}
-                              </TableCell>
-                              <TableCell className="font-semibold text-foreground whitespace-nowrap">
-                                Ksh {booking.total_price.toLocaleString()}
-                              </TableCell>
-                              <TableCell className="whitespace-nowrap">
-                                <BadgeStatus status={booking.status} />
-                              </TableCell>
+                            <React.Fragment key={booking.id}>
+                              <TableRow
+                                className={`border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer ${
+                                  booking.status === "failed"
+                                    ? "bg-destructive/5 dark:bg-destructive/10"
+                                    : ""
+                                }`}
+                                onClick={() => toggleExpandRow(booking.id)}
+                              >
+                                <TableCell className="font-medium text-foreground whitespace-nowrap pl-6">
+                                  <div className="flex items-center gap-2">
+                                    {expandedBookingId === booking.id ? (
+                                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                    )}
+                                    #{booking.id.slice(0, 6).toUpperCase()}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-foreground whitespace-nowrap">
+                                  {booking.cars?.name}
+                                </TableCell>
+                                <TableCell className="text-foreground whitespace-nowrap">
+                                  {booking.profiles?.full_name}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                                  {new Date(
+                                    booking.pickup_date,
+                                  ).toLocaleDateString(undefined, {
+                                    month: "short",
+                                    day: "numeric",
+                                  })}{" "}
+                                  -{" "}
+                                  {new Date(
+                                    booking.return_date,
+                                  ).toLocaleDateString(undefined, {
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </TableCell>
+                                <TableCell className="font-semibold text-foreground whitespace-nowrap">
+                                  Ksh {booking.total_price.toLocaleString()}
+                                </TableCell>
+                                <TableCell className="whitespace-nowrap">
+                                  <BadgeStatus status={booking.status} />
+                                </TableCell>
+                                <TableCell className="whitespace-nowrap pr-6">
+                                  <div
+                                    className="flex gap-2 items-center"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {booking.status === "pending" && (
+                                      <>
+                                        <Button
+                                          size="sm"
+                                          className="bg-emerald-500 hover:bg-emerald-600 text-white h-8 px-3 rounded-lg"
+                                          onClick={() =>
+                                            handleBookingStatus(
+                                              booking.id,
+                                              "confirmed",
+                                            )
+                                          }
+                                        >
+                                          Approve
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="text-destructive hover:bg-destructive/10 h-8 px-3 rounded-lg"
+                                          onClick={() =>
+                                            handleBookingStatus(
+                                              booking.id,
+                                              "cancelled",
+                                            )
+                                          }
+                                        >
+                                          Reject
+                                        </Button>
+                                      </>
+                                    )}
 
-                              {/* ── Actions cell ── */}
-                              <TableCell className="whitespace-nowrap pr-6">
-                                <div className="flex gap-2 items-center">
-                                  {booking.status === "pending" && (
-                                    <>
+                                    {booking.status === "confirmed" && (
                                       <Button
+                                        variant="outline"
                                         size="sm"
-                                        className="bg-emerald-500 hover:bg-emerald-600 text-white h-8 px-3 rounded-lg"
-                                        onClick={() =>
-                                          handleBookingStatus(
-                                            booking.id,
-                                            "confirmed",
-                                          )
-                                        }
-                                      >
-                                        Approve
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="text-destructive hover:bg-destructive/10 h-8 px-3 rounded-lg"
-                                        onClick={() =>
-                                          handleBookingStatus(
-                                            booking.id,
-                                            "cancelled",
-                                          )
-                                        }
-                                      >
-                                        Reject
-                                      </Button>
-                                    </>
-                                  )}
-
-                                  {booking.status === "confirmed" && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="rounded-xl border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 flex items-center gap-2"
-                                      onClick={() => {
-                                        const car = cars.find(
-                                          (c) => c.id === booking.car_id,
-                                        );
-                                        const phone = booking.profiles?.phone;
-                                        if (!phone) {
-                                          toast.error(
-                                            "No phone number for this customer.",
+                                        className="rounded-xl border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 flex items-center gap-2"
+                                        onClick={() => {
+                                          const car = cars.find(
+                                            (c) => c.id === booking.car_id,
                                           );
-                                          return;
-                                        }
-                                        initiateWhatsApp(phone, {
-                                          car_name: `${car?.name} ${car?.model}`,
-                                          pickup_date: booking.pickup_date,
-                                          pickup_location:
-                                            booking.pickup_location,
-                                          total_price: booking.total_price,
-                                        });
-                                      }}
-                                    >
-                                      <MessageCircle className="h-3.5 w-3.5" />{" "}
-                                      Initiate
-                                    </Button>
-                                  )}
+                                          // Prioritize profile phone, fallback to MPesa phone if empty
+                                          const phone =
+                                            booking.profiles?.phone ||
+                                            (booking as any).mpesa_phone;
+                                          if (!phone) {
+                                            toast.error(
+                                              "No phone number found for this booking.",
+                                            );
+                                            return;
+                                          }
+                                          initiateWhatsApp(phone, {
+                                            car_name: `${car?.name} ${car?.model}`,
+                                            pickup_date: booking.pickup_date,
+                                            pickup_location:
+                                              booking.pickup_location,
+                                            total_price: booking.total_price,
+                                          });
+                                        }}
+                                      >
+                                        <MessageCircle className="h-3.5 w-3.5" />{" "}
+                                        Initiate
+                                      </Button>
+                                    )}
 
-                                  {/* ── Failed state: show reason + dismiss action ── */}
-                                  {booking.status === "failed" && (
-                                    <>
-                                      {/* Reason tooltip */}
-                                      {(booking as any)
-                                        .payment_failure_reason && (
+                                    {booking.status === "failed" && (
+                                      <>
+                                        {(booking as any)
+                                          .payment_failure_reason && (
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <span className="inline-flex items-center gap-1 text-xs text-destructive cursor-default">
+                                                <AlertCircle className="h-3.5 w-3.5" />{" "}
+                                                Why?
+                                              </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent
+                                              side="top"
+                                              className="max-w-[220px] text-center"
+                                            >
+                                              {
+                                                (booking as any)
+                                                  .payment_failure_reason
+                                              }
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        )}
                                         <Tooltip>
                                           <TooltipTrigger asChild>
-                                            <span className="inline-flex items-center gap-1 text-xs text-destructive cursor-default">
-                                              <AlertCircle className="h-3.5 w-3.5" />
-                                              Why?
-                                            </span>
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              className="text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 h-8 px-3 rounded-lg gap-1.5"
+                                              onClick={() =>
+                                                handleDismissFailed(booking.id)
+                                              }
+                                            >
+                                              <RotateCcw className="h-3.5 w-3.5" />{" "}
+                                              Dismiss
+                                            </Button>
                                           </TooltipTrigger>
-                                          <TooltipContent
-                                            side="top"
-                                            className="max-w-[220px] text-center"
-                                          >
-                                            {
-                                              (booking as any)
-                                                .payment_failure_reason
-                                            }
+                                          <TooltipContent side="top">
+                                            Mark as cancelled and remove from
+                                            failed list
                                           </TooltipContent>
                                         </Tooltip>
-                                      )}
+                                      </>
+                                    )}
+                                    {(booking.status === "completed" ||
+                                      booking.status === "cancelled") && (
+                                      <span className="text-xs text-muted-foreground px-2">
+                                        Processed
+                                      </span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
 
-                                      {/* Dismiss → marks as cancelled, removes from failed view */}
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 h-8 px-3 rounded-lg gap-1.5"
-                                            onClick={() =>
-                                              handleDismissFailed(booking.id)
-                                            }
-                                          >
-                                            <RotateCcw className="h-3.5 w-3.5" />
-                                            Dismiss
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top">
-                                          Mark as cancelled and remove from
-                                          failed list
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </>
-                                  )}
+                              {/* Expanded Row Content */}
+                              {expandedBookingId === booking.id && (
+                                <TableRow className="border-0 hover:bg-transparent">
+                                  <TableCell colSpan={7} className="p-0 pb-2">
+                                    <div className="mx-4 mb-2 rounded-b-xl border border-t-2 border-t-accent/60 border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/40 overflow-hidden">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 p-4">
+                                        {/* Logistics */}
+                                        <div className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-card p-4 space-y-2.5">
+                                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                            <Calendar className="h-3.5 w-3.5" />{" "}
+                                            Logistics
+                                          </p>
+                                          <div className="space-y-1.5 text-sm">
+                                            <p className="text-muted-foreground">
+                                              <span className="font-medium text-foreground">
+                                                Pickup:{" "}
+                                              </span>
+                                              {booking.pickup_location}
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                              <span className="font-medium text-foreground">
+                                                Return:{" "}
+                                              </span>
+                                              {booking.return_location}
+                                            </p>
+                                            {(booking as any).notes && (
+                                              <p className="text-muted-foreground pt-1 border-t border-slate-100 dark:border-slate-800">
+                                                <span className="font-medium text-foreground">
+                                                  Notes:{" "}
+                                                </span>
+                                                {(booking as any).notes}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
 
-                                  {/* Completed / cancelled — no further action */}
-                                  {(booking.status === "completed" ||
-                                    booking.status === "cancelled") && (
-                                    <span className="text-xs text-muted-foreground px-2">
-                                      Processed
-                                    </span>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
+                                        {/* Initial Payment */}
+                                        <div className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-card p-4 space-y-2.5">
+                                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                            <DollarSign className="h-3.5 w-3.5" />{" "}
+                                            Initial Payment
+                                          </p>
+                                          <div className="space-y-1.5 text-sm">
+                                            <p className="text-muted-foreground">
+                                              <span className="font-medium text-foreground">
+                                                MPesa Receipt:{" "}
+                                              </span>
+                                              {(booking as any)
+                                                .mpesa_receipt_number || (
+                                                <span className="italic text-slate-400">
+                                                  N/A
+                                                </span>
+                                              )}
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                              <span className="font-medium text-foreground">
+                                                MPesa Phone:{" "}
+                                              </span>
+                                              {(booking as any).mpesa_phone || (
+                                                <span className="italic text-slate-400">
+                                                  N/A
+                                                </span>
+                                              )}
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                              <span className="font-medium text-foreground">
+                                                Amount Paid:{" "}
+                                              </span>
+                                              {(booking as any).paid_amount ? (
+                                                `Ksh ${Number((booking as any).paid_amount).toLocaleString()}`
+                                              ) : (
+                                                <span className="italic text-slate-400">
+                                                  N/A
+                                                </span>
+                                              )}
+                                            </p>
+                                          </div>
+                                        </div>
+
+                                        {/* Extra Fees */}
+                                        <div className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-card p-4 space-y-2.5 sm:col-span-2 xl:col-span-1">
+                                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                            <Receipt className="h-3.5 w-3.5" />{" "}
+                                            Extra Fees
+                                          </p>
+                                          {(booking as any)
+                                            .additional_fee_amount ? (
+                                            <div
+                                              className={`rounded-lg border p-3 text-sm space-y-1 ${
+                                                (booking as any)
+                                                  .additional_fee_status ===
+                                                "confirmed"
+                                                  ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800"
+                                                  : "bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800"
+                                              }`}
+                                            >
+                                              <p className="font-medium text-foreground">
+                                                Ksh{" "}
+                                                {Number(
+                                                  (booking as any)
+                                                    .additional_fee_amount,
+                                                ).toLocaleString()}{" "}
+                                                collected
+                                              </p>
+                                              <p className="text-muted-foreground text-xs">
+                                                <span className="font-medium text-foreground">
+                                                  Status:{" "}
+                                                </span>
+                                                {
+                                                  (booking as any)
+                                                    .additional_fee_status
+                                                }
+                                              </p>
+                                              <p className="text-muted-foreground text-xs">
+                                                <span className="font-medium text-foreground">
+                                                  Receipt:{" "}
+                                                </span>
+                                                {(booking as any)
+                                                  .additional_fee_receipt || (
+                                                  <span className="italic">
+                                                    Pending
+                                                  </span>
+                                                )}
+                                              </p>
+                                              {(booking as any)
+                                                .additional_fee_reason && (
+                                                <p className="text-xs text-destructive pt-1 border-t border-destructive/20">
+                                                  <span className="font-medium">
+                                                    Error:{" "}
+                                                  </span>
+                                                  {
+                                                    (booking as any)
+                                                      .additional_fee_reason
+                                                  }
+                                                </p>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            <p className="text-sm text-muted-foreground italic">
+                                              No extra return fees recorded.
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </React.Fragment>
                           ))
                         ) : (
                           <TableRow>
@@ -890,8 +1098,8 @@ export default function AdminDashboardPage() {
                                 <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
                               </Button>
                             </div>
-                            <hr />
-                            <div className="mt-4">
+                            <hr className="my-4" />
+                            <div>
                               <Link
                                 href={`/cars/${car.id}`}
                                 className="text-sm text-accent hover:underline flex items-center gap-1"
