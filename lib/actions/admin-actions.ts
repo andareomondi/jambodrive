@@ -54,24 +54,36 @@ export async function processCarReturn(
   notes: string,
   damageFee: number,
 ) {
-  const { error: bookingError } = await supabaseAdmin
-    .from("bookings")
-    .update({ status: "completed", notes })
-    .eq("id", bookingId);
+  try {
+    const { error: bookingError } = await supabaseAdmin
+      .from("bookings")
+      .update({ status: "completed", notes })
+      .eq("id", bookingId);
 
-  if (bookingError) throw new Error("Failed to update booking status.");
+    if (bookingError) {
+      console.error("[processCarReturn] Booking update failed:", bookingError);
+      return { success: false, error: bookingError.message };
+    }
 
-  const { error: carError } = await supabaseAdmin
-    .from("cars")
-    .update({ available: true })
-    .eq("id", carId);
+    const { error: carError } = await supabaseAdmin
+      .from("cars")
+      .update({ available: true })
+      .eq("id", carId);
 
-  if (carError) throw new Error("Failed to update car availability.");
+    if (carError) {
+      console.error("[processCarReturn] Car update failed:", carError);
+      return { success: false, error: carError.message };
+    }
 
-  return { success: true };
-}
-
-// ─── M-Pesa Helpers ───────────────────────────────────────────────────────────
+    return { success: true };
+  } catch (err: any) {
+    console.error("[processCarReturn] Unexpected error:", err);
+    return {
+      success: false,
+      error: err.message || "Failed to process return.",
+    };
+  }
+} // ─── M-Pesa Helpers ───────────────────────────────────────────────────────────
 
 function getMpesaBaseUrl() {
   return process.env.MPESA_ENVIRONMENT === "live"

@@ -125,12 +125,15 @@ ${customNotes || "None."}
     if (totalAdditionalFees <= 0) {
       setPaymentState("processing");
       try {
-        await processCarReturn(
+        const res = await processCarReturn(
           selectedBooking.id,
           selectedBooking.car_id,
           compiledNotes,
           0,
         );
+
+        if (!res.success) throw new Error(res.error); // Catch the error safely
+
         setPaymentState("success");
         setTimeout(() => {
           setBookings((prev) =>
