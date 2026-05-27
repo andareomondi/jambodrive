@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, Suspense } from "react";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { CarCard } from "@/components/cars/car-card";
 import { CarFilters, FilterState } from "@/components/cars/car-filters";
@@ -121,7 +120,6 @@ function CarsContent() {
 export default function CarsPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
       <Suspense
         fallback={
           <div className="flex items-center justify-center flex-1 h-96">

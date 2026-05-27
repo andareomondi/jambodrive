@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -53,8 +52,6 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
-
       <main className="flex-1">
         {/* Hero Section */}
         <section className="py-12 md:py-16 px-4 sm:px-6 lg:px-8 bg-secondary/50">

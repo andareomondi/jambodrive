@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSupabase } from "@/components/auth/supabase-provider";
@@ -391,7 +390,6 @@ ${customNotes || "None."}
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-background">
-      <Navbar />
       <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6 mt-10 pb-20">
         <div>
           <h1 className="text-3xl font-bold">Facilitator Dashboard</h1>

@@ -20,43 +20,25 @@ const carTypes = [
   { id: "wedding", name: "Wedding" },
 ];
 
-export function Navbar() {
-  const [user, setUser] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+interface NavbarProps {
+  initialUser: any;
+  initialIsAdmin: boolean;
+}
+
+export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
+  // Initialize state directly with server-side data (No flickering!)
+  const [user, setUser] = useState<any>(initialUser);
+  const [isAdmin, setIsAdmin] = useState(initialIsAdmin);
+
   const [isOpen, setIsOpen] = useState(false);
   const [isFleetOpen, setIsFleetOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
   const fleetRef = useRef<HTMLDivElement>(null);
   const supabase = useSupabase();
 
   useEffect(() => {
-    // Check initial session
-    const checkSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.supabase.auth.getSession();
-
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-
-      if (currentUser) {
-        const { data } = await supabase.supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", currentUser.id)
-          .single();
-        setIsAdmin(data?.role === "admin");
-      } else {
-        setIsAdmin(false);
-      }
-
-      setLoading(false);
-    };
-
-    checkSession();
-
-    // Listen for auth changes
+    // Sync with client-side auth state changes (login, logout, token refresh)
     const {
       data: { subscription },
     } = supabase.supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -73,13 +55,12 @@ export function Navbar() {
       } else {
         setIsAdmin(false);
       }
-
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [supabase.supabase]);
 
+  // Window Resize Listener
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) setIsOpen(false);
@@ -88,12 +69,14 @@ export function Navbar() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Page Scroll Listener
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 4);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Dropdown Click-Outside Listener
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (fleetRef.current && !fleetRef.current.contains(e.target as Node)) {
@@ -119,7 +102,7 @@ export function Navbar() {
     setIsFleetOpen(false);
   };
 
-  const isLoggedIn = !loading && !!user;
+  const isLoggedIn = !!user;
 
   return (
     <nav
@@ -146,15 +129,16 @@ export function Navbar() {
             <span className="font-bold text-xl text-foreground">Cosmara</span>
           </Link>
 
-          {/* Desktop Nav */}
+          {/* Desktop Nav Links */}
           <div className="hidden md:flex items-center gap-8">
             <Link
               href="/"
-              className="text-foreground hover:text-accent transition-colors font-small "
+              className="text-foreground hover:text-accent transition-colors text-sm"
             >
               Home
             </Link>
 
+            {/* Fleet Dropdown */}
             <div
               ref={fleetRef}
               className="relative"
@@ -162,7 +146,7 @@ export function Navbar() {
               onMouseLeave={() => setIsFleetOpen(false)}
             >
               <button
-                className="flex items-center gap-1 text-foreground hover:text-accent transition-colors font-small  py-4"
+                className="flex items-center gap-1 text-foreground hover:text-accent transition-colors text-sm py-4"
                 onClick={() => setIsFleetOpen((v) => !v)}
                 aria-expanded={isFleetOpen}
                 aria-haspopup="true"
@@ -182,7 +166,7 @@ export function Navbar() {
                     <Link
                       key={type.id}
                       href={`/cars/category/${type.id}`}
-                      className="block px-4 py-2.5  hover:bg-secondary hover:text-accent transition-colors"
+                      className="block px-4 py-2.5 hover:bg-secondary hover:text-accent transition-colors text-sm"
                       onClick={closeAll}
                     >
                       {type.name}
@@ -194,27 +178,28 @@ export function Navbar() {
 
             <Link
               href="/cars"
-              className="text-foreground hover:text-accent transition-colors font-small "
+              className="text-foreground hover:text-accent transition-colors text-sm"
             >
               Browse All
             </Link>
 
-            {!loading && isAdmin && (
+            {isAdmin && (
               <Link
                 href="/dashboard/admin"
-                className="text-foreground hover:text-accent transition-colors font-small"
+                className="text-foreground hover:text-accent transition-colors text-sm"
               >
                 Super Admin
               </Link>
             )}
+
             <Link
               href="/contact"
-              className="text-foreground hover:text-accent transition-colors font-small "
+              className="text-foreground hover:text-accent transition-colors text-sm"
             >
               Contact Us
             </Link>
-            {/* Phone number */}
-            <div className="lg:flex items-center  ">
+
+            <div className="lg:flex items-center text-sm">
               <a
                 href="tel:+2547585009431"
                 className="hover:text-accent transition-colors"
@@ -225,14 +210,9 @@ export function Navbar() {
             </div>
           </div>
 
-          {/* Desktop Auth */}
+          {/* Desktop Auth Section */}
           <div className="hidden md:flex items-center gap-3 w-[180px] justify-end">
-            {loading ? (
-              <div className="flex gap-3 w-full justify-end">
-                <div className="h-9 w-20 rounded-md bg-muted animate-pulse" />
-                <div className="h-9 w-20 rounded-md bg-muted animate-pulse" />
-              </div>
-            ) : isLoggedIn ? (
+            {isLoggedIn ? (
               <>
                 <Button variant="outline" size="sm" asChild>
                   <Link href="/dashboard">Profile</Link>
@@ -261,7 +241,7 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile Toggle */}
+          {/* Mobile Menu Toggle */}
           <button
             onClick={() => setIsOpen((v) => !v)}
             className="md:hidden p-2 hover:bg-secondary rounded-md transition-colors"
@@ -272,14 +252,14 @@ export function Navbar() {
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu Expansion */}
         {isOpen && (
           <div className="md:hidden pb-6 border-t border-border bg-background">
             <div className="flex flex-col pt-4 gap-1">
               <Link
                 href="/"
                 onClick={closeAll}
-                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md "
+                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md text-sm"
               >
                 Home
               </Link>
@@ -288,13 +268,13 @@ export function Navbar() {
                 <div className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground border-t border-border mt-2">
                   Our Fleet
                 </div>
-                <div className="grid grid-cols-2 gap-1 px-2">
+                <div className="grid grid-cols-2 gap-1 px-2 text-sm">
                   {carTypes.map((type) => (
                     <Link
                       key={type.id}
                       href={`/cars/category/${type.id}`}
                       onClick={closeAll}
-                      className="px-3 py-2  text-foreground hover:bg-secondary rounded-md"
+                      className="px-3 py-2 text-foreground hover:bg-secondary rounded-md"
                     >
                       {type.name}
                     </Link>
@@ -305,16 +285,16 @@ export function Navbar() {
               <Link
                 href="/cars"
                 onClick={closeAll}
-                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md border-t border-border mt-2 "
+                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md border-t border-border mt-2 text-sm"
               >
                 Browse All Cars
               </Link>
 
-              {!loading && isAdmin && (
+              {isAdmin && (
                 <Link
                   href="/dashboard/admin"
                   onClick={closeAll}
-                  className="px-3 py-3 text-foreground hover:bg-secondary rounded-md "
+                  className="px-3 py-3 text-foreground hover:bg-secondary rounded-md text-sm"
                 >
                   Super Admin
                 </Link>
@@ -323,12 +303,12 @@ export function Navbar() {
               <Link
                 href="/contact"
                 onClick={closeAll}
-                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md border-t border-border mt-2 "
+                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md border-t border-border mt-2 text-sm"
               >
                 Contact Us
               </Link>
-              {/* Phone number */}
-              <div className="px-3 py-3  border-t border-border mt-2">
+
+              <div className="px-3 py-3 border-t border-border mt-2 text-sm">
                 <a
                   href="tel:+2547585009431"
                   className="hover:text-accent transition-colors"
@@ -339,13 +319,9 @@ export function Navbar() {
               </div>
             </div>
 
+            {/* Mobile Auth Actions */}
             <div className="mt-4 pt-4 border-t border-border flex gap-2 px-1">
-              {loading ? (
-                <>
-                  <div className="flex-1 h-9 rounded-md bg-muted animate-pulse" />
-                  <div className="flex-1 h-9 rounded-md bg-muted animate-pulse" />
-                </>
-              ) : isLoggedIn ? (
+              {isLoggedIn ? (
                 <>
                   <Button variant="outline" asChild className="flex-1">
                     <Link href="/dashboard" onClick={closeAll}>

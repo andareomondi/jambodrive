@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { CarCard } from "@/components/cars/car-card";
 import { EmptyState } from "@/components/common/empty-state";
@@ -45,8 +44,6 @@ export default function CategoryPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
-
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-12">
           <h1 className="text-4xl font-bold text-foreground mb-2">

@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Navbar } from "@/components/layout/navbar";
 import { DepositFundsModal } from "@/components/modals/deposit-funds-modal";
 import { ManageBookingModal } from "@/components/modals/manage-booking-modal";
 import { BookingSummaryModal } from "@/components/modals/booking-summary-modal";
@@ -115,8 +114,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-background">
-      <Navbar />
-
       <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 space-y-10">
         {/* HEADER */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

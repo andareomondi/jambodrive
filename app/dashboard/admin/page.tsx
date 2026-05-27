@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -431,7 +430,6 @@ export default function AdminDashboardPage() {
     <TooltipProvider>
       <div className="flex h-screen bg-slate-50 dark:bg-background">
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Navbar />
           <div className="flex-1 overflow-auto">
             <main className="p-4 sm:p-6 md:p-8">
               <div className="max-w-7xl mx-auto space-y-8">

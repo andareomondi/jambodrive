@@ -1,5 +1,7 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import SupabaseProvider from "@/components/auth/supabase-provider";
+import { Navbar } from "@/components/layout/navbar";
+import { createClient } from "@/lib/supabase/server";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
@@ -59,15 +61,32 @@ export const viewport: Viewport = {
   themeColor: "#D07D50",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
+  let isAdmin = false;
+  if (user) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    isAdmin = data?.role === "admin";
+  }
   return (
     <html lang="en">
       <body className="font-sans antialiased">
-        <SupabaseProvider>{children}</SupabaseProvider>
+        <SupabaseProvider>
+          <Navbar initialUser={user} initialAdmin={isAdmin} />
+          {children}
+        </SupabaseProvider>
         <Toaster position="top-right" />
       </body>
     </html>

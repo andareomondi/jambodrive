@@ -2,7 +2,6 @@
 
 import { useSupabase } from "@/components/auth/supabase-provider";
 import { Footer } from "@/components/layout/footer";
-import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -193,7 +192,6 @@ function LoginFormContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
       <div className="flex-1 max-w-md mx-auto w-full px-4 py-12 flex items-center">
         <Card className="w-full p-8 shadow-medium">
           <div className="text-center mb-8">

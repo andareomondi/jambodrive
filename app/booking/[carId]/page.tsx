@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import {
   BookingForm,
@@ -219,7 +218,6 @@ export default function BookingPage() {
   if (loading || !car || !car.available) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           {loading ? (
             <Loader2 className="w-8 h-8 text-accent animate-spin" />
@@ -243,7 +241,6 @@ export default function BookingPage() {
   if (paymentState === "success" && bookingData) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar />
         <div className="flex-1 flex items-center justify-center px-4 py-16">
           <div className="max-w-md w-full text-center space-y-6">
             <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mx-auto border border-green-500/20">
@@ -430,7 +427,6 @@ export default function BookingPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/20">
-      <Navbar />
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
         <PaymentModal />
 

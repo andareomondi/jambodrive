@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Metadata } from "next";
 import { Check, Shield, Clock, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { CarCard } from "@/components/cars/car-card";
 
@@ -30,7 +29,7 @@ async function getFeaturedCars() {
 
   try {
     const allCars = await db.getCars();
-    return allCars.filter((c) => c.type === "ssuv").slice(0, 3);
+    return allCars.filter((c) => c.price > 30000).slice(0, 6);
   } catch (error) {
     console.error("Failed to fetch cars:", error);
     return [];
@@ -42,8 +41,6 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background selection:bg-orange-500/30">
-      <Navbar />
-
       <HeroCarousel />
 
       <section className="py-24 relative overflow-hidden">

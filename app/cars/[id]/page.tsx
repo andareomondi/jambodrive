@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { CarCard } from "@/components/cars/car-card";
 import { Button } from "@/components/ui/button";
@@ -83,7 +82,6 @@ Could you please provide more details on the booking process?`;
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
             <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
@@ -97,7 +95,6 @@ Could you please provide more details on the booking process?`;
   if (!car) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <EmptyState
             title="Car Not Found"
@@ -112,8 +109,6 @@ Could you please provide more details on the booking process?`;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
-
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
         <Link
           href="/cars"
