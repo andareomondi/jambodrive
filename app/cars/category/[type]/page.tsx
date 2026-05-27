@@ -1,41 +1,44 @@
-"use client";
-
-import { useState, useMemo, useEffect } from "react";
-import { useParams } from "next/navigation";
-import { Footer } from "@/components/layout/footer";
+import { DatabaseService } from "@/lib/services";
+import { createClient } from "@/lib/supabase/server"; // Your server-side Supabase client helper
 import { CarCard } from "@/components/cars/car-card";
 import { EmptyState } from "@/components/common/empty-state";
+import { Footer } from "@/components/layout/footer";
 import { Car as CarIcon } from "lucide-react";
-import { useSupabase } from "@/components/auth/supabase-provider";
-import { DatabaseService } from "@/lib/services";
-import type { Car } from "@/lib/mock-data";
+import { Metadata } from "next";
 
-export default function CategoryPage() {
-  const params = useParams();
-  const type = params.type as string;
+type Props = {
+  params: Promise<{ type: string }>;
+};
 
-  const [cars, setCars] = useState<Car[]>([]);
-  const [loading, setLoading] = useState(true);
-  const supabase = useSupabase();
-  const db = new DatabaseService(supabase.supabase);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { type } = await params;
+  const title =
+    type === "ssuv"
+      ? "Luxury SUV"
+      : type.charAt(0).toUpperCase() + type.slice(1);
 
-  useEffect(() => {
-    const fetchCars = async () => {
-      try {
-        const allCars = await db.getCars();
-        const filtered = allCars.filter(
-          (car) => car.type.toLowerCase() === type.toLowerCase(),
-        );
-        setCars(filtered);
-      } catch (error) {
-        console.error("Error fetching fleet:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  return {
+    title: `${title} Fleet | Cozy Mobility Tours`,
+    description: `Discover and book our curated selection of premium ${title} vehicles.`,
+  };
+}
 
-    fetchCars();
-  }, [db, type]);
+export default async function CategoryPage({ params }: Props) {
+  const { type } = await params;
+
+  // Initialize server-side Supabase connection
+  const supabase = await createClient();
+  const db = new DatabaseService(supabase);
+
+  let cars = [];
+  try {
+    const allCars = await db.getCars();
+    cars = allCars.filter(
+      (car) => car.type.toLowerCase() === type.toLowerCase(),
+    );
+  } catch (error) {
+    console.error("Error fetching category fleet:", error);
+  }
 
   const displayTitle =
     type === "ssuv"
@@ -54,11 +57,7 @@ export default function CategoryPage() {
           </p>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent" />
-          </div>
-        ) : cars.length > 0 ? (
+        {cars.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {cars.map((car) => (
               <CarCard key={car.id} car={car} />
@@ -73,7 +72,6 @@ export default function CategoryPage() {
           />
         )}
       </main>
-
       <Footer />
     </div>
   );
