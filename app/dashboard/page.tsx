@@ -1,51 +1,36 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DatabaseService } from "@/lib/services";
-import { DashboardClientWrapper } from "@/components/dashboard/dashboard-client-wrapper";
-import { Metadata } from "next";
+import { DashboardClient } from "./dashboard-client";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "User Dashboard | JamboDrive",
+  title: "My Dashboard",
   description:
-    "Manage your premium active rentals, payment history, and profile settings.",
+    "View and manage your car hire bookings, profile, and rental history.",
+  robots: { index: false, follow: false },
 };
 
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  // Fetch session directly on the server
+  // getUser() contacts the Supabase Auth server to verify the token —
+  // unlike getSession() which only reads from cookies and can be spoofed.
   const {
     data: { user },
     error,
   } = await supabase.auth.getUser();
 
-  // Instant server-side protection
-  if (!user || error) {
+  if (error || !user) {
     redirect("/auth/login");
   }
 
   const db = new DatabaseService(supabase);
-  let profile = null;
-  let bookings = [];
 
-  try {
-    // Parallel fetch profile and bookings on the server side
-    const [profileData, bookingsData] = await Promise.all([
-      db.getUserProfile(user.id),
-      db.getUserBookings(user.id),
-    ]);
-    profile = profileData;
-    bookings = bookingsData;
-  } catch (err) {
-    console.error("Error fetching dashboard payload:", err);
-  }
+  const [profile, bookings] = await Promise.all([
+    db.getUserProfile(user.id),
+    db.getUserBookings(user.id),
+  ]);
 
-  // Pass server data cleanly down into a client bundle that opens modals/interacts
-  return (
-    <DashboardClientWrapper
-      user={user}
-      initialProfile={profile}
-      initialBookings={bookings}
-    />
-  );
+  return <DashboardClient profile={profile} bookings={bookings} />;
 }

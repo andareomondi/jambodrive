@@ -2,13 +2,16 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { BadgeStatus } from "@/components/common/badge-status";
 import { CarModal } from "@/components/modals/car-modal";
 import { BookingModal } from "@/components/modals/BookingModal";
 import { Input } from "@/components/ui/input";
 import { useSupabase } from "@/components/auth/supabase-provider";
+import { DatabaseService } from "@/lib/services";
 import type { Car, Booking, User } from "@/lib/mock-data";
 import {
   Users,
@@ -17,12 +20,15 @@ import {
   Car as CarIcon,
   Search,
   Plus,
+  Edit,
+  Trash2,
   MessageCircle,
   Filter,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   ChevronUp,
+  ArrowRight,
   AlertCircle,
   RotateCcw,
   Receipt,
@@ -44,7 +50,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// Inline Pagination Hook
+// ── Pagination hook ────────────────────────────────────────────────────────────
 function usePagination<T>(items: T[], pageSize: number) {
   const [page, setPage] = useState(1);
   useEffect(() => {
@@ -59,6 +65,7 @@ function usePagination<T>(items: T[], pageSize: number) {
   return { paged, page: safePage, totalPages, setPage };
 }
 
+// ── Pagination UI ──────────────────────────────────────────────────────────────
 interface PaginationProps {
   page: number;
   totalPages: number;
@@ -77,7 +84,6 @@ function Pagination({
   if (totalPages <= 1) return null;
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, totalItems);
-
   const getPages = () => {
     const pages: (number | "…")[] = [];
     if (totalPages <= 7) {
@@ -96,7 +102,6 @@ function Pagination({
     }
     return pages;
   };
-
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
       <p className="text-xs text-muted-foreground">
@@ -154,26 +159,25 @@ const BOOKINGS_PAGE_SIZE = 8;
 const USERS_PAGE_SIZE = 6;
 const FLEET_PAGE_SIZE = 6;
 
-interface AdminClientWrapperProps {
-  user: any;
+// ── Props ──────────────────────────────────────────────────────────────────────
+interface AdminDashboardClientProps {
   initialCars: Car[];
   initialBookings: Booking[];
-  initialProfiles: User[];
+  initialUsers: User[];
 }
 
-export function AdminClientWrapper({
+export function AdminDashboardClient({
   initialCars,
   initialBookings,
-  initialProfiles,
-}: AdminClientWrapperProps) {
+  initialUsers,
+}: AdminDashboardClientProps) {
   const supabase = useSupabase();
+  const db = new DatabaseService(supabase.supabase);
 
-  // Hydrate local layout state with pre-fetched data
   const [cars, setCars] = useState<Car[]>(initialCars);
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
-  const [users, setUsers] = useState<User[]>(initialProfiles);
+  const [users, setUsers] = useState<User[]>(initialUsers);
 
-  // Layout presentation controls
   const [carModalOpen, setCarModalOpen] = useState(false);
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -185,37 +189,23 @@ export function AdminClientWrapper({
     null,
   );
 
+  // ── Stats ────────────────────────────────────────────────────────────────────
   const revenueStatuses = ["confirmed", "completed"];
-
-  // Metrics Evaluations
   const totalCars = cars.length;
   const totalBookings = bookings.length;
   const totalUsers = users.filter((u) => u.role === "customer").length;
+  const totalRevenue = bookings
+    .filter((b) => revenueStatuses.includes(b.status))
+    .reduce((sum, b) => sum + b.total_price, 0);
+  const totalAdditionalFees = bookings
+    .filter((b) => b.additional_fee_status === "confirmed")
+    .reduce(
+      (sum, b) => sum + (Number((b as any).additional_fee_amount) || 0),
+      0,
+    );
+  const totalFailed = bookings.filter((b) => b.status === "failed").length;
 
-  const totalRevenue = useMemo(
-    () =>
-      bookings
-        .filter((b) => revenueStatuses.includes(b.status))
-        .reduce((sum, b) => sum + b.total_price, 0),
-    [bookings],
-  );
-
-  const totalAdditionalFees = useMemo(
-    () =>
-      bookings
-        .filter((b) => b.additional_fee_status === "confirmed")
-        .reduce(
-          (sum, b) => sum + (Number((b as any).additional_fee_amount) || 0),
-          0,
-        ),
-    [bookings],
-  );
-
-  const totalFailed = useMemo(
-    () => bookings.filter((b) => b.status === "failed").length,
-    [bookings],
-  );
-
+  // ── Filtered bookings ────────────────────────────────────────────────────────
   const filteredBookings = useMemo(
     () =>
       bookings.filter((booking) => {
@@ -237,8 +227,19 @@ export function AdminClientWrapper({
     filteredBookings,
     BOOKINGS_PAGE_SIZE,
   );
+  const usersPagination = usePagination(users, USERS_PAGE_SIZE);
+  const fleetPagination = usePagination(cars, FLEET_PAGE_SIZE);
 
-  // Operations Handlers
+  // ── Mutations ────────────────────────────────────────────────────────────────
+  const refreshCars = useCallback(
+    () => db.getCars().then(setCars).catch(console.error),
+    [],
+  );
+  const refreshBookings = useCallback(
+    () => db.getBookings().then(setBookings).catch(console.error),
+    [],
+  );
+
   const handleBookingStatus = useCallback(
     async (id: string, status: "confirmed" | "cancelled") => {
       const { data: bookingData, error: bookingError } = await supabase.supabase
@@ -259,7 +260,11 @@ export function AdminClientWrapper({
           .update({ available: false })
           .eq("id", bookingData.car_id);
 
-        if (!carError) {
+        if (carError) {
+          toast.error(
+            "Booking confirmed, but failed to update car availability.",
+          );
+        } else {
           setCars((prev) =>
             prev.map((c) =>
               c.id === bookingData.car_id ? { ...c, available: false } : c,
@@ -275,33 +280,42 @@ export function AdminClientWrapper({
         prev.map((b) => (b.id === id ? { ...b, status } : b)),
       );
     },
-    [supabase],
+    [cars],
   );
 
-  const handleDismissFailed = useCallback(
-    async (id: string) => {
-      const { error } = await supabase.supabase
-        .from("bookings")
-        .update({ status: "cancelled" })
-        .eq("id", id);
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-      toast.success("Failed booking dismissed.");
-      setBookings((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)),
-      );
-    },
-    [supabase],
-  );
+  const handleDismissFailed = useCallback(async (id: string) => {
+    const { error } = await supabase.supabase
+      .from("bookings")
+      .update({ status: "cancelled" })
+      .eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Failed booking dismissed.");
+    setBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)),
+    );
+  }, []);
+
+  const handleRoleChange = useCallback(async (userId: string, role: string) => {
+    const { error } = await supabase.supabase
+      .from("profiles")
+      .update({ role })
+      .eq("id", userId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Role updated.");
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
+  }, []);
 
   const initiateWhatsApp = useCallback(
     (phoneNumber: string, bookingDetails: any) => {
       let formatted = phoneNumber.replace(/\D/g, "");
       if (formatted.startsWith("0")) formatted = "254" + formatted.substring(1);
       else if (formatted.startsWith("7")) formatted = "254" + formatted;
-
       const message = encodeURIComponent(
         `Hello, We have received your booking and confirmed it.\n\n*Booking Details:*\n🚗 Vehicle: ${bookingDetails.car_name}\n📅 Pickup: ${new Date(bookingDetails.pickup_date).toLocaleDateString()}\n📍 Location: ${bookingDetails.pickup_location}\n💰 Total: KES ${bookingDetails.total_price}\n\nPlease let us know if you have any questions!`,
       );
@@ -310,9 +324,31 @@ export function AdminClientWrapper({
     [],
   );
 
-  const toggleExpandRow = (id: string) => {
-    setExpandedBookingId((prev) => (prev === id ? null : id));
+  const handleWhatsApp = useCallback((phone: string) => {
+    if (!phone) return;
+    let cleaned = phone.replace(/\D/g, "");
+    if (cleaned.startsWith("0")) cleaned = "254" + cleaned.substring(1);
+    else if (cleaned.startsWith("7")) cleaned = "254" + cleaned;
+    window.open(
+      `https://wa.me/${cleaned}?text=${encodeURIComponent("Hello, this is the admin from Cozy Mobility Tours.")}`,
+      "_blank",
+    );
+  }, []);
+
+  const handleAddCar = () => {
+    setSelectedCar(null);
+    setCarModalOpen(true);
   };
+  const handleEditCar = (car: Car) => {
+    setSelectedCar(car);
+    setCarModalOpen(true);
+  };
+  const openDeleteConfirm = (car: Car) => {
+    setCarToDelete(car);
+    setDeleteModalOpen(true);
+  };
+  const toggleExpandRow = (id: string) =>
+    setExpandedBookingId((prev) => (prev === id ? null : id));
 
   return (
     <TooltipProvider>
@@ -321,7 +357,7 @@ export function AdminClientWrapper({
           <div className="flex-1 overflow-auto">
             <main className="p-4 sm:p-6 md:p-8">
               <div className="max-w-7xl mx-auto space-y-8">
-                {/* HEADER */}
+                {/* ── HEADER ──────────────────────────────────────────── */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
                     <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
@@ -333,7 +369,7 @@ export function AdminClientWrapper({
                   </div>
                 </div>
 
-                {/* STATS MATRIX */}
+                {/* ── STATS ───────────────────────────────────────────── */}
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
                   {[
                     {
@@ -400,7 +436,7 @@ export function AdminClientWrapper({
                   })}
                 </div>
 
-                {/* FAILURE ALERTS */}
+                {/* ── FAILED PAYMENTS BANNER ──────────────────────────── */}
                 {totalFailed > 0 && (
                   <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-destructive/5 border border-destructive/20 text-destructive">
                     <AlertCircle className="w-5 h-5 shrink-0" />
@@ -417,7 +453,7 @@ export function AdminClientWrapper({
                   </div>
                 )}
 
-                {/* BOOKINGS CONTROLS */}
+                {/* ── BOOKINGS ────────────────────────────────────────── */}
                 <Card className="shadow-sm border-none bg-white dark:bg-card rounded-2xl overflow-hidden">
                   <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
@@ -459,7 +495,6 @@ export function AdminClientWrapper({
                     </div>
                   </div>
 
-                  {/* DATA TABLE */}
                   <div className="overflow-x-auto">
                     <Table className="min-w-[900px]">
                       <TableHeader className="bg-slate-50/50 dark:bg-slate-900/20">
@@ -492,11 +527,7 @@ export function AdminClientWrapper({
                           bookingsPagination.paged.map((booking) => (
                             <React.Fragment key={booking.id}>
                               <TableRow
-                                className={`border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer ${
-                                  booking.status === "failed"
-                                    ? "bg-destructive/5 dark:bg-destructive/10"
-                                    : ""
-                                }`}
+                                className={`border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer ${booking.status === "failed" ? "bg-destructive/5 dark:bg-destructive/10" : ""}`}
                                 onClick={() => toggleExpandRow(booking.id)}
                               >
                                 <TableCell className="font-medium text-foreground whitespace-nowrap pl-6">
@@ -570,7 +601,6 @@ export function AdminClientWrapper({
                                         </Button>
                                       </>
                                     )}
-
                                     {booking.status === "confirmed" && (
                                       <Button
                                         variant="outline"
@@ -602,7 +632,6 @@ export function AdminClientWrapper({
                                         Initiate
                                       </Button>
                                     )}
-
                                     {booking.status === "failed" && (
                                       <>
                                         {(booking as any)
@@ -655,15 +684,159 @@ export function AdminClientWrapper({
                                   </div>
                                 </TableCell>
                               </TableRow>
+
+                              {/* Expanded Row */}
+                              {expandedBookingId === booking.id && (
+                                <TableRow className="border-0 hover:bg-transparent">
+                                  <TableCell colSpan={7} className="p-0 pb-2">
+                                    <div className="mx-4 mb-2 rounded-b-xl border border-t-2 border-t-accent/60 border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/40 overflow-hidden">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 p-4">
+                                        {/* Logistics */}
+                                        <div className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-card p-4 space-y-2.5">
+                                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                            <Calendar className="h-3.5 w-3.5" />{" "}
+                                            Logistics
+                                          </p>
+                                          <div className="space-y-1.5 text-sm">
+                                            <p className="text-muted-foreground">
+                                              <span className="font-medium text-foreground">
+                                                Pickup:{" "}
+                                              </span>
+                                              {booking.pickup_location}
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                              <span className="font-medium text-foreground">
+                                                Return:{" "}
+                                              </span>
+                                              {booking.return_location}
+                                            </p>
+                                            {(booking as any).notes && (
+                                              <p className="text-muted-foreground pt-1 border-t border-slate-100 dark:border-slate-800">
+                                                <span className="font-medium text-foreground">
+                                                  Notes:{" "}
+                                                </span>
+                                                {(booking as any).notes}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                        {/* Initial Payment */}
+                                        <div className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-card p-4 space-y-2.5">
+                                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                            <DollarSign className="h-3.5 w-3.5" />{" "}
+                                            Initial Payment
+                                          </p>
+                                          <div className="space-y-1.5 text-sm">
+                                            <p className="text-muted-foreground">
+                                              <span className="font-medium text-foreground">
+                                                MPesa Receipt:{" "}
+                                              </span>
+                                              {(booking as any)
+                                                .mpesa_receipt_number || (
+                                                <span className="italic text-slate-400">
+                                                  N/A
+                                                </span>
+                                              )}
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                              <span className="font-medium text-foreground">
+                                                MPesa Phone:{" "}
+                                              </span>
+                                              {(booking as any).mpesa_phone || (
+                                                <span className="italic text-slate-400">
+                                                  N/A
+                                                </span>
+                                              )}
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                              <span className="font-medium text-foreground">
+                                                Amount Paid:{" "}
+                                              </span>
+                                              {(booking as any).paid_amount ? (
+                                                `Ksh ${Number((booking as any).paid_amount).toLocaleString()}`
+                                              ) : (
+                                                <span className="italic text-slate-400">
+                                                  N/A
+                                                </span>
+                                              )}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        {/* Extra Fees */}
+                                        <div className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-card p-4 space-y-2.5 sm:col-span-2 xl:col-span-1">
+                                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                            <Receipt className="h-3.5 w-3.5" />{" "}
+                                            Extra Fees
+                                          </p>
+                                          {(booking as any)
+                                            .additional_fee_amount ? (
+                                            <div
+                                              className={`rounded-lg border p-3 text-sm space-y-1 ${(booking as any).additional_fee_status === "confirmed" ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800" : "bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800"}`}
+                                            >
+                                              <p className="font-medium text-foreground">
+                                                Ksh{" "}
+                                                {Number(
+                                                  (booking as any)
+                                                    .additional_fee_amount,
+                                                ).toLocaleString()}{" "}
+                                                collected
+                                              </p>
+                                              <p className="text-muted-foreground text-xs">
+                                                <span className="font-medium text-foreground">
+                                                  Status:{" "}
+                                                </span>
+                                                {
+                                                  (booking as any)
+                                                    .additional_fee_status
+                                                }
+                                              </p>
+                                              <p className="text-muted-foreground text-xs">
+                                                <span className="font-medium text-foreground">
+                                                  Receipt:{" "}
+                                                </span>
+                                                {(booking as any)
+                                                  .additional_fee_receipt || (
+                                                  <span className="italic">
+                                                    Pending
+                                                  </span>
+                                                )}
+                                              </p>
+                                              {(booking as any)
+                                                .additional_fee_reason && (
+                                                <p className="text-xs text-destructive pt-1 border-t border-destructive/20">
+                                                  <span className="font-medium">
+                                                    Error:{" "}
+                                                  </span>
+                                                  {
+                                                    (booking as any)
+                                                      .additional_fee_reason
+                                                  }
+                                                </p>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            <p className="text-sm text-muted-foreground italic">
+                                              No extra return fees recorded.
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )}
                             </React.Fragment>
                           ))
                         ) : (
                           <TableRow>
                             <TableCell
                               colSpan={7}
-                              className="text-center p-8 text-muted-foreground"
+                              className="text-center py-12 text-muted-foreground"
                             >
-                              No matching bookings found.
+                              <div className="flex flex-col items-center gap-2">
+                                <Search className="h-8 w-8 text-slate-300 dark:text-slate-700" />
+                                <p>No bookings found</p>
+                              </div>
                             </TableCell>
                           </TableRow>
                         )}
@@ -678,10 +851,213 @@ export function AdminClientWrapper({
                     pageSize={BOOKINGS_PAGE_SIZE}
                   />
                 </Card>
+
+                {/* ── USERS ───────────────────────────────────────────── */}
+                <Card className="shadow-sm border-none bg-white dark:bg-card rounded-2xl overflow-hidden">
+                  <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800">
+                    <h2 className="text-xl font-bold text-foreground">
+                      User Directory
+                    </h2>
+                  </div>
+                  <div className="p-4 sm:p-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {usersPagination.paged.map((u) => (
+                        <div
+                          key={u.id}
+                          className="group border border-slate-100 dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 transition-all hover:shadow-md hover:border-accent/30 bg-slate-50/50 dark:bg-slate-900/20"
+                        >
+                          <div className="flex items-center gap-4 w-full sm:w-auto">
+                            <div className="relative w-14 h-14 rounded-full overflow-hidden flex-shrink-0 bg-slate-200 dark:bg-slate-800 flex items-center justify-center shadow-sm">
+                              {u.profile_image ? (
+                                <Image
+                                  src={u.profile_image}
+                                  alt={u.full_name ?? ""}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <Users className="h-6 w-6 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-foreground truncate">
+                                {u.full_name}
+                              </h3>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {u.email}
+                              </p>
+                              <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] uppercase tracking-wider font-semibold bg-white dark:bg-slate-900"
+                                >
+                                  {u.role?.replace(/_/g, " ")}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {u.total_bookings} trips
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
+                            <Button
+                              size="sm"
+                              className="flex-1 sm:flex-none bg-[#25D366] hover:bg-[#20bd5a] text-white gap-2 rounded-xl"
+                              onClick={() => handleWhatsApp(u.phone ?? "")}
+                            >
+                              <MessageCircle className="h-4 w-4" /> Message
+                            </Button>
+                            <select
+                              value={u.role ?? "customer"}
+                              onChange={(e) =>
+                                handleRoleChange(u.id, e.target.value)
+                              }
+                              className="flex-1 sm:flex-none text-xs px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-foreground focus:ring-2 focus:ring-accent/50 cursor-pointer"
+                            >
+                              <option value="customer">Customer</option>
+                              <option value="facilitator">Facilitator</option>
+                              <option value="admin">Super Admin</option>
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <Pagination
+                    page={usersPagination.page}
+                    totalPages={usersPagination.totalPages}
+                    onPageChange={usersPagination.setPage}
+                    totalItems={users.length}
+                    pageSize={USERS_PAGE_SIZE}
+                  />
+                </Card>
+
+                {/* ── FLEET ───────────────────────────────────────────── */}
+                <Card className="shadow-sm border-none bg-white dark:bg-card rounded-2xl overflow-hidden">
+                  <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <h2 className="text-xl font-bold text-foreground">
+                        Fleet Management
+                      </h2>
+                      <Button
+                        onClick={handleAddCar}
+                        className="w-full sm:w-auto bg-accent hover:bg-accent/90 rounded-xl"
+                      >
+                        <Plus className="h-4 w-4 mr-2" /> Add Vehicle
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="p-4 sm:p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {fleetPagination.paged.map((car) => (
+                        <div
+                          key={car.id}
+                          className="group rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+                        >
+                          <div className="relative h-48 w-full overflow-hidden bg-slate-200 dark:bg-slate-800">
+                            <img
+                              src={car.image}
+                              alt={car.name}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                            <div className="absolute top-3 right-3">
+                              <Badge
+                                className={`${car.available ? "bg-white/90 text-black" : "bg-black/80 text-white"} backdrop-blur-sm border-none shadow-sm`}
+                              >
+                                {car.available ? "Available" : "Rented"}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="p-5">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h3 className="font-bold text-lg text-foreground leading-tight">
+                                  {car.name}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                  {car.model}
+                                </p>
+                              </div>
+                              <p className="font-bold text-accent">
+                                Ksh {car.price}
+                                <span className="text-xs text-muted-foreground font-normal">
+                                  /d
+                                </span>
+                              </p>
+                            </div>
+                            <div className="mt-5 grid grid-cols-2 gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent"
+                                onClick={() => handleEditCar(car)}
+                              >
+                                <Edit className="h-3.5 w-3.5 mr-2" /> Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-transparent"
+                                onClick={() => openDeleteConfirm(car)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                              </Button>
+                            </div>
+                            <hr className="my-4" />
+                            <Link
+                              href={`/cars/${car.id}`}
+                              className="text-sm text-accent hover:underline flex items-center gap-1"
+                            >
+                              View Details{" "}
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <Pagination
+                    page={fleetPagination.page}
+                    totalPages={fleetPagination.totalPages}
+                    onPageChange={fleetPagination.setPage}
+                    totalItems={cars.length}
+                    pageSize={FLEET_PAGE_SIZE}
+                  />
+                </Card>
               </div>
             </main>
           </div>
         </div>
+
+        <DeleteCarModal
+          isOpen={deleteModalOpen}
+          onClose={() => {
+            setDeleteModalOpen(false);
+            setCarToDelete(null);
+          }}
+          onSuccess={refreshCars}
+          carId={carToDelete?.id ?? null}
+          carName={carToDelete?.name ?? ""}
+          imageUrls={[
+            ...(carToDelete?.image ? [carToDelete.image] : []),
+            ...(carToDelete?.images || []),
+          ]}
+        />
+        <CarModal
+          open={carModalOpen}
+          onOpenChange={setCarModalOpen}
+          car={selectedCar}
+          onSuccess={refreshCars}
+        />
+        <BookingModal
+          open={bookingModalOpen}
+          onOpenChange={setBookingModalOpen}
+          onSuccess={() => {
+            refreshCars();
+            refreshBookings();
+          }}
+        />
       </div>
     </TooltipProvider>
   );
