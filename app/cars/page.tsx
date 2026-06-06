@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { getCars } from "@/lib/services/cars";
-import { Footer } from "@/components/layout/footer";
 import { FilterableCarGrid } from "@/components/cars/filterable-car-grid"; 
 import { Metadata } from "next";
 import { Loader2 } from "lucide-react";
@@ -48,7 +47,6 @@ export default function CarsPage({
       >
         <FleetContent searchParams={searchParams} />
       </Suspense>
-      <Footer />
     </div>
   );
 }
