@@ -5,7 +5,6 @@ import { Check, Shield, Clock, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CarCard } from "@/components/cars/car-card";
 import { HeroCarousel } from "@/components/home/hero-carousel";
-import { FloatingSupport } from "@/components/home/floating-support";
 import { getAvailableCars } from "@/lib/services/cars";
 
 export const metadata: Metadata = {
@@ -128,7 +127,6 @@ export default function HomePage() {
       </section>
 
       {/* ── Floating support widget ── */}
-      <FloatingSupport />
     </div>
   );
 }

@@ -7,8 +7,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
-
-// ── Font ──────────────────────────────────────────────────────────────────────
+import { FloatingSupport } from "@/components/home/floating-support";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,7 +15,6 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-// ── Metadata ──────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = {
   title: {
@@ -62,14 +60,13 @@ export const metadata: Metadata = {
   },
 };
 
-// ── Viewport ──────────────────────────────────────────────────────────────────
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#D07D50", // matches --accent in globals.css
+  themeColor: "#D07D50", 
 };
 
 
@@ -113,6 +110,7 @@ export default function RootLayout({
             <NavbarServer />
           </Suspense>
           {children}
+          <FloatingSupport />
           <Footer />
           <Toaster richColors position="top-right" />
         </ThemeProvider>
