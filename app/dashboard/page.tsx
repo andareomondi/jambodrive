@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { DatabaseService } from "@/lib/services";
-import { DashboardClient } from "./dashboard-client";
+import { getProfileById } from "@/lib/services/profile";
+import { getUserBookings } from "@/lib/services/bookings";
+import { DashboardClient } from "@/components/dashboard/dashboard-client";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -11,11 +14,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function DashboardPage() {
+async function DashboardContent() {
   const supabase = await createClient();
 
-  // getUser() contacts the Supabase Auth server to verify the token —
-  // unlike getSession() which only reads from cookies and can be spoofed.
   const {
     data: { user },
     error,
@@ -25,12 +26,29 @@ export default async function DashboardPage() {
     redirect("/auth/login");
   }
 
-  const db = new DatabaseService(supabase);
-
   const [profile, bookings] = await Promise.all([
-    db.getUserProfile(user.id),
-    db.getUserBookings(user.id),
+    getProfileById(user.id),
+    getUserBookings(user.id),
   ]);
 
-  return <DashboardClient profile={profile} bookings={bookings} />;
+  return (
+    <>
+      <AuthGuard />
+      <DashboardClient profile={profile} bookings={bookings} />
+    </>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
+  );
 }

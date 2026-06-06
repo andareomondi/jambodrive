@@ -1,25 +1,101 @@
 "use client";
 
 import { useState } from "react";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, X, MessageCircle, Phone, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HelpSupportModal } from "@/components/modals/help-support-modal";
+import * as Dialog from "@radix-ui/react-dialog";
+
+const CONTACT_OPTIONS = [
+  {
+    icon: MessageCircle,
+    label: "WhatsApp",
+    description: "Chat with us instantly",
+    href: "https://wa.me/254758500943",
+    external: true,
+  },
+  {
+    icon: Phone,
+    label: "Call Us",
+    description: "+254 758 500943",
+    href: "tel:+254758500943",
+    external: false,
+  },
+  {
+    icon: Mail,
+    label: "Email",
+    description: "info@cosmara.co.ke",
+    href: "mailto:info@cosmara.co.ke",
+    external: false,
+  },
+] as const;
 
 export function FloatingSupport() {
-  const [helpModalOpen, setHelpModalOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   return (
-    <>
-      <Button
-        onClick={() => setHelpModalOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-2xl hover:scale-110 transition-all z-50 ring-4 ring-orange-600/20"
-        size="icon"
-        aria-label="Open support"
-      >
-        <HelpCircle className="h-6 w-6" />
-      </Button>
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      {/* Trigger */}
+      <Dialog.Trigger asChild>
+        <Button
+          className="fixed bottom-6 right-6 h-14 w-14 bg-accent hover:bg-accent/90 text-accent-foreground rounded-full shadow-2xl hover:scale-110 transition-all z-50 ring-4 ring-accent/20"
+          size="icon"
+          aria-label="Open support"
+        >
+          <HelpCircle className="h-6 w-6" />
+        </Button>
+      </Dialog.Trigger>
 
-      <HelpSupportModal open={helpModalOpen} onOpenChange={setHelpModalOpen} />
-    </>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+
+        <Dialog.Content className="fixed bottom-24 right-6 z-50 w-80 rounded-2xl border border-border bg-card shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2">
+
+          {/* Header */}
+          <div className="flex items-center justify-between p-5 border-b border-border">
+            <div>
+              <Dialog.Title className="font-semibold text-foreground">
+                Need help?
+              </Dialog.Title>
+              <Dialog.Description className="text-xs text-muted-foreground mt-0.5">
+                We're available 24/7
+              </Dialog.Description>
+            </div>
+            <Dialog.Close className="rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </Dialog.Close>
+          </div>
+
+          {/* Contact options */}
+          <div className="p-3 space-y-1.5">
+            {CONTACT_OPTIONS.map(({ icon: Icon, label, description, href, external }) => (
+              <a
+                key={label}
+                href={href}
+                target={external ? "_blank" : undefined}
+                rel={external ? "noopener noreferrer" : undefined}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-4 p-3 rounded-xl hover:bg-accent/10 transition-colors group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
+                  <Icon className="w-5 h-5 text-accent" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{label}</p>
+                  <p className="text-xs text-muted-foreground">{description}</p>
+                </div>
+              </a>
+            ))}
+          </div>
+
+          {/* Footer note */}
+          <div className="px-5 pb-4">
+            <p className="text-xs text-muted-foreground text-center">
+              Average response time: under 5 minutes
+            </p>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

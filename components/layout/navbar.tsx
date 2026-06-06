@@ -6,61 +6,70 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, ChevronDown, Phone } from "lucide-react";
 import { toast } from "sonner";
-import { useSupabase } from "@/components/auth/supabase-provider";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import type { User } from "@supabase/supabase-js";
 
-const carTypes = [
-  { id: "compact", name: "Compact" },
-  { id: "economy", name: "Economy" },
-  { id: "executive", name: "Executive" },
-  { id: "suv", name: "SUV" },
-  { id: "ssuv", name: "Luxury SUV" },
-  { id: "vans", name: "Vans" },
-  { id: "safari", name: "Safari" },
-  { id: "wedding", name: "Wedding" },
-];
+
+const CAR_TYPES = [
+  { id: "compact",   name: "Compact"    },
+  { id: "economy",   name: "Economy"    },
+  { id: "executive", name: "Executive"  },
+  { id: "suv",       name: "SUV"        },
+  { id: "ssuv",      name: "Luxury SUV" },
+  { id: "vans",      name: "Vans"       },
+  { id: "safari",    name: "Safari"     },
+  { id: "wedding",   name: "Wedding"    },
+] as const;
+
+const NAV_LINKS = [
+  { href: "/",       label: "Home"       },
+  { href: "/cars",   label: "Browse All" },
+  { href: "/contact",label: "Contact Us" },
+] as const;
+
 
 interface NavbarProps {
-  initialUser: any;
-  initialIsAdmin: boolean;
+  initialUser: User | null;
+  initialRole: string | null;
 }
 
-export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
-  // Initialize state directly with server-side data (No flickering!)
-  const [user, setUser] = useState<any>(initialUser);
-  const [isAdmin, setIsAdmin] = useState(initialIsAdmin);
+// ── Component ─────────────────────────────────────────────────────────────────
 
-  const [isOpen, setIsOpen] = useState(false);
+export function Navbar({ initialUser, initialRole }: NavbarProps) {
+  const [user, setUser]   = useState<User | null>(initialUser);
+  const [role, setRole]   = useState<string | null>(initialRole);
+  const [isOpen, setIsOpen]           = useState(false);
   const [isFleetOpen, setIsFleetOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [scrolled, setScrolled]       = useState(false);
 
   const fleetRef = useRef<HTMLDivElement>(null);
-  const supabase = useSupabase();
 
   useEffect(() => {
-    // Sync with client-side auth state changes (login, logout, token refresh)
-    const {
-      data: { subscription },
-    } = supabase.supabase.auth.onAuthStateChange(async (_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
+    const supabase = createClient();
 
-      if (currentUser) {
-        const { data } = await supabase.supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", currentUser.id)
-          .single();
-        setIsAdmin(data?.role === "admin");
-      } else {
-        setIsAdmin(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+
+        if (currentUser) {
+          const { data } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", currentUser.id)
+            .single();
+          setRole(data?.role ?? "customer");
+        } else {
+          setRole(null);
+        }
       }
-    });
+    );
 
     return () => subscription.unsubscribe();
-  }, [supabase.supabase]);
+  }, []);
 
-  // Window Resize Listener
+  // Close mobile menu on desktop resize
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) setIsOpen(false);
@@ -69,14 +78,14 @@ export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Page Scroll Listener
+  // Scroll shadow
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 4);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Dropdown Click-Outside Listener
+  // Fleet dropdown click-outside
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (fleetRef.current && !fleetRef.current.contains(e.target as Node)) {
@@ -88,8 +97,9 @@ export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
   }, []);
 
   const handleLogout = async () => {
+    const supabase = createClient();
     try {
-      await supabase.supabase.auth.signOut();
+      await supabase.auth.signOut();
       setIsOpen(false);
       toast.success("Logged out successfully!");
     } catch {
@@ -107,21 +117,22 @@ export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
   return (
     <nav
       className={cn(
-        "sticky top-0 z-50 bg-background border-b border-border transition-shadow duration-200 backdrop-blur-sm",
-        scrolled && "shadow-sm",
+        "sticky top-0 z-50 bg-background/95 border-b border-border backdrop-blur-sm transition-shadow duration-200",
+        scrolled && "shadow-sm"
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
+
           {/* Logo */}
           <Link
             href="/"
             onClick={closeAll}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0"
           >
             <Image
               src="/logo.ico"
-              alt="Cosmara Logo"
+              alt="Cozy Mobility Tours Logo"
               width={32}
               height={32}
               className="rounded-sm"
@@ -129,16 +140,16 @@ export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
             <span className="font-bold text-xl text-foreground">Cosmara</span>
           </Link>
 
-          {/* Desktop Nav Links */}
-          <div className="hidden md:flex items-center gap-8">
+          {/* Desktop nav */}
+          <div className="hidden md:flex items-center gap-7">
             <Link
               href="/"
-              className="text-foreground hover:text-accent transition-colors text-sm"
+              className="text-sm text-foreground hover:text-accent transition-colors"
             >
               Home
             </Link>
 
-            {/* Fleet Dropdown */}
+            {/* Fleet dropdown */}
             <div
               ref={fleetRef}
               className="relative"
@@ -146,7 +157,7 @@ export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
               onMouseLeave={() => setIsFleetOpen(false)}
             >
               <button
-                className="flex items-center gap-1 text-foreground hover:text-accent transition-colors text-sm py-4"
+                className="flex items-center gap-1 text-sm text-foreground hover:text-accent transition-colors py-4"
                 onClick={() => setIsFleetOpen((v) => !v)}
                 aria-expanded={isFleetOpen}
                 aria-haspopup="true"
@@ -155,18 +166,18 @@ export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
                 <ChevronDown
                   className={cn(
                     "w-4 h-4 transition-transform duration-200",
-                    isFleetOpen && "rotate-180",
+                    isFleetOpen && "rotate-180"
                   )}
                 />
               </button>
 
               {isFleetOpen && (
-                <div className="absolute top-full left-0 w-52 bg-background border border-border shadow-xl rounded-b-lg py-2 animate-in fade-in slide-in-from-top-1">
-                  {carTypes.map((type) => (
+                <div className="absolute top-full left-0 w-52 bg-background border border-border shadow-lg rounded-b-lg py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {CAR_TYPES.map((type) => (
                     <Link
                       key={type.id}
                       href={`/cars/category/${type.id}`}
-                      className="block px-4 py-2.5 hover:bg-secondary hover:text-accent transition-colors text-sm"
+                      className="block px-4 py-2.5 text-sm text-foreground hover:bg-secondary hover:text-accent transition-colors"
                       onClick={closeAll}
                     >
                       {type.name}
@@ -178,40 +189,52 @@ export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
 
             <Link
               href="/cars"
-              className="text-foreground hover:text-accent transition-colors text-sm"
+              className="text-sm text-foreground hover:text-accent transition-colors"
             >
               Browse All
             </Link>
 
-            {isAdmin && (
+            {role === "super_admin" && (
               <Link
                 href="/dashboard/admin"
-                className="text-foreground hover:text-accent transition-colors text-sm"
+                className="text-sm text-foreground hover:text-accent transition-colors"
               >
-                Super Admin
+                Admin
               </Link>
             )}
 
-            <Link
+            {role === "facilitator" && (
+              <Link
+                href="/dashboard/facilitator"
+                className="text-sm text-foreground hover:text-accent transition-colors"
+              >
+                Facilitator
+              </Link>
+            )}
+
+             <Link
+              href="/gallery"
+              className="text-sm text-foreground hover:text-accent transition-colors"
+            >
+              Gallery
+            </Link>           <Link
               href="/contact"
-              className="text-foreground hover:text-accent transition-colors text-sm"
+              className="text-sm text-foreground hover:text-accent transition-colors"
             >
               Contact Us
             </Link>
 
-            <div className="lg:flex items-center text-sm">
-              <a
-                href="tel:+2547585009431"
-                className="hover:text-accent transition-colors"
-              >
-                <Phone className="w-4 h-4 inline-block mr-1" />
-                +2547 585 009431
-              </a>
-            </div>
+            <a
+              href="tel:+254758500943"
+              className="text-sm text-foreground hover:text-accent transition-colors flex items-center gap-1"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              +254 758 500943
+            </a>
           </div>
 
-          {/* Desktop Auth Section */}
-          <div className="hidden md:flex items-center gap-3 w-[180px] justify-end">
+          {/* Desktop auth */}
+          <div className="hidden md:flex items-center gap-2 w-[180px] justify-end">
             {isLoggedIn ? (
               <>
                 <Button variant="outline" size="sm" asChild>
@@ -220,7 +243,7 @@ export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
                 <Button
                   size="sm"
                   onClick={handleLogout}
-                  className="bg-accent hover:bg-accent/90"
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
                 >
                   Log Out
                 </Button>
@@ -233,48 +256,50 @@ export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
                 <Button
                   size="sm"
                   asChild
-                  className="bg-accent hover:bg-accent/90"
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
                 >
-                  <Link href="/auth/register">Sign Up</Link>
+                  <Link href="/auth/sign-up">Sign Up</Link>
                 </Button>
               </>
             )}
           </div>
 
-          {/* Mobile Menu Toggle */}
+          {/* Mobile toggle */}
           <button
             onClick={() => setIsOpen((v) => !v)}
-            className="md:hidden p-2 hover:bg-secondary rounded-md transition-colors"
+            className="md:hidden p-2 rounded-md hover:bg-secondary transition-colors"
             aria-label="Toggle menu"
             aria-expanded={isOpen}
           >
-            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
 
-        {/* Mobile Menu Expansion */}
+        {/* Mobile menu */}
         {isOpen && (
-          <div className="md:hidden pb-6 border-t border-border bg-background">
-            <div className="flex flex-col pt-4 gap-1">
+          <div className="md:hidden border-t border-border bg-background pb-6">
+            <div className="flex flex-col pt-3 gap-0.5">
+
               <Link
                 href="/"
                 onClick={closeAll}
-                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md text-sm"
+                className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
               >
                 Home
               </Link>
 
-              <div className="flex flex-col">
-                <div className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground border-t border-border mt-2">
+              {/* Fleet section */}
+              <div className="mt-2 pt-2 border-t border-border">
+                <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Our Fleet
-                </div>
-                <div className="grid grid-cols-2 gap-1 px-2 text-sm">
-                  {carTypes.map((type) => (
+                </p>
+                <div className="grid grid-cols-2 gap-0.5 px-1">
+                  {CAR_TYPES.map((type) => (
                     <Link
                       key={type.id}
                       href={`/cars/category/${type.id}`}
                       onClick={closeAll}
-                      className="px-3 py-2 text-foreground hover:bg-secondary rounded-md"
+                      className="px-3 py-2.5 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
                     >
                       {type.name}
                     </Link>
@@ -282,45 +307,61 @@ export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
                 </div>
               </div>
 
-              <Link
-                href="/cars"
-                onClick={closeAll}
-                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md border-t border-border mt-2 text-sm"
-              >
-                Browse All Cars
-              </Link>
-
-              {isAdmin && (
+              <div className="mt-2 pt-2 border-t border-border flex flex-col gap-0.5">
                 <Link
-                  href="/dashboard/admin"
+                  href="/cars"
                   onClick={closeAll}
-                  className="px-3 py-3 text-foreground hover:bg-secondary rounded-md text-sm"
+                  className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
                 >
-                  Super Admin
+                  Browse All Cars
                 </Link>
-              )}
 
-              <Link
-                href="/contact"
-                onClick={closeAll}
-                className="px-3 py-3 text-foreground hover:bg-secondary rounded-md border-t border-border mt-2 text-sm"
-              >
-                Contact Us
-              </Link>
+                {role === "super_admin" && (
+                  <Link
+                    href="/dashboard/admin"
+                    onClick={closeAll}
+                    className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
+                  >
+                    Admin
+                  </Link>
+                )}
 
-              <div className="px-3 py-3 border-t border-border mt-2 text-sm">
-                <a
-                  href="tel:+2547585009431"
-                  className="hover:text-accent transition-colors"
+                {role === "facilitator" && (
+                  <Link
+                    href="/dashboard/facilitator"
+                    onClick={closeAll}
+                    className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
+                  >
+                    Facilitator
+                  </Link>
+                )}
+                <Link
+                  href="/gallery"
+                  onClick={closeAll}
+                  className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
                 >
-                  <Phone className="w-4 h-4 inline-block mr-1" />
-                  +254 758 5009431
+                  Gallery
+                </Link>
+                <Link
+                  href="/contact"
+                  onClick={closeAll}
+                  className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
+                >
+                  Contact Us
+                </Link>
+
+                <a
+                  href="tel:+254758500943"
+                  className="px-3 py-3 text-sm text-foreground hover:text-accent transition-colors flex items-center gap-2"
+                >
+                  <Phone className="w-4 h-4" />
+                  +254 758 500943
                 </a>
               </div>
             </div>
 
-            {/* Mobile Auth Actions */}
-            <div className="mt-4 pt-4 border-t border-border flex gap-2 px-1">
+            {/* Mobile auth */}
+            <div className="mt-3 pt-3 border-t border-border flex gap-2 px-1">
               {isLoggedIn ? (
                 <>
                   <Button variant="outline" asChild className="flex-1">
@@ -329,7 +370,7 @@ export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
                     </Link>
                   </Button>
                   <Button
-                    className="flex-1 bg-accent hover:bg-accent/90"
+                    className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
                     onClick={handleLogout}
                   >
                     Log Out
@@ -344,9 +385,9 @@ export function Navbar({ initialUser, initialIsAdmin }: NavbarProps) {
                   </Button>
                   <Button
                     asChild
-                    className="flex-1 bg-accent hover:bg-accent/90"
+                    className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
                   >
-                    <Link href="/auth/register" onClick={closeAll}>
+                    <Link href="/auth/sign-up" onClick={closeAll}>
                       Sign Up
                     </Link>
                   </Button>

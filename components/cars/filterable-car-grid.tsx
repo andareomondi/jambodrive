@@ -5,8 +5,7 @@ import { CarCard } from "@/components/cars/car-card";
 import { CarFilters, FilterState } from "@/components/cars/car-filters";
 import { EmptyState } from "@/components/common/empty-state";
 import { Car as CarIcon } from "lucide-react";
-import type { Car } from "@/lib/mock-data";
-
+import type { Car } from "@/types"; 
 interface FilterableCarGridProps {
   initialCars: Car[];
   searchParams: { [key: string]: string | string[] | undefined };
@@ -16,7 +15,6 @@ export function FilterableCarGrid({
   initialCars,
   searchParams,
 }: FilterableCarGridProps) {
-  // Safely extract search params passed down from the server page
   const typeParam =
     typeof searchParams.type === "string" ? searchParams.type : undefined;
   const fromParam =
@@ -24,7 +22,6 @@ export function FilterableCarGrid({
   const toParam =
     typeof searchParams.to === "string" ? searchParams.to : undefined;
 
-  // Initialize filter state using server-provided URL defaults
   const [filters, setFilters] = useState<FilterState>({
     priceMin: 0,
     priceMax: 100000,
@@ -34,7 +31,6 @@ export function FilterableCarGrid({
     search: "",
   });
 
-  // Calculate rental duration based on booking dates
   const days = useMemo(() => {
     if (!fromParam || !toParam) return 1;
     const diffTime = Math.abs(
@@ -43,10 +39,8 @@ export function FilterableCarGrid({
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
   }, [fromParam, toParam]);
 
-  // Compute filtered fleet list purely in memory
   const filteredCars = useMemo(() => {
     return initialCars.filter((car) => {
-      // Search term filter (matches Name or Model)
       if (
         filters.search &&
         !car.name.toLowerCase().includes(filters.search.toLowerCase()) &&
@@ -55,20 +49,17 @@ export function FilterableCarGrid({
         return false;
       }
 
-      // Price Range filter
       if (car.price < filters.priceMin || car.price > filters.priceMax) {
         return false;
       }
 
-      // Vehicle Type filter
       if (
         filters.carType.length > 0 &&
-        !filters.carType.includes(car.type.toLowerCase())
+        !filters.carType.includes(car.type?.toLowerCase() ?? "")
       ) {
         return false;
       }
 
-      // Transmission filter
       if (
         filters.transmission.length > 0 &&
         !filters.transmission.includes(car.transmission)
@@ -76,7 +67,6 @@ export function FilterableCarGrid({
         return false;
       }
 
-      // Fuel Type filter
       if (filters.fuel.length > 0 && !filters.fuel.includes(car.fuel)) {
         return false;
       }
@@ -87,7 +77,6 @@ export function FilterableCarGrid({
 
   return (
     <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
-      {/* Header Info */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-foreground mb-2">
           Browse Our Fleet
@@ -99,12 +88,10 @@ export function FilterableCarGrid({
       </div>
 
       <div className="flex flex-col gap-8">
-        {/* Filter Controls Toolbar */}
         <div className="w-full">
           <CarFilters onFilterChange={setFilters} />
         </div>
 
-        {/* Results Grid / Empty Layout Boundary */}
         <div className="w-full">
           {filteredCars.length > 0 ? (
             <>

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useRef } from "react";
+import * as Slider from "@radix-ui/react-slider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import { Filter, RotateCcw, Search, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +32,6 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
     search: "",
   });
   const [isOpen, setIsOpen] = useState(false);
-  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const carTypes = [
     "economy",
@@ -47,7 +46,6 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
   const transmissions = ["manual", "automatic"];
   const fuels = ["petrol", "diesel", "hybrid", "electric"];
 
-  // Formats specific keys for display
   const formatLabel = (val: string) => {
     if (val === "ssuv") return "Luxury SUV";
     return val.charAt(0).toUpperCase() + val.slice(1);
@@ -75,7 +73,6 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
     };
     setFilters(reset);
     onFilterChange(reset);
-    // Optional: close panel on reset
     setIsOpen(false);
   };
 
@@ -94,7 +91,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
         "px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border",
         isSelected
           ? "bg-accent text-accent-foreground border-accent shadow-sm"
-          : "bg-background text-muted-foreground border-slate-200 hover:border-accent/50 hover:bg-slate-50",
+          : "bg-background text-muted-foreground border-border hover:border-accent/50 hover:bg-muted",
       )}
     >
       {formatLabel(label)}
@@ -121,7 +118,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
               setFilters(newFilters);
               onFilterChange(newFilters);
             }}
-            className="pl-10 h-11 rounded-xl bg-white border-slate-200"
+            className="pl-10 h-11 rounded-xl bg-background border-border"
           />
         </div>
         <Button
@@ -132,7 +129,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
           <Filter className="w-4 h-4" />
           <span className="hidden sm:inline">Filters</span>
           {activeFilterCount > 0 && (
-            <span className="ml-1 bg-white text-black text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+            <span className="ml-1 bg-foreground text-background text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
               {activeFilterCount}
             </span>
           )}
@@ -148,7 +145,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
             : "grid-rows-[0fr] opacity-0 overflow-hidden",
         )}
       >
-        <Card className="min-h-0 p-4 sm:p-6 rounded-2xl border-none shadow-md bg-white dark:bg-card">
+        <Card className="min-h-0 p-4 sm:p-6 rounded-2xl border-none shadow-md bg-card">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold">Filter Options</h3>
             <Button
@@ -163,7 +160,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
           </div>
 
           <div className="space-y-8">
-            {/* Price Slider */}
+            {/* Direct Radix Slider Implementation */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <Label className="text-sm font-semibold">
@@ -174,13 +171,13 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
                   {filters.priceMax.toLocaleString()}
                 </span>
               </div>
-              <Slider
+              
+              <Slider.Root
                 defaultValue={[0, 100000]}
                 max={100000}
-                step={1000} // Increased step for massive performance boost
+                step={1000}
                 value={[filters.priceMin, filters.priceMax]}
                 onValueChange={(vals) => {
-                  // Updates UI immediately
                   setFilters((prev) => ({
                     ...prev,
                     priceMin: vals[0],
@@ -195,8 +192,14 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
                   };
                   onFilterChange(newFilters);
                 }}
-                className="py-4"
-              />
+                className="relative flex w-full touch-none select-none items-center py-4"
+              >
+                <Slider.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-muted">
+                  <Slider.Range className="absolute h-full bg-accent" />
+                </Slider.Track>
+                <Slider.Thumb className="block h-5 w-5 rounded-full border-2 border-accent bg-background shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50" />
+                <Slider.Thumb className="block h-5 w-5 rounded-full border-2 border-accent bg-background shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50" />
+              </Slider.Root>
             </div>
 
             {/* Filter Groups */}
@@ -233,7 +236,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
           </div>
 
           {/* Footer Mobile Actions (Sticky-ish bottom UX) */}
-          <div className="mt-8 pt-5 border-t border-slate-100 dark:border-slate-800 flex flex-col-reverse sm:flex-row gap-3 justify-end items-center">
+          <div className="mt-8 pt-5 border-t border-border flex flex-col-reverse sm:flex-row gap-3 justify-end items-center">
             <Button
               variant="ghost"
               className="w-full sm:w-auto text-muted-foreground sm:hidden"
@@ -242,7 +245,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
               Reset Filters
             </Button>
             <Button
-              className="w-full sm:w-auto bg-foreground hover:bg-foreground/90 text-background font-semibold"
+              className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               onClick={() => setIsOpen(false)}
             >
               <Check className="w-4 h-4 mr-2" />

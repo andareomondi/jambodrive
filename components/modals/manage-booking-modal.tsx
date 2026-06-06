@@ -1,279 +1,267 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Booking, mockCars } from "@/lib/mock-data";
-import { EditBookingModal } from "./edit-booking-modal";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
   Calendar,
   MapPin,
-  DollarSign,
+  Banknote,
   AlertCircle,
-  CheckCircle,
-  Clock,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useSupabase } from "@/components/auth/supabase-provider";
-import { DatabaseService } from "@/lib/services";
-import { useMemo } from "react";
+import { cancelBookingAction } from "@/lib/actions/bookings";
+import type { Booking } from "@/types";
 
 interface ManageBookingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   booking: Booking | null;
+  onSuccess?: (updated: Booking) => void;
+}
+
+const STATUS_STYLES: Record<string, string> = {
+  confirmed: "bg-primary text-primary-foreground",
+  pending:   "bg-muted text-muted-foreground",
+  completed: "bg-accent text-accent-foreground",
+  cancelled: "bg-destructive text-destructive-foreground",
+};
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-KE", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 export function ManageBookingModal({
   open,
   onOpenChange,
   booking,
+  onSuccess,
 }: ManageBookingModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [car, setCar] = useState<Car | null>(null);
-  const supabase = useSupabase();
-  const db = new DatabaseService(supabase);
-
-  useEffect(() => {
-    const fetchCar = async () => {
-      if (!booking) return;
-
-      try {
-        const carData = await db.getCarById(booking.car_id);
-        setCar(carData);
-      } catch (err) {
-        console.error("Error fetching car data:", err);
-      }
-    };
-
-    fetchCar();
-  }, [booking, db]);
+  // Inline confirm state — no window.confirm
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   if (!booking) return null;
 
-  const today = new Date();
-  const pickupDate = new Date(booking.pickup_date);
-  const returnDate = new Date(booking.return_date);
-
-  const handleModifyBooking = () => {
-    setEditModalOpen(true);
-  };
+  const car = booking.cars ?? null;
+  const statusClass = STATUS_STYLES[booking.status ?? "pending"];
+  const canModify = booking.status === "pending";
 
   const handleCancelBooking = async () => {
-    if (
-      !window.confirm(
-        "Are you sure you want to cancel this booking? This action cannot be undone.",
-      )
-    ) {
+    if (!confirmCancel) {
+      setConfirmCancel(true);
       return;
     }
     setIsProcessing(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const updated = await cancelBookingAction(booking.id);
       toast.success("Booking cancelled successfully");
+      onSuccess?.(updated);
       onOpenChange(false);
+    } catch (err) {
+      toast.error("Failed to cancel booking. Please try again.");
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const handleExtendBooking = async () => {
-    setIsProcessing(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      toast.success("Booking extension initiated");
-      onOpenChange(false);
-    } finally {
-      setIsProcessing(false);
+      setConfirmCancel(false);
     }
   };
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-full max-w-sm md:max-w-2xl mx-auto p-4 md:p-6">
-          <DialogHeader>
-            <DialogTitle>Manage Booking</DialogTitle>
-            <DialogDescription>
-              View and manage your booking details
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) setConfirmCancel(false);
+        onOpenChange(next);
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
 
-          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-              <div>
-                <label className="text-xs md:text-sm text-muted-foreground">
-                  Booking ID
-                </label>
-                <p className="font-medium text-sm md:text-base text-foreground">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm md:max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-4 md:p-6 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
+
+          <Dialog.Close className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </Dialog.Close>
+
+          {/* Header */}
+          <div className="mb-4">
+            <Dialog.Title className="text-lg md:text-2xl font-semibold text-foreground">
+              Manage Booking
+            </Dialog.Title>
+            <Dialog.Description className="text-sm text-muted-foreground mt-0.5">
+              View and manage your booking details
+            </Dialog.Description>
+          </div>
+
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+
+            {/* Inline cancel confirmation banner */}
+            {confirmCancel && (
+              <div className="flex gap-3 items-start p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+                <div className="flex-1 text-sm">
+                  <p className="font-semibold text-foreground">Cancel this booking?</p>
+                  <p className="text-muted-foreground text-xs mt-0.5">
+                    This action cannot be undone. Tap Cancel Booking again to confirm.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setConfirmCancel(false)}
+                  className="text-muted-foreground hover:text-foreground text-xs underline shrink-0"
+                >
+                  Never mind
+                </button>
+              </div>
+            )}
+
+            {/* Booking ID + Status */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-0.5">
+                <p className="text-xs text-muted-foreground">Booking ID</p>
+                <p className="font-medium text-sm font-mono text-foreground truncate">
                   {booking.id}
                 </p>
               </div>
-              <div className="flex flex-col">
-                <label className="text-xs md:text-sm text-muted-foreground">
-                  Status
-                </label>
-                <Badge className="mt-1 capitalize text-xs md:text-sm">
-                  {booking.status}
+              <div className="space-y-0.5">
+                <p className="text-xs text-muted-foreground">Status</p>
+                <Badge className={`capitalize text-xs mt-1 ${statusClass}`}>
+                  {booking.status ?? "pending"}
                 </Badge>
               </div>
             </div>
 
-            {/* Vehicle Details */}
-            <Card className="p-3 md:p-4 bg-muted/50">
+            {/* Vehicle */}
+            <Card className="p-3 md:p-4 bg-muted/40">
               <div className="flex items-center gap-3">
-                <div className="w-16 h-16 bg-gray-200 rounded overflow-hidden flex-shrink-0">
-                  {car ? (
+                <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted shrink-0">
+                  {car?.image ? (
                     <img
                       src={car.image}
                       alt={car.name}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-500">
-                      No Image
+                    <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                      No image
                     </div>
                   )}
                 </div>
+                <div>
+                  <p className="font-medium text-sm md:text-base text-foreground">
+                    {car?.name ?? "Vehicle"}
+                  </p>
+                </div>
+              </div>
+            </Card>
 
-                <p className="font-medium text-sm md:text-base text-foreground">
-                  {car?.name}
-                </p>
-                {car && (
-                  <p className="text-xs md:text-sm text-muted-foreground">
-                    {car.model} • Ksh {car.price}/day
+            {/* Dates & Locations */}
+            <div className="space-y-3">
+              {[
+                { label: "Pickup",  date: booking.pickup_date,  location: booking.pickup_location },
+                { label: "Return",  date: booking.return_date,  location: booking.return_location },
+              ].map(({ label, date, location }) => (
+                <div key={label} className="flex gap-3 items-start">
+                  <Calendar className="h-4 w-4 text-accent mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <p className="font-medium text-sm text-foreground">{formatDate(date)}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />{location}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Cost */}
+            <Card className="p-3 md:p-4 border border-accent/20 bg-accent/5">
+              <h3 className="font-semibold text-sm text-foreground mb-3 flex items-center gap-2">
+                <Banknote className="h-4 w-4 text-accent" />
+                Cost Details
+              </h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Duration</span>
+                  <span className="font-medium text-foreground">
+                    {booking.days ?? "—"} days
+                  </span>
+                </div>
+                {booking.insurance && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Insurance</span>
+                    <span className="font-medium text-foreground">Included</span>
+                  </div>
+                )}
+                {booking.additional_fee_amount && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      Additional Fee
+                      {booking.additional_fee_reason ? ` (${booking.additional_fee_reason})` : ""}
+                    </span>
+                    <span className="font-medium text-destructive">
+                      + Ksh {booking.additional_fee_amount}
+                    </span>
+                  </div>
+                )}
+                <div className="border-t border-accent/20 pt-2 mt-1 flex justify-between">
+                  <span className="font-semibold text-foreground">Total Price</span>
+                  <span className="font-bold text-accent text-base">
+                    Ksh {booking.total_price.toLocaleString()}
+                  </span>
+                </div>
+                {booking.mpesa_receipt_number && (
+                  <p className="text-xs text-muted-foreground pt-1">
+                    M-Pesa ref: {booking.mpesa_receipt_number}
                   </p>
                 )}
               </div>
             </Card>
 
-            {/* Dates and Locations */}
-            <div className="space-y-2 md:space-y-3">
-              <div className="flex gap-2 md:gap-3 items-start">
-                <Calendar className="h-4 md:h-5 w-4 md:w-5 text-accent mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-xs md:text-sm text-muted-foreground">
-                    Pickup
-                  </p>
-                  <p className="font-medium text-sm md:text-base text-foreground">
-                    {new Date(booking.pickup_date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
+            {/* Notes */}
+            {booking.notes && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Note: </span>
+                {booking.notes}
               </div>
-              <div className="flex gap-2 md:gap-3 items-start">
-                <Calendar className="h-4 md:h-5 w-4 md:w-5 text-accent mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-xs md:text-sm text-muted-foreground">
-                    Return
-                  </p>
-                  <p className="font-medium text-sm md:text-base text-foreground">
-                    {new Date(booking.return_date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2 md:gap-3 items-start">
-                <MapPin className="h-4 md:h-5 w-4 md:w-5 text-accent mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-xs md:text-sm text-muted-foreground">
-                    Pickup Location
-                  </p>
-                  <p className="font-medium text-sm md:text-base text-foreground">
-                    {booking.pickup_location}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2 md:gap-3 items-start">
-                <MapPin className="h-4 md:h-5 w-4 md:w-5 text-accent mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-xs md:text-sm text-muted-foreground">
-                    Return Location
-                  </p>
-                  <p className="font-medium text-sm md:text-base text-foreground">
-                    {booking.return_location}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Cost Breakdown */}
-            <Card className="p-3 md:p-4 border border-accent/20 bg-accent/5">
-              <h3 className="font-semibold text-sm md:text-base text-foreground mb-2 md:mb-3 flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-accent" />
-                Cost Details
-              </h3>
-              <div className="space-y-1 md:space-y-2 text-xs md:text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Daily Rate:</span>
-                  <span className="font-medium text-foreground">
-                    Ksh {car?.price || 0}/day
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Days:</span>
-                  <span className="font-medium text-foreground">
-                    {booking.days} days
-                  </span>
-                </div>
-                <div className="border-t border-accent/20 pt-1 md:pt-2 mt-1 md:mt-2 flex justify-between">
-                  <span className="font-semibold text-foreground">
-                    Total Price:
-                  </span>
-                  <span className="font-bold text-accent">
-                    Ksh {booking.total_price}
-                  </span>
-                </div>
-              </div>
-            </Card>
+            )}
           </div>
 
-          <DialogFooter className="flex flex-col-reverse md:flex-row gap-2 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="w-full md:w-auto text-xs md:text-sm"
-            >
-              Close
-            </Button>
-            <Button
-              onClick={handleModifyBooking}
-              disabled={booking.status === "confirmed"}
-              className={`w-full md:w-auto text-xs md:text-sm ${
-                booking.status === "confirmed"
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-accent hover:bg-accent/90"
-              }`}
-            >
-              {booking.status === "confirmed"
-                ? "Cannot Modify"
-                : "Modify Booking"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          {/* Footer */}
+          <div className="flex flex-col-reverse md:flex-row gap-2 justify-end mt-5">
+            <Dialog.Close asChild>
+              <Button variant="outline" className="w-full md:w-auto">
+                Close
+              </Button>
+            </Dialog.Close>
 
-      <EditBookingModal
-        open={editModalOpen}
-        onOpenChange={setEditModalOpen}
-        booking={booking}
-      />
-    </>
+            {canModify && (
+              <Button
+                onClick={handleCancelBooking}
+                disabled={isProcessing}
+                className={`w-full md:w-auto ${
+                  confirmCancel
+                    ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                    : "bg-accent hover:bg-accent/90 text-accent-foreground"
+                }`}
+              >
+                {isProcessing
+                  ? "Cancelling..."
+                  : confirmCancel
+                  ? "Confirm Cancel"
+                  : "Cancel Booking"}
+              </Button>
+            )}
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

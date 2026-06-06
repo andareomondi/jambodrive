@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { DatabaseService } from "@/lib/services";
-import { AdminDashboardClient } from "./admin-dashboard-client";
+import { getCars } from "@/lib/services/cars";
+import { getBookings } from "@/lib/services/bookings";
+import { getProfiles } from "@/lib/services/profile";
+import { AdminDashboardClient } from "@/components/admin/admin-dashboard-client";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -10,17 +14,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function AdminDashboardPage() {
+async function AdminContent() {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  const { data: { user }, error } = await supabase.auth.getUser();
 
-  if (error || !user) {
-    redirect("/auth/login");
-  }
+  if (error || !user) redirect("/auth/login");
 
   // Role check server-side — no client-side flash
   const { data: profileData } = await supabase
@@ -29,23 +28,37 @@ export default async function AdminDashboardPage() {
     .eq("id", user.id)
     .single();
 
-  if (profileData?.role !== "admin") {
-    redirect("/");
-  }
+  // Schema uses "super_admin" not "admin"
+  if (profileData?.role !== "super_admin") redirect("/");
 
-  const db = new DatabaseService(supabase);
-
-  const [cars, bookings, users] = await Promise.all([
-    db.getCars(),
-    db.getBookings(),
-    db.getProfiles(),
+  const [cars, bookings, profiles] = await Promise.all([
+    getCars(),
+    getBookings(),
+    getProfiles(),
   ]);
 
   return (
-    <AdminDashboardClient
-      initialCars={cars}
-      initialBookings={bookings}
-      initialUsers={users}
-    />
+    <>
+      <AuthGuard />
+      <AdminDashboardClient
+        initialCars={cars}
+        initialBookings={bookings}
+        initialProfiles={profiles}
+      />
+    </>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <AdminContent />
+    </Suspense>
   );
 }

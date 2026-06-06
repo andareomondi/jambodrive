@@ -1,14 +1,22 @@
-import { AuthGuard } from "@/components/auth/auth-guard";
-import SupabaseProvider from "@/components/auth/supabase-provider";
-import { Navbar } from "@/components/layout/navbar";
-import { createClient } from "@/lib/supabase/server";
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist } from "next/font/google";
+import { Suspense } from "react";
+import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
+import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
+import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+// ── Font ──────────────────────────────────────────────────────────────────────
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  display: "swap",
+  subsets: ["latin"],
+});
+
+// ── Metadata ──────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = {
   title: {
@@ -53,41 +61,61 @@ export const metadata: Metadata = {
     follow: true,
   },
 };
+
+// ── Viewport ──────────────────────────────────────────────────────────────────
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#D07D50",
+  themeColor: "#D07D50", // matches --accent in globals.css
 };
 
-export default async function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+
+async function NavbarServer() {
   const supabase = await createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
-  let isAdmin = false;
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let role: string | null = null;
   if (user) {
     const { data } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
-    isAdmin = data?.role === "admin";
+    role = data?.role ?? "customer";
   }
+
+  return <Navbar initialUser={user} initialRole={role} />;
+}
+
+function NavbarSkeleton() {
   return (
-    <html lang="en">
-      <body className="font-sans antialiased">
-        <SupabaseProvider>
-          <Navbar initialUser={user} initialAdmin={isAdmin} />
+    <div className="sticky top-0 z-50 h-16 border-b border-border bg-background/95 backdrop-blur-sm" />
+  );
+}
+
+
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.className} antialiased`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Suspense fallback={<NavbarSkeleton />}>
+            <NavbarServer />
+          </Suspense>
           {children}
-        </SupabaseProvider>
-        <Toaster position="top-right" />
+          <Footer />
+          <Toaster richColors position="top-right" />
+        </ThemeProvider>
       </body>
     </html>
   );

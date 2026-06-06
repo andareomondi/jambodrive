@@ -1,42 +1,53 @@
-import { DatabaseService } from "@/lib/services";
-import { createClient } from "@/lib/supabase/server";
+import { Suspense } from "react";
+import { getCars } from "@/lib/services/cars";
 import { Footer } from "@/components/layout/footer";
-import { FilterableCarGrid } from "@/components/cars/filterable-car-grid"; // We move the filter state container here
+import { FilterableCarGrid } from "@/components/cars/filterable-car-grid"; 
 import { Metadata } from "next";
+import { Loader2 } from "lucide-react";
+import { Car } from "@/types"
 
 export const metadata: Metadata = {
-  title: "Browse Our Fleet | Cozy Mobility Tours",
+  title: "Browse Our Fleet | Cosmara",
   description:
     "Choose from our premium vehicles for your next journey. Flexible rentals, pristine cars.",
 };
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
-export default async function CarsPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+async function FleetContent({ searchParams }: { searchParams: SearchParams }) {
   const resolvedSearchParams = await searchParams;
-  const supabase = await createClient();
-  const db = new DatabaseService(supabase);
-
-  let initialCars = [];
+  let initialCars: Car[] = [];
+  
   try {
-    initialCars = await db.getCars();
+    initialCars = await getCars();
   } catch (error) {
     console.error("Error fetching fleet on server:", error);
   }
 
   return (
+    <FilterableCarGrid
+      initialCars={initialCars}
+      searchParams={resolvedSearchParams}
+    />
+  );
+}
+
+export default function CarsPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Pass server-fetched cars and raw URL params directly into your client-side container 
-        This eliminates the initial full-page flash/loader!
-      */}
-      <FilterableCarGrid
-        initialCars={initialCars}
-        searchParams={resolvedSearchParams}
-      />
+      <Suspense 
+        fallback={
+          <div className="flex-1 flex items-center justify-center min-h-[50vh]">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        }
+      >
+        <FleetContent searchParams={searchParams} />
+      </Suspense>
       <Footer />
     </div>
   );

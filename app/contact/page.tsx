@@ -1,55 +1,20 @@
-"use client";
-
-import { useState } from "react";
-import Link from "next/link";
-import { Footer } from "@/components/layout/footer";
-import { Button } from "@/components/ui/button";
+import { Metadata } from "next";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Mail, Phone, MapPin, Send } from "lucide-react";
-import { toast } from "sonner";
+import { Mail, Phone, MapPin } from "lucide-react";
+import ContactForm from "@/components/contact/contact-form";
+
+export const metadata: Metadata = {
+  title: "Contact Us | Cosmara Car Rental",
+  description:
+    "Get in touch with the Cosmara support team. Reach out via phone, email, or our office location in Nairobi, Kenya for any car rental inquiries.",
+  openGraph: {
+    title: "Contact Us | Cosmara",
+    description:
+      "Have questions about Cosmara? Contact our support team today.",
+  },
+};
 
 export default function ContactPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    subject: "",
-    message: "",
-  });
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (
-      !formData.name ||
-      !formData.email ||
-      !formData.subject ||
-      !formData.message
-    ) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success("Message sent successfully! We will get back to you soon.");
-      setFormData({ name: "", email: "", subject: "", message: "" });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <main className="flex-1">
@@ -76,7 +41,7 @@ export default function ContactPage() {
                   icon: Phone,
                   title: "Phone",
                   info: "+2547 585 009431",
-                  subtext: "Available 9 AM - 9 PM EST",
+                  subtext: "Available 9 AM - 9 PM EAT",
                 },
                 {
                   icon: Mail,
@@ -95,7 +60,7 @@ export default function ContactPage() {
                 return (
                   <Card
                     key={i}
-                    className="p-6 shadow-sm hover:shadow-md transition-shadow"
+                    className="p-6 shadow-sm hover:shadow-md transition-shadow border-border"
                   >
                     <Icon className="h-8 w-8 text-accent mb-4" />
                     <h3 className="text-lg font-semibold text-foreground mb-2">
@@ -112,106 +77,13 @@ export default function ContactPage() {
               })}
             </div>
 
-            {/* Contact Form */}
+            {/* Client Interactive Contact Form */}
             <div className="max-w-2xl mx-auto">
-              <Card className="p-8 shadow-sm">
-                <h2 className="text-2xl font-bold text-foreground mb-6">
-                  Send us a Message
-                </h2>
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  {/* Name */}
-                  <div>
-                    <label
-                      htmlFor="name"
-                      className="block text-sm font-medium text-foreground mb-2"
-                    >
-                      Full Name
-                    </label>
-                    <Input
-                      id="name"
-                      name="name"
-                      type="text"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      placeholder="John Doe"
-                      className="w-full transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-                    />
-                  </div>
-
-                  {/* Email */}
-                  <div>
-                    <label
-                      htmlFor="email"
-                      className="block text-sm font-medium text-foreground mb-2"
-                    >
-                      Email Address
-                    </label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="john@example.com"
-                      className="w-full transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-                    />
-                  </div>
-
-                  {/* Subject */}
-                  <div>
-                    <label
-                      htmlFor="subject"
-                      className="block text-sm font-medium text-foreground mb-2"
-                    >
-                      Subject
-                    </label>
-                    <Input
-                      id="subject"
-                      name="subject"
-                      type="text"
-                      value={formData.subject}
-                      onChange={handleInputChange}
-                      placeholder="How can we help?"
-                      className="w-full transition-all duration-200 focus:ring-2 focus:ring-accent/50"
-                    />
-                  </div>
-
-                  {/* Message */}
-                  <div>
-                    <label
-                      htmlFor="message"
-                      className="block text-sm font-medium text-foreground mb-2"
-                    >
-                      Message
-                    </label>
-                    <textarea
-                      id="message"
-                      name="message"
-                      value={formData.message}
-                      onChange={handleInputChange}
-                      placeholder="Tell us about your inquiry..."
-                      rows={5}
-                      className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
-                    />
-                  </div>
-
-                  {/* Submit Button */}
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
-                  >
-                    <Send className="h-4 w-4" />
-                    {isSubmitting ? "Sending..." : "Send Message"}
-                  </Button>
-                </form>
-              </Card>
+              <ContactForm />
             </div>
           </div>
         </section>
       </main>
-
-      <Footer />
     </div>
   );
 }

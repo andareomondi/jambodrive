@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
+import * as Select from "@radix-ui/react-select";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { toast } from "sonner";
+import { ChevronDown, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface BookingFormProps {
   carName: string;
@@ -27,213 +27,168 @@ export interface BookingFormData {
   phone: string;
 }
 
-export function BookingForm({
-  carName,
-  onSubmit,
-  isLoading = false,
-}: BookingFormProps) {
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<BookingFormData>({});
+const LOCATIONS = [
+  "JKIA", "Wilson Airport", "Kilimani", "Hurlingham", "Kileleshwa", 
+  "Ngong", "Karen", "Kitisuru", "Runda", "Kawangware", "Kikuyu", 
+  "Thika Town", "Juja", "Nairobi CBD", "Kitengela", "Sabaki", 
+  "Syokimau", "Embakasi", "Athi River", "Lang'ata", "Uthiru", 
+  "Ruaka", "Kiambu"
+];
+
+export function BookingForm({ onSubmit, isLoading = false }: BookingFormProps) {
+  const { register, handleSubmit, control, formState: { errors } } = useForm<BookingFormData>();
 
   const onSubmitForm = (data: BookingFormData) => {
-    // Validate dates
     if (new Date(data.pickupDate) >= new Date(data.returnDate)) {
       toast.error("Return date must be after pickup date");
       return;
     }
-
     onSubmit(data);
   };
 
-  const locations = [
-    { id: "jkia", name: "JKIA" },
-    { id: "wilson_airport", name: "Wilson Airport" },
-    { id: "kilimani", name: "Kilimani" },
-    { id: "hurlingham", name: "Hurlingham" },
-    { id: "kileleshwa", name: "Kileleshwa" },
-    { id: "ngong", name: "Ngong" },
-    { id: "karen", name: "Karen" },
-    { id: "kitisuru", name: "Kitisuru" },
-    { id: "runda", name: "Runda" },
-    { id: "kawangware", name: "Kawangware" },
-    { id: "kikuyu", name: "Kikuyu" },
-    { id: "thika_town", name: "Thika Town" },
-    { id: "juja", name: "Juja" },
-    { id: "nairobi_cbd", name: "Nairobi CBD" },
-    { id: "kitengela", name: "Kitengela" },
-    { id: "sabaki", name: "Sabaki" },
-    { id: "syokimau", name: "Syokimau" },
-    { id: "embakasi", name: "Embakasi" },
-    { id: "athi_river", name: "Athi River" },
-    { id: "langata", name: "Lang'ata" },
-    { id: "uthiru", name: "Uthiru" },
-    { id: "ruaka", name: "Ruaka" },
-    { id: "kiambu", name: "Kiambu" },
-  ];
+  const LocationSelect = ({ name, placeholder }: { name: "pickupLocation" | "returnLocation", placeholder: string }) => (
+    <Controller
+      name={name}
+      control={control}
+      rules={{ required: "This location is required" }}
+      render={({ field }) => (
+        <Select.Root onValueChange={field.onChange} value={field.value}>
+          <Select.Trigger 
+            className={cn(
+              "flex h-10 w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent",
+              errors[name] ? "border-destructive" : "border-input"
+            )}
+          >
+            <Select.Value placeholder={placeholder} />
+            <Select.Icon><ChevronDown className="h-4 w-4 opacity-50" /></Select.Icon>
+          </Select.Trigger>
+          <Select.Portal>
+            <Select.Content className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-card text-foreground shadow-md animate-in fade-in-80">
+              <Select.Viewport className="p-1 max-h-60 overflow-y-auto">
+                {LOCATIONS.map((loc) => (
+                  <Select.Item 
+                    key={loc} 
+                    value={loc} 
+                    className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent/10 focus:text-accent data-[state=checked]:text-accent"
+                  >
+                    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                      <Select.ItemIndicator><Check className="h-4 w-4" /></Select.ItemIndicator>
+                    </span>
+                    <Select.ItemText>{loc}</Select.ItemText>
+                  </Select.Item>
+                ))}
+              </Select.Viewport>
+            </Select.Content>
+          </Select.Portal>
+        </Select.Root>
+      )}
+    />
+  );
 
   return (
     <form onSubmit={handleSubmit(onSubmitForm)}>
-      <Card className="p-6 shadow-sm mb-6">
-        <h3 className="font-semibold text-lg text-foreground mb-2">
-          Rental Details
-        </h3>
-
-        <FieldGroup>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
-            <div>
-              <FieldLabel htmlFor="pickupDate">Pickup Date</FieldLabel>
+      <Card className="p-6 shadow-sm mb-6 bg-card border-none">
+        <h3 className="font-semibold text-lg text-foreground mb-4">Rental Details</h3>
+        
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="pickupDate">Pickup Date</Label>
               <Input
                 id="pickupDate"
                 type="date"
-                {...register("pickupDate", {
-                  required: "Pickup date is required",
-                })}
+                {...register("pickupDate", { required: "Pickup date is required" })}
                 className={errors.pickupDate ? "border-destructive" : ""}
               />
-              {errors.pickupDate && (
-                <p className="text-sm text-destructive mt-1">
-                  {errors.pickupDate.message}
-                </p>
-              )}
+              {errors.pickupDate && <p className="text-xs text-destructive">{errors.pickupDate.message}</p>}
             </div>
 
-            <div>
-              <FieldLabel htmlFor="returnDate">Return Date</FieldLabel>
+            <div className="space-y-2">
+              <Label htmlFor="returnDate">Return Date</Label>
               <Input
                 id="returnDate"
                 type="date"
-                {...register("returnDate", {
-                  required: "Return date is required",
-                })}
+                {...register("returnDate", { required: "Return date is required" })}
                 className={errors.returnDate ? "border-destructive" : ""}
               />
-              {errors.returnDate && (
-                <p className="text-sm text-destructive mt-1">
-                  {errors.returnDate.message}
-                </p>
-              )}
+              {errors.returnDate && <p className="text-xs text-destructive">{errors.returnDate.message}</p>}
             </div>
           </div>
-          <div className="mb-2">
-            <FieldLabel htmlFor="pickupLocation">Pickup Location</FieldLabel>
-            <select
-              id="pickupLocation"
-              {...register("pickupLocation")}
-              className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground transition-all duration-300 hover:border-border focus:outline-none focus:ring-2 focus:ring-accent/50"
-            >
-              {locations.map((loc) => (
-                <option key={loc.id} value={loc.name}>
-                  {loc.name}
-                </option>
-              ))}
-            </select>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Pickup Location</Label>
+              <LocationSelect name="pickupLocation" placeholder="Select pickup location" />
+              {errors.pickupLocation && <p className="text-xs text-destructive">{errors.pickupLocation.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Return Location</Label>
+              <LocationSelect name="returnLocation" placeholder="Select return location" />
+              {errors.returnLocation && <p className="text-xs text-destructive">{errors.returnLocation.message}</p>}
+            </div>
           </div>
-          <div className="mb-2">
-            <FieldLabel htmlFor="returnLocation">Return Location</FieldLabel>
-            <select
-              id="returnLocation"
-              {...register("returnLocation")}
-              className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground transition-all duration-300 hover:border-border focus:outline-none focus:ring-2 focus:ring-accent/50"
-            >
-              {locations.map((loc) => (
-                <option key={loc.id} value={loc.name}>
-                  {loc.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </FieldGroup>
+        </div>
       </Card>
 
-      <Card className="p-6 shadow-sm mb-6">
-        <h3 className="font-semibold text-lg text-foreground mb-6">
-          Personal Information
-        </h3>
-
-        <FieldGroup>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <FieldLabel htmlFor="firstName">First Name</FieldLabel>
+      <Card className="p-6 shadow-sm mb-6 bg-card border-none">
+        <h3 className="font-semibold text-lg text-foreground mb-4">Personal Information</h3>
+        
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstName">First Name</Label>
               <Input
                 id="firstName"
-                {...register("firstName", {
-                  required: "First name is required",
-                })}
+                {...register("firstName", { required: "First name is required" })}
                 className={errors.firstName ? "border-destructive" : ""}
               />
-              {errors.firstName && (
-                <p className="text-sm text-destructive mt-1">
-                  {errors.firstName.message}
-                </p>
-              )}
+              {errors.firstName && <p className="text-xs text-destructive">{errors.firstName.message}</p>}
             </div>
 
-            <div>
-              <FieldLabel htmlFor="lastName">Last Name</FieldLabel>
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Last Name</Label>
               <Input
                 id="lastName"
                 {...register("lastName", { required: "Last name is required" })}
                 className={errors.lastName ? "border-destructive" : ""}
               />
-              {errors.lastName && (
-                <p className="text-sm text-destructive mt-1">
-                  {errors.lastName.message}
-                </p>
-              )}
+              {errors.lastName && <p className="text-xs text-destructive">{errors.lastName.message}</p>}
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <FieldLabel htmlFor="email">Email</FieldLabel>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
                 {...register("email", {
                   required: "Email is required",
-                  pattern: {
-                    value: /^\S+@\S+$/i,
-                    message: "Invalid email address",
-                  },
+                  pattern: { value: /^\S+@\S+$/i, message: "Invalid email address" },
                 })}
                 className={errors.email ? "border-destructive" : ""}
               />
-              {errors.email && (
-                <p className="text-sm text-destructive mt-1">
-                  {errors.email.message}
-                </p>
-              )}
+              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
             </div>
 
-            <div>
-              <FieldLabel htmlFor="phone">Phone</FieldLabel>
+            <div className="space-y-2">
+              <Label htmlFor="phone">M-Pesa Phone Number</Label>
               <Input
                 id="phone"
                 type="tel"
+                placeholder="07XX XXX XXX"
                 {...register("phone", { required: "Phone number is required" })}
                 className={errors.phone ? "border-destructive" : ""}
               />
-              {errors.phone && (
-                <p className="text-sm text-destructive mt-1">
-                  {errors.phone.message}
-                </p>
-              )}
+              {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
             </div>
           </div>
-        </FieldGroup>
+        </div>
       </Card>
 
-      <Button
-        type="submit"
-        size="lg"
-        className="w-full bg-accent hover:bg-accent/90"
-        disabled={isLoading}
-      >
-        {isLoading ? "Processing..." : "Confirm Booking"}
+      <Button type="submit" size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" disabled={isLoading}>
+        {isLoading ? "Initiating STK Push..." : "Confirm & Pay via M-Pesa"}
       </Button>
     </form>
   );

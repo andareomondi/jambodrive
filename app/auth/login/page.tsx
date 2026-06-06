@@ -1,133 +1,93 @@
 "use client";
 
-import { useSupabase } from "@/components/auth/supabase-provider";
-import { Footer } from "@/components/layout/footer";
+import { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, ArrowRight, Car, Loader2, XCircle } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Label } from "@/components/ui/label";
+import { AlertCircle, ArrowRight, Car, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-// 1. ISOLATED COMPONENT: Extracted to contain search param logic safely
-function VerificationContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
 
-  const verified = searchParams.get("verified");
-  const error = searchParams.get("error");
-
-  if (!verified && !error) return null;
-
-  const isSuccess = verified === "true";
-  const errorMessage =
-    error === "link_expired"
-      ? "This verification link has expired. Please request a new one."
-      : "Email verification failed. Please try again.";
-
+function UnverifiedWarning({
+  email,
+  onResend,
+  isLoading,
+}: {
+  email: string;
+  onResend: () => void;
+  isLoading: boolean;
+}) {
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 z-50">
-      <div className="w-full max-w-md">
-        {isSuccess ? (
-          <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-8 space-y-6 shadow-lg">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <Car className="w-8 h-8 text-green-600" />
-              </div>
-              <h1 className="text-2xl font-bold text-green-900">
-                Email Verified!
-              </h1>
-              <p className="text-green-800">
-                Your email is verified. Please sign in to continue.
-              </p>
-            </div>
-            <Link href="/auth/login">
-              <Button className="w-full bg-green-600 hover:bg-green-700">
-                Sign In Now
-              </Button>
-            </Link>
-          </Card>
-        ) : (
-          <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-rose-50 p-8 space-y-6 shadow-lg">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                <XCircle className="w-8 h-8 text-red-600" />
-              </div>
-              <h1 className="text-2xl font-bold text-red-900">
-                Verification Failed
-              </h1>
-              <p className="text-red-800">{errorMessage}</p>
-            </div>
-            <Link href="/auth/register">
-              <Button className="w-full bg-red-600 hover:bg-red-700">
-                Back to Sign In
-              </Button>
-            </Link>
-          </Card>
-        )}
+    <div className="mt-4 p-4 rounded-lg border border-destructive/30 bg-destructive/5">
+      <div className="flex gap-3">
+        <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+        <div className="flex-1 space-y-2">
+          <p className="text-sm font-semibold text-foreground">Email Not Verified</p>
+          <p className="text-xs text-muted-foreground">
+            Please verify your email address before signing in. Check your inbox
+            for the verification link.
+          </p>
+          <Button
+            onClick={onResend}
+            disabled={isLoading}
+            size="sm"
+            variant="outline"
+            className="w-full border-destructive/30 text-destructive hover:bg-destructive/10"
+          >
+            {isLoading ? "Sending..." : "Resend Verification Email"}
+          </Button>
+        </div>
       </div>
     </div>
   );
 }
 
-// 2. WRAPPER COMPONENT: Safeguards the validation modal from breaking static generation
-function VerificationHandler() {
-  return (
-    <Suspense fallback={null}>
-      <VerificationContent />
-    </Suspense>
-  );
-}
+// ── Form content (uses useSearchParams — must be inside Suspense) ─────────────
 
-// 3. ISOLATED COMPONENT: Extracted login structural elements dependent on returnUrl params
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = useSupabase();
-  const [email, setEmail] = useState("");
+  const returnUrl = searchParams.get("returnUrl") ?? "/dashboard";
+
+  const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading]   = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
-  const [hasSession, setHasSession] = useState(false);
-  const [showUnverifiedWarning, setShowUnverifiedWarning] = useState(false);
-  const [unverifiedEmail, setUnverifiedEmail] = useState("");
+  const [showUnverified, setShowUnverified]       = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail]     = useState("");
 
-  const returnUrl = searchParams.get("returnUrl") || "/dashboard";
-
+  // Redirect already-logged-in users immediately
   useEffect(() => {
     const checkSession = async () => {
-      // Adjusted property pathing to map your context state provider setup
-      const {
-        data: { session },
-      } = await supabase.supabase.auth.getSession();
-      setHasSession(!!session);
-      setIsCheckingSession(false);
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.replace(decodeURIComponent(returnUrl));
+      } else {
+        setIsCheckingSession(false);
+      }
     };
     checkSession();
-  }, [supabase]);
+  }, [router, returnUrl]);
 
   const handleResendVerification = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.supabase.auth.resend({
+      const supabase = createClient();
+      const { error } = await supabase.auth.resend({
         type: "signup",
         email: unverifiedEmail,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/confirm`,
         },
       });
-
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-
-      toast.success("Verification email sent! Please check your inbox.");
-      setShowUnverifiedWarning(false);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Verification email sent! Check your inbox.");
+      setShowUnverified(false);
     } catch {
       toast.error("Failed to resend verification email.");
     } finally {
@@ -137,44 +97,36 @@ function LoginFormContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error("Please fill in all fields");
-      return;
-    }
+    if (!email || !password) { toast.error("Please fill in all fields"); return; }
 
     setIsLoading(true);
-    setShowUnverifiedWarning(false);
+    setShowUnverified(false);
 
     try {
-      const { data, error } = await supabase.supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
-        if (
-          error.message.includes("Email not confirmed") ||
-          error.message.includes("verify")
-        ) {
+        if (error.message.toLowerCase().includes("email not confirmed") ||
+            error.message.toLowerCase().includes("verify")) {
           setUnverifiedEmail(email);
-          setShowUnverifiedWarning(true);
+          setShowUnverified(true);
           return;
         }
-
         toast.error(error.message);
         return;
       }
 
+      // Extra guard: confirmed_at missing means email still unverified
       if (data.user && !data.user.email_confirmed_at) {
         setUnverifiedEmail(email);
-        setShowUnverifiedWarning(true);
-        await supabase.supabase.auth.signOut();
+        setShowUnverified(true);
+        await supabase.auth.signOut();
         return;
       }
 
       toast.success("Logged in successfully!");
-      const decodedUrl = decodeURIComponent(returnUrl);
-      router.push(decodedUrl);
+      router.push(decodeURIComponent(returnUrl));
     } catch {
       toast.error("Failed to login. Please try again.");
     } finally {
@@ -184,46 +136,54 @@ function LoginFormContent() {
 
   if (isCheckingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <div className="flex-1 max-w-md mx-auto w-full px-4 py-12 flex items-center">
-        <Card className="w-full p-8 shadow-medium">
+    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 bg-background">
+      <div className="w-full max-w-sm flex flex-col gap-6">
+        <Card className="p-8">
+          {/* Header */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <Car className="w-10 h-10 text-accent" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">
-              {hasSession ? "Welcome Back" : "Sign In"}
-            </h1>
-            <p className="text-muted-foreground">
-              {hasSession
-                ? "You are already logged in."
-                : "Sign in to your Cosmara account"}
+            <h1 className="text-2xl font-bold text-foreground mb-1">Sign In</h1>
+            <p className="text-sm text-muted-foreground">
+              Sign in to your Cosmara account
             </p>
           </div>
 
-          {/* Form Content Wrapper */}
+          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <FieldGroup>
-              <FieldLabel>Email Address</FieldLabel>
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email Address</Label>
               <Input
+                id="email"
                 type="email"
-                placeholder="name@example.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
                 required
               />
-            </FieldGroup>
-            <FieldGroup>
-              <FieldLabel>Password</FieldLabel>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link
+                  href="/auth/forgot-password"
+                  className="text-xs text-accent hover:text-accent/80 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <Input
+                id="password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
@@ -231,54 +191,48 @@ function LoginFormContent() {
                 disabled={isLoading}
                 required
               />
-            </FieldGroup>
-            <Button type="submit" className="w-full mt-2" disabled={isLoading}>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground mt-2"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  Sign In <ArrowRight className="ml-2 h-4 w-4" />
-                </>
+                <>Sign In <ArrowRight className="ml-2 h-4 w-4" /></>
               )}
             </Button>
           </form>
 
-          {showUnverifiedWarning && (
-            <Card className="mt-6 p-4 border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-amber-50">
-              <div className="flex gap-3">
-                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1 space-y-3">
-                  <div>
-                    <h3 className="font-semibold text-yellow-900 text-sm">
-                      Email Not Verified
-                    </h3>
-                    <p className="text-xs text-yellow-800 mt-1">
-                      Please verify your email address before signing in. Check
-                      your inbox for the verification link.
-                    </p>
-                  </div>
-                  <Button
-                    onClick={handleResendVerification}
-                    disabled={isLoading}
-                    size="sm"
-                    variant="outline"
-                    className="w-full border-yellow-300 text-yellow-700 hover:bg-yellow-100"
-                  >
-                    {isLoading ? "Sending..." : "Resend Verification Email"}
-                  </Button>
-                </div>
-              </div>
-            </Card>
+          {/* Unverified email warning */}
+          {showUnverified && (
+            <UnverifiedWarning
+              email={unverifiedEmail}
+              onResend={handleResendVerification}
+              isLoading={isLoading}
+            />
           )}
+
+          {/* Sign up link */}
+          <p className="text-center text-sm text-muted-foreground mt-6">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/auth/sign-up"
+              className="text-accent hover:text-accent/80 font-medium transition-colors"
+            >
+              Sign up
+            </Link>
+          </p>
         </Card>
       </div>
-      <Footer />
-      <VerificationHandler />
     </div>
   );
 }
 
-// 4. MAIN EXPORT COMPONENT: Provides clean skeleton fallback state to NextJS layout engines
+// ── Page export ───────────────────────────────────────────────────────────────
+
 export default function LoginPage() {
   return (
     <Suspense

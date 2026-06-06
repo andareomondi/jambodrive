@@ -1,9 +1,16 @@
-"use client";
-
-import { useState } from "react";
-import { Footer } from "@/components/layout/footer";
-import { Card } from "@/components/ui/card";
+import { Metadata } from "next";
 import { ChevronDown } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Frequently Asked Questions | Cosmara Car Rental",
+  description:
+    "Find answers to common questions about renting a car with Cosmara. Learn about booking requirements, insurance, cancellations, and rental extensions.",
+  openGraph: {
+    title: "Frequently Asked Questions | Cosmara",
+    description:
+      "Find answers to common questions about renting a car with Cosmara.",
+  },
+};
 
 const faqs = [
   {
@@ -14,7 +21,7 @@ const faqs = [
   {
     question: "What documents do I need to rent a car?",
     answer:
-      "You will need a valid government-issued ID, a valid driver&apos;s license, proof of insurance, and a credit card for the security deposit. International renters may need additional documentation.",
+      "You will need a valid government-issued ID, a valid driver's license, proof of insurance, and a credit card for the security deposit. International renters may need additional documentation.",
   },
   {
     question: "Can I modify or cancel my booking?",
@@ -24,7 +31,7 @@ const faqs = [
   {
     question: "What is the age requirement for renting a car?",
     answer:
-      "You must be at least 21 years old to rent from Cosmara. Some premium vehicles may require you to be 25 years or older. A valid driver&apos;s license is required.",
+      "You must be at least 21 years old to rent from Cosmara. Some premium vehicles may require you to be 25 years or older. A valid driver's license is required.",
   },
   {
     question: "Do you offer insurance coverage?",
@@ -59,12 +66,6 @@ const faqs = [
 ];
 
 export default function FAQPage() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-
-  const toggleAccordion = (index: number) => {
-    setOpenIndex(openIndex === index ? null : index);
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <main className="flex-1">
@@ -86,36 +87,28 @@ export default function FAQPage() {
           <div className="max-w-3xl mx-auto">
             <div className="space-y-4">
               {faqs.map((faq, index) => (
-                <Card
+                <details
                   key={index}
-                  className="overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => toggleAccordion(index)}
+                  className="group overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow [&_summary::-webkit-details-marker]:hidden"
                 >
-                  <div className="p-6 flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-foreground">
+                  <summary className="p-6 flex items-center justify-between cursor-pointer list-none outline-none select-none">
+                    <h3 className="text-lg font-semibold text-foreground pr-4">
                       {faq.question}
                     </h3>
-                    <ChevronDown
-                      className={`h-5 w-5 text-accent transition-transform duration-300 flex-shrink-0 ${
-                        openIndex === index ? "rotate-180" : ""
-                      }`}
-                    />
-                  </div>
+                    <ChevronDown className="h-5 w-5 text-accent transition-transform duration-300 flex-shrink-0 group-open:rotate-180" />
+                  </summary>
 
-                  {/* Accordion Content */}
-                  {openIndex === index && (
-                    <div className="px-6 pb-6 border-t border-border">
-                      <p className="text-muted-foreground leading-relaxed">
-                        {faq.answer}
-                      </p>
-                    </div>
-                  )}
-                </Card>
+                  <div className="px-6 pb-6 border-t border-border">
+                    <p className="text-muted-foreground leading-relaxed pt-4">
+                      {faq.answer}
+                    </p>
+                  </div>
+                </details>
               ))}
             </div>
 
             {/* CTA Section */}
-            <Card className="mt-12 p-8 bg-accent/5 border-accent/20">
+            <div className="mt-12 p-8 bg-accent/5 border border-accent/25 rounded-xl">
               <div className="text-center">
                 <h3 className="text-2xl font-bold text-foreground mb-3">
                   Still have questions?
@@ -131,12 +124,10 @@ export default function FAQPage() {
                   Contact Support
                 </a>
               </div>
-            </Card>
+            </div>
           </div>
         </section>
       </main>
-
-      <Footer />
     </div>
   );
 }

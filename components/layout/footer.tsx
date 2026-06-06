@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Car, Mail, Phone, MapPin } from "lucide-react";
-import BackgroundSlider from "react-background-slider";
+import Image from "next/image";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 export function Footer() {
-  const currentYear = new Date().getFullYear();
+  const currentYear = 2026;
 
   return (
     <footer className="bg-secondary border-t border-border">
@@ -12,7 +13,13 @@ export function Footer() {
           {/* Company Info */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <Car className="w-6 h-6 text-accent" />
+              <Image
+                src="/logo.ico"
+                alt="Cosmara Logo"
+                width={32}
+                height={32}
+                className="w-8 h-8 rounded-full"
+              />
               <span className="font-bold text-lg text-foreground">Cosmara</span>
             </div>
             <p className="text-muted-foreground text-sm">
@@ -58,6 +65,14 @@ export function Footer() {
               </li>
               <li>
                 <Link
+                  href="/contact"
+                  className="text-muted-foreground hover:text-accent transition-colors"
+                >
+                  Contact Us
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/terms"
                   className="text-muted-foreground hover:text-accent transition-colors"
                 >
@@ -73,11 +88,25 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex gap-2 items-start text-muted-foreground">
                 <Phone className="w-4 h-4 mt-1 flex-shrink-0" />
-                <span>+254 758 5009431</span>
+                <span>
+                  <a
+                    href="tel:+2547585009431"
+                    className="hover:text-accent transition-colors"
+                  >
+                    +254 758 5009431
+                  </a>
+                </span>
               </li>
               <li className="flex gap-2 items-start text-muted-foreground">
                 <Mail className="w-4 h-4 mt-1 flex-shrink-0" />
-                <span>team@cosmara.co.ke</span>
+                <span>
+                  <a
+                    href="mailto:team@cosmara.co.ke"
+                    className="hover:text-accent transition-colors"
+                  >
+                    team@cosmara.co.ke{" "}
+                  </a>
+                </span>
               </li>
               <li className="flex gap-2 items-start text-muted-foreground">
                 <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
@@ -91,7 +120,8 @@ export function Footer() {
         <div className="border-t border-border pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
             <p>&copy; {currentYear} Cosmara. All rights reserved.</p>
-            <div className="flex gap-6">
+            <div className="flex items-center gap-4">
+              <ThemeSwitcher />
               <Link
                 href="/terms"
                 className="hover:text-accent transition-colors"

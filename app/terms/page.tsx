@@ -1,6 +1,3 @@
-"use client";
-
-import { Footer } from "@/components/layout/footer";
 import { Card } from "@/components/ui/card";
 
 export default function TermsPage() {
@@ -133,7 +130,7 @@ export default function TermsPage() {
               <div className="space-y-2 text-muted-foreground">
                 <p>
                   <span className="font-medium text-foreground">Email:</span>{" "}
-                  cozymaxm@gmail.com
+                  team@cosmara.co.ke
                 </p>
                 <p>
                   <span className="font-medium text-foreground">Phone:</span>{" "}
@@ -148,8 +145,6 @@ export default function TermsPage() {
           </div>
         </section>
       </main>
-
-      <Footer />
     </div>
   );
 }

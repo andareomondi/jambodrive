@@ -1,43 +1,62 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const publicRoutes = [
+// ── Route definitions ─────────────────────────────────────────────────────────
+
+// Accessible without a session
+const PUBLIC_ROUTES = [
   "/",
   "/about",
   "/gallery",
   "/contact",
+  "/cars",
   "/auth/login",
+  "/auth/sign-up",
+  "/auth/sign-up-success",
   "/auth/forgot-password",
   "/auth/update-password",
-  "/auth/register",
-  "/auth/callback",
-  "/forgot-password",
-  "/reset-password",
-  "/cars",
-  "/api/mpesa/stkpush",
-  "/api/mpesa/callback",
+  "/auth/confirm",
+  "/auth/error",
 ];
 
-// Routes only accessible when NOT authenticated
-// (logged-in users are bounced away from these)
-const authOnlyRoutes = [
+const PUBLIC_PREFIXES = [
+  "/cars/",         // individual car pages + categories
+  "/api/mpesa/",    // Safaricom callbacks must never be auth-blocked
+  "/_next/",
+  "/favicon",
+  "/logo",
+  "/hero/",
+  "/car/",
+];
+
+// Redirect logged-in users away from these (no point showing login to an authed user)
+const AUTH_ONLY_ROUTES = [
   "/auth/login",
-  "/auth/register",
+  "/auth/sign-up",
   "/auth/forgot-password",
-  "/forgot-password",
 ];
 
-// Role-gated routes — middleware fetches the profile role to enforce these
-const roleRoutes: { prefix: string; requiredRole: string }[] = [
-  { prefix: "/admin", requiredRole: "admin" },
+// Role-gated route prefixes — profile DB check only runs when matched
+const ROLE_ROUTES: { prefix: string; requiredRole: string }[] = [
+  { prefix: "/admin",       requiredRole: "super_admin" },
   { prefix: "/facilitator", requiredRole: "facilitator" },
 ];
 
-export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request: { headers: request.headers },
-  });
+// ── Helper ────────────────────────────────────────────────────────────────────
 
+function isPublic(pathname: string): boolean {
+  return (
+    PUBLIC_ROUTES.includes(pathname) ||
+    PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))
+  );
+}
+
+// ── Main middleware function ───────────────────────────────────────────────────
+
+export async function updateSession(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
+
+  // Always create a fresh client per request — never use a global.
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
@@ -47,47 +66,41 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value, options),
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
+            supabaseResponse.cookies.set(name, value, options)
           );
         },
       },
-    },
+    }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getUser() contacts the Auth server — correctly detects signout immediately.
+  // getClaims() only reads the local JWT and won't detect signout until token expiry.
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const pathname = request.nextUrl.pathname;
+  const { pathname } = request.nextUrl;
 
-  const isPublicRoute =
-    publicRoutes.some((route) => pathname === route) ||
-    pathname.startsWith("/cars/") ||
-    pathname.startsWith("/api/mpesa/");
-
-  // ── 1. Unauthenticated → redirect to login ──────────────────────────────
-  if (!user && !isPublicRoute) {
+  // ── 1. Unauthenticated → redirect to login ──────────────────────────────────
+  if (!user && !isPublic(pathname)) {
     const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("returnUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // ── 2. Authenticated → bounce away from auth-only pages ─────────────────
-  if (user && authOnlyRoutes.some((route) => pathname === route)) {
-    return NextResponse.redirect(new URL("/", request.url));
+  // ── 2. Authenticated → bounce away from auth-only pages ────────────────────
+  if (user && AUTH_ONLY_ROUTES.includes(pathname)) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // ── 3. Role-gated routes ─────────────────────────────────────────────────
-  const matchedRoleRoute = roleRoutes.find(({ prefix }) =>
-    pathname.startsWith(prefix),
-  );
+  // ── 3. Role-gated routes ────────────────────────────────────────────────────
+  const matchedRole = ROLE_ROUTES.find(({ prefix }) => pathname.startsWith(prefix));
 
-  if (user && matchedRoleRoute) {
+  if (user && matchedRole) {
+    // Only hit the DB when we actually need the role — not on every request
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
@@ -95,17 +108,17 @@ export async function updateSession(request: NextRequest) {
       .single();
 
     const userRole = profile?.role ?? "customer";
-    const { requiredRole } = matchedRoleRoute;
+    const { requiredRole, prefix } = matchedRole;
 
-    // Admins can access everything, including facilitator routes
-    const hasAccess = userRole === "admin" || userRole === requiredRole;
+    // super_admin can access everything including facilitator routes
+    const hasAccess = userRole === "super_admin" || userRole === requiredRole;
 
     if (!hasAccess) {
-      // Send them somewhere appropriate instead of a blank 403
-      const fallback = userRole === "facilitator" ? "/facilitator" : "/";
+      const fallback = userRole === "facilitator" ? "/facilitator" : "/dashboard";
       return NextResponse.redirect(new URL(fallback, request.url));
     }
   }
 
+  // IMPORTANT: return supabaseResponse as-is to keep cookies in sync.
   return supabaseResponse;
 }

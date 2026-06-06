@@ -1,72 +1,65 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { DatabaseService } from "@/lib/services";
-import { CarDetailsClient } from "./car-details-client";
-import { Footer } from "@/components/layout/footer";
+import { getCarById, getAvailableCars } from "@/lib/services/cars";
+import { CarDetailsClient } from "@/components/cars/car-details-client";
 import type { Metadata } from "next";
 
-// Next.js 15: params is a Promise
 interface Props {
   params: Promise<{ id: string }>;
 }
 
+// ── Metadata (Awaiting params here is completely fine) ────────────────────────
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
-  const db = new DatabaseService(supabase);
-
   try {
-    const car = await db.getCarById(id);
-    if (!car) return { title: "Car Not Found" };
-
+    const car = await getCarById(id);
     return {
       title: `${car.name} — ${car.model}`,
-      description:
-        car.description?.slice(0, 155) ??
-        `Hire the ${car.name} for Ksh ${car.price}/day in Nairobi, Kenya.`,
-      openGraph: {
-        title: `${car.name} | Cosmara Car Hire`,
-        description: `${car.model} · Ksh ${car.price}/day · ${car.seats} seats · ${car.transmission}`,
-        images: car.images?.[0]
-          ? [{ url: car.images[0], width: 1200, height: 630, alt: car.name }]
-          : [],
-        type: "website",
-      },
-      twitter: {
-        card: "summary_large_image",
-        title: `${car.name} | Cosmara Car Hire`,
-        description: `Hire the ${car.name} for Ksh ${car.price}/day in Nairobi.`,
-        images: car.images?.[0] ? [car.images[0]] : [],
-      },
+      description: car.description?.slice(0, 155) ?? `Hire the ${car.name}.`,
     };
   } catch {
     return { title: "Car Not Found" };
   }
 }
 
-export default async function CarDetailsPage({ params }: Props) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const db = new DatabaseService(supabase);
+// ── Data Fetching Wrapper ─────────────────────────────────────────────────────
+// We receive the promise here, inside the Suspense boundary.
+async function CarDetailsData({ paramsPromise }: { paramsPromise: Promise<{ id: string }> }) {
+  // Awaiting the promise INSIDE Suspense is what clears the error!
+  const { id } = await paramsPromise;
 
   let car;
   try {
-    car = await db.getCarById(id);
+    car = await getCarById(id);
   } catch {
     notFound();
   }
 
-  if (!car) notFound();
+  let relatedCars: typeof car[] = [];
+  try {
+    const all = await getAvailableCars();
+    relatedCars = all
+      .filter((c) => c.type === car.type && c.id !== car.id)
+      .slice(0, 3);
+  } catch {
+    relatedCars = [];
+  }
 
-  const allCars = await db.getCars();
-  const relatedCars = allCars
-    .filter((c) => c.type === car.type && c.id !== car.id)
-    .slice(0, 3);
+  return <CarDetailsClient car={car} relatedCars={relatedCars} />;
+}
 
+// ── Page ──────────────────────────────────────────────────────────────────────
+export default async function CarDetailsPage({ params }: Props) {
+  // DO NOT "await" params here. Pass the raw Promise downward.
   return (
-    <>
-      <CarDetailsClient car={car} relatedCars={relatedCars} />
-      <Footer />
-    </>
+    <Suspense 
+      fallback={
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <p className="text-muted-foreground animate-pulse">Loading vehicle details...</p>
+        </div>
+      }
+    >
+      <CarDetailsData paramsPromise={params} />
+    </Suspense>
   );
 }
