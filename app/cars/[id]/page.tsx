@@ -3,12 +3,9 @@ import { notFound } from "next/navigation";
 import { getCarById, getAvailableCars } from "@/lib/services/cars";
 import { CarDetailsClient } from "@/components/cars/car-details-client";
 import type { Metadata } from "next";
-
 interface Props {
   params: Promise<{ id: string }>;
 }
-
-// ── Metadata (Awaiting params here is completely fine) ────────────────────────
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   try {
@@ -21,21 +18,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: "Car Not Found" };
   }
 }
-
-// ── Data Fetching Wrapper ─────────────────────────────────────────────────────
-// We receive the promise here, inside the Suspense boundary.
-async function CarDetailsData({ paramsPromise }: { paramsPromise: Promise<{ id: string }> }) {
-  // Awaiting the promise INSIDE Suspense is what clears the error!
+async function CarDetailsData({
+  paramsPromise,
+}: {
+  paramsPromise: Promise<{ id: string }>;
+}) {
   const { id } = await paramsPromise;
-
   let car;
   try {
     car = await getCarById(id);
   } catch {
     notFound();
   }
-
-  let relatedCars: typeof car[] = [];
+  let relatedCars: (typeof car)[] = [];
   try {
     const all = await getAvailableCars();
     relatedCars = all
@@ -44,18 +39,14 @@ async function CarDetailsData({ paramsPromise }: { paramsPromise: Promise<{ id: 
   } catch {
     relatedCars = [];
   }
-
   return <CarDetailsClient car={car} relatedCars={relatedCars} />;
 }
-
-// ── Page ──────────────────────────────────────────────────────────────────────
 export default async function CarDetailsPage({ params }: Props) {
-  // DO NOT "await" params here. Pass the raw Promise downward.
   return (
-    <Suspense 
+    <Suspense
       fallback={
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <p className="text-muted-foreground animate-pulse">Loading vehicle details...</p>
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
       }
     >

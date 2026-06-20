@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Mail, Phone, MapPin } from "lucide-react";
 import ContactForm from "@/components/contact/contact-form";
@@ -42,37 +43,43 @@ export default function ContactPage() {
                   title: "Phone",
                   info: "+2547 585 009431",
                   subtext: "Available 9 AM - 9 PM EAT",
+                  href: "tel:+2547585009431", // Proper tel format without spaces
                 },
                 {
                   icon: Mail,
                   title: "Email",
                   info: "team@cosmara.co.ke",
                   subtext: "Response within 24 hours",
+                  href: "mailto:team@cosmara.co.ke",
                 },
                 {
                   icon: MapPin,
                   title: "Office",
                   info: "Nairobi, Kenya",
                   subtext: "Visit us during business hours",
+                  href: "https://maps.google.com/?q=Nairobi,+Kenya", // Optional Google Maps redirect
                 },
               ].map((item, i) => {
                 const Icon = item.icon;
                 return (
-                  <Card
+                  <Link
                     key={i}
-                    className="p-6 shadow-sm hover:shadow-md transition-shadow border-border"
+                    href={item.href}
+                    className="block group outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl transition-all"
                   >
-                    <Icon className="h-8 w-8 text-accent mb-4" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      {item.title}
-                    </h3>
-                    <p className="text-foreground font-medium mb-1">
-                      {item.info}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {item.subtext}
-                    </p>
-                  </Card>
+                    <Card className="p-6 h-full shadow-sm hover:shadow-md transition-all duration-200 border-border cursor-pointer group-hover:border-accent/50 group-hover:bg-accent/5 active:scale-[0.99]">
+                      <Icon className="h-8 w-8 text-accent mb-4 transition-transform group-hover:scale-110 duration-200" />
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
+                        {item.title}
+                      </h3>
+                      <p className="text-foreground font-medium mb-1 group-hover:text-accent transition-colors">
+                        {item.info}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.subtext}
+                      </p>
+                    </Card>
+                  </Link>
                 );
               })}
             </div>

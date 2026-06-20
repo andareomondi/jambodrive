@@ -17,11 +17,13 @@ const PUBLIC_ROUTES = [
   "/auth/update-password",
   "/auth/confirm",
   "/auth/error",
+  "/terms",
+  "/faq",
 ];
 
 const PUBLIC_PREFIXES = [
-  "/cars/",         // individual car pages + categories
-  "/api/mpesa/",    // Safaricom callbacks must never be auth-blocked
+  "/cars/", // individual car pages + categories
+  "/api/mpesa/", // Safaricom callbacks must never be auth-blocked
   "/_next/",
   "/favicon",
   "/logo",
@@ -38,7 +40,7 @@ const AUTH_ONLY_ROUTES = [
 
 // Role-gated route prefixes — profile DB check only runs when matched
 const ROLE_ROUTES: { prefix: string; requiredRole: string }[] = [
-  { prefix: "/admin",       requiredRole: "super_admin" },
+  { prefix: "/admin", requiredRole: "super_admin" },
   { prefix: "/facilitator", requiredRole: "facilitator" },
 ];
 
@@ -67,20 +69,22 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
+            request.cookies.set(name, value),
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options),
           );
         },
       },
-    }
+    },
   );
 
   // getUser() contacts the Auth server — correctly detects signout immediately.
   // getClaims() only reads the local JWT and won't detect signout until token expiry.
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
 
@@ -97,7 +101,9 @@ export async function updateSession(request: NextRequest) {
   }
 
   // ── 3. Role-gated routes ────────────────────────────────────────────────────
-  const matchedRole = ROLE_ROUTES.find(({ prefix }) => pathname.startsWith(prefix));
+  const matchedRole = ROLE_ROUTES.find(({ prefix }) =>
+    pathname.startsWith(prefix),
+  );
 
   if (user && matchedRole) {
     // Only hit the DB when we actually need the role — not on every request
@@ -114,7 +120,8 @@ export async function updateSession(request: NextRequest) {
     const hasAccess = userRole === "super_admin" || userRole === requiredRole;
 
     if (!hasAccess) {
-      const fallback = userRole === "facilitator" ? "/facilitator" : "/dashboard";
+      const fallback =
+        userRole === "facilitator" ? "/facilitator" : "/dashboard";
       return NextResponse.redirect(new URL(fallback, request.url));
     }
   }

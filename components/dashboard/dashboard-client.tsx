@@ -30,13 +30,13 @@ interface DashboardClientProps {
   bookings: Booking[];
 }
 
-
 const STATUS_STYLES: Record<string, string> = {
   confirmed: "bg-primary text-primary-foreground",
-  pending:   "bg-muted text-muted-foreground border border-border",
+  pending: "bg-muted text-muted-foreground border border-border",
   completed: "bg-accent text-accent-foreground",
   cancelled: "bg-destructive/10 text-destructive border border-destructive/20",
-  failed:    "bg-destructive/20 text-destructive-foreground border border-destructive/30", // Added
+  failed:
+    "bg-destructive/20 text-destructive-foreground border border-destructive/30", // Added
 };
 
 function formatDateRange(pickup: string, returnDate: string) {
@@ -47,15 +47,24 @@ function formatDateRange(pickup: string, returnDate: string) {
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("en-KE", {
-    month: "short", day: "numeric", year: "numeric",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   });
 }
 
-
-function SectionHeading({ label, accent = true }: { label: string; accent?: boolean }) {
+function SectionHeading({
+  label,
+  accent = true,
+}: {
+  label: string;
+  accent?: boolean;
+}) {
   return (
     <div className="flex items-center gap-3 mb-6">
-      <div className={`h-8 w-1 rounded-full ${accent ? "bg-accent" : "bg-border"}`} />
+      <div
+        className={`h-8 w-1 rounded-full ${accent ? "bg-accent" : "bg-border"}`}
+      />
       <h2 className="text-2xl font-bold text-foreground">{label}</h2>
     </div>
   );
@@ -158,7 +167,8 @@ function PastBookingRow({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Calendar className="w-3 h-3" />
-              {formatDate(booking.pickup_date)} → {formatDate(booking.return_date)}
+              {formatDate(booking.pickup_date)} →{" "}
+              {formatDate(booking.return_date)}
             </span>
             <span className="hidden sm:inline text-border">•</span>
             <span className="font-medium text-foreground">
@@ -181,22 +191,32 @@ function PastBookingRow({
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export function DashboardClient({ profile, bookings: initialBookings }: DashboardClientProps) {
+export function DashboardClient({
+  profile,
+  bookings: initialBookings,
+}: DashboardClientProps) {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [currentProfile, setCurrentProfile] = useState<Profile>(profile);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
-  const [depositModalOpen, setDepositModalOpen]   = useState(false);
-  const [manageModalOpen, setManageModalOpen]     = useState(false);
-  const [summaryModalOpen, setSummaryModalOpen]   = useState(false);
-  const [editProfileOpen, setEditProfileOpen]     = useState(false);
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [manageModalOpen, setManageModalOpen] = useState(false);
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   // Memoised — only recalculates when bookings changes
-  const { activeBookings, pastBookings } = useMemo(() => ({
-    activeBookings: bookings.filter((b) => b.status === "confirmed" || b.status === "pending"),
-    pastBookings:   bookings.filter((b) => b.status === "completed"  || b.status === "cancelled"),
-    failedBookingCount: bookings.filter((b) => b.status === "failed").length,
-  }), [bookings]);
+  const { activeBookings, pastBookings } = useMemo(
+    () => ({
+      activeBookings: bookings.filter(
+        (b) => b.status === "confirmed" || b.status === "pending",
+      ),
+      pastBookings: bookings.filter(
+        (b) => b.status === "completed" || b.status === "cancelled",
+      ),
+      failedBookingCount: bookings.filter((b) => b.status === "failed").length,
+    }),
+    [bookings],
+  );
 
   const openManage = (booking: Booking) => {
     setSelectedBooking(booking);
@@ -210,9 +230,7 @@ export function DashboardClient({ profile, bookings: initialBookings }: Dashboar
 
   // Called when ManageBookingModal cancels a booking — updates local state
   const handleBookingUpdated = (updated: Booking) => {
-    setBookings((prev) =>
-      prev.map((b) => (b.id === updated.id ? updated : b))
-    );
+    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
     // Reflect updated total_bookings count if cancelled
     if (updated.status === "cancelled") {
       setCurrentProfile((p) => ({
@@ -228,7 +246,6 @@ export function DashboardClient({ profile, bookings: initialBookings }: Dashboar
   return (
     <div className="min-h-screen bg-background">
       <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 space-y-10">
-
         {/* ── Page header ── */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
@@ -252,7 +269,6 @@ export function DashboardClient({ profile, bookings: initialBookings }: Dashboar
         {/* ── Profile card ── */}
         <Card className="border border-border shadow-sm rounded-2xl overflow-hidden">
           <div className="p-6 md:p-8 flex flex-col md:flex-row gap-8 items-center md:items-start">
-
             {/* Avatar */}
             <div className="relative w-24 h-24 rounded-full ring-2 ring-border overflow-hidden shrink-0">
               {currentProfile.profile_image ? (
@@ -298,7 +314,9 @@ export function DashboardClient({ profile, bookings: initialBookings }: Dashboar
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
                 Total Bookings
               </p>
-              <span className="text-4xl font-bold text-accent">{totalBookings}</span>
+              <span className="text-4xl font-bold text-accent">
+                {totalBookings}
+              </span>
             </div>
           </div>
         </Card>
@@ -319,11 +337,16 @@ export function DashboardClient({ profile, bookings: initialBookings }: Dashboar
           ) : (
             <Card className="p-12 text-center border-dashed rounded-2xl">
               <CarIcon className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
-              <p className="font-semibold text-foreground mb-1">No active trips</p>
+              <p className="font-semibold text-foreground mb-1">
+                No active trips
+              </p>
               <p className="text-sm text-muted-foreground mb-6">
                 You don&apos;t have any cars currently booked or pending.
               </p>
-              <Button asChild className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-full px-6">
+              <Button
+                asChild
+                className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-full px-6"
+              >
                 <Link href="/cars">Browse Available Cars</Link>
               </Button>
             </Card>

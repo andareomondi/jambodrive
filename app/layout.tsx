@@ -9,12 +9,13 @@ import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
 import { FloatingSupport } from "@/components/home/floating-support";
 
+export const dynamic = "force-dynamic";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   display: "swap",
   subsets: ["latin"],
 });
-
 
 export const metadata: Metadata = {
   title: {
@@ -60,19 +61,19 @@ export const metadata: Metadata = {
   },
 };
 
-
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#D07D50", 
+  themeColor: "#D07D50",
 };
-
 
 async function NavbarServer() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   let role: string | null = null;
   if (user) {
@@ -92,7 +93,6 @@ function NavbarSkeleton() {
     <div className="sticky top-0 z-50 h-16 border-b border-border bg-background/95 backdrop-blur-sm" />
   );
 }
-
 
 export default function RootLayout({
   children,

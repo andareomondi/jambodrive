@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { getCars } from "@/lib/services/cars";
-import { FilterableCarGrid } from "@/components/cars/filterable-car-grid"; 
+import { FilterableCarGrid } from "@/components/cars/filterable-car-grid";
 import { Metadata } from "next";
 import { Loader2 } from "lucide-react";
-import { Car } from "@/types"
+import { Car } from "@/types";
 
 export const metadata: Metadata = {
   title: "Browse Our Fleet | Cosmara",
@@ -16,7 +16,7 @@ type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 async function FleetContent({ searchParams }: { searchParams: SearchParams }) {
   const resolvedSearchParams = await searchParams;
   let initialCars: Car[] = [];
-  
+
   try {
     initialCars = await getCars();
   } catch (error) {
@@ -38,10 +38,10 @@ export default function CarsPage({
 }) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Suspense 
+      <Suspense
         fallback={
-          <div className="flex-1 flex items-center justify-center min-h-[50vh]">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <div className="min-h-screen flex items-center justify-center bg-background">
+            <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
           </div>
         }
       >

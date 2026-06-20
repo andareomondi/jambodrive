@@ -20,7 +20,10 @@ async function getCarGalleryImages(): Promise<string[]> {
     const supabase = await createClient();
     const { data, error } = await supabase.storage
       .from("car-images")
-      .list("cars", { limit: 100, sortBy: { column: "created_at", order: "desc" } });
+      .list("cars", {
+        limit: 100,
+        sortBy: { column: "created_at", order: "desc" },
+      });
 
     if (error || !data) return [];
 
@@ -49,9 +52,16 @@ async function GalleryContent() {
 export default function GalleryPage() {
   return (
     <main>
-      <Suspense fallback={<div>Loading gallery...</div>}>
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center bg-background">
+            <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          </div>
+        }
+      >
         <GalleryContent />
       </Suspense>
     </main>
   );
 }
+

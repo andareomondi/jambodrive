@@ -2,16 +2,32 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { BookingForm, BookingFormData } from "@/components/booking/booking-form";
+import {
+  BookingForm,
+  BookingFormData,
+} from "@/components/booking/booking-form";
 import { EmptyState } from "@/components/common/empty-state";
 import { toast } from "sonner";
-import { CheckCircle, Loader2, XCircle, Smartphone, Wifi, Copy, Phone } from "lucide-react";
+import {
+  CheckCircle,
+  Loader2,
+  XCircle,
+  Smartphone,
+  Wifi,
+  Copy,
+  Phone,
+} from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import type { Car } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
-type PaymentState = "idle" | "processing" | "waiting_for_pin" | "success" | "failed";
+type PaymentState =
+  | "idle"
+  | "processing"
+  | "waiting_for_pin"
+  | "success"
+  | "failed";
 
 interface PaymentResult {
   receiptNumber?: string;
@@ -26,7 +42,7 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
   const [paymentState, setPaymentState] = useState<PaymentState>("idle");
   const [paymentMessage, setPaymentMessage] = useState("");
   const [paymentResult, setPaymentResult] = useState<PaymentResult>({});
-  
+
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabase = createClient();
 
@@ -37,13 +53,23 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
   }, []);
 
   const calcDays = (data: BookingFormData) => {
-    const ms = new Date(data.returnDate).getTime() - new Date(data.pickupDate).getTime();
+    const ms =
+      new Date(data.returnDate).getTime() - new Date(data.pickupDate).getTime();
     return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
   };
 
   const handleBooking = async (data: BookingFormData) => {
+    const today = new Date();
+    const pickup = new Date(data.pickupDate);
+    const returnD = new Date(data.returnDate);
+    if (pickup < today) {
+      throw new Error("Pickup date cannot be in the past.");
+    }
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       if (!user) {
         toast.error("Please log in to make a booking.");
@@ -56,6 +82,14 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
 
       const days = calcDays(data);
       const total = days * car!.price;
+      const today = new Date();
+
+      if (returnD <= pickup) {
+        throw new Error("Return date must be after pickup date.");
+      }
+      if (!car!.available) {
+        throw new Error("Sorry, this car is no longer available.");
+      }
 
       const { data: newBooking, error: bookingError } = await supabase
         .from("bookings")
@@ -81,17 +115,28 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
         .channel(`booking_status_${newBooking.id}`)
         .on(
           "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "bookings", filter: `id=eq.${newBooking.id}` },
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "bookings",
+            filter: `id=eq.${newBooking.id}`,
+          },
           (payload) => {
             const updated = payload.new as any;
             if (updated.status === "confirmed") {
-              setPaymentResult({ receiptNumber: updated.mpesa_receipt_number, amount: updated.paid_amount });
+              setPaymentResult({
+                receiptNumber: updated.mpesa_receipt_number,
+                amount: updated.paid_amount,
+              });
               setPaymentState("success");
               toast.success("Payment confirmed! Your car is booked.");
               channel.unsubscribe();
             } else if (updated.status === "failed") {
               setPaymentState("failed");
-              setPaymentMessage(updated.payment_failure_reason ?? "Payment was cancelled or failed.");
+              setPaymentMessage(
+                updated.payment_failure_reason ??
+                  "Payment was cancelled or failed.",
+              );
               channel.unsubscribe();
             }
           },
@@ -103,7 +148,11 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
       const stkResponse = await fetch("/api/mpesa/stkpush", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: data.phone, amount: total, bookingId: newBooking.id }),
+        body: JSON.stringify({
+          phone: data.phone,
+          amount: total,
+          bookingId: newBooking.id,
+        }),
       });
 
       const stkData = await stkResponse.json();
@@ -123,7 +172,9 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
         setPaymentState((current) => {
           if (current === "waiting_for_pin") {
             channel.unsubscribe();
-            setPaymentMessage("The payment is taking too long. Check your M-Pesa messages — if deducted, contact support.");
+            setPaymentMessage(
+              "The payment is taking too long. Check your M-Pesa messages — if deducted, contact support.",
+            );
             return "failed";
           }
           return current;
@@ -131,7 +182,8 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
       }, 90_000);
     } catch (err: unknown) {
       console.error("[BookingPage] handleBooking error:", err);
-      const message = err instanceof Error ? err.message : "Something went wrong.";
+      const message =
+        err instanceof Error ? err.message : "Something went wrong.";
       setPaymentState("failed");
       setPaymentMessage(message);
     }
@@ -159,15 +211,24 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
             <CheckCircle className="w-10 h-10 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Booking Confirmed!</h1>
-            <p className="text-muted-foreground text-sm">Your {car.name} has been reserved. A confirmation will be sent to your phone.</p>
+            <h1 className="text-2xl font-bold text-foreground mb-2">
+              Booking Confirmed!
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              Your {car.name} has been reserved. A confirmation will be sent to
+              your phone.
+            </p>
           </div>
 
           {paymentResult.receiptNumber && (
             <div className="bg-card border border-border rounded-2xl p-4 text-left space-y-2">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">M-Pesa Receipt</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                M-Pesa Receipt
+              </p>
               <div className="flex items-center justify-between">
-                <span className="font-mono text-lg font-bold text-foreground">{paymentResult.receiptNumber}</span>
+                <span className="font-mono text-lg font-bold text-foreground">
+                  {paymentResult.receiptNumber}
+                </span>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(paymentResult.receiptNumber!);
@@ -178,15 +239,26 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
                   <Copy className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
-              <p className="text-sm text-muted-foreground">Amount paid: <span className="text-foreground font-medium">Ksh {(paymentResult.amount ?? totalAmount).toLocaleString()}</span></p>
+              <p className="text-sm text-muted-foreground">
+                Amount paid:{" "}
+                <span className="text-foreground font-medium">
+                  Ksh {(paymentResult.amount ?? totalAmount).toLocaleString()}
+                </span>
+              </p>
             </div>
           )}
 
           <div className="flex flex-col gap-3 pt-2">
-            <Link href="/dashboard" className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium text-center hover:opacity-90 transition-opacity">
+            <Link
+              href="/dashboard"
+              className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium text-center hover:opacity-90 transition-opacity"
+            >
               View My Bookings
             </Link>
-            <Link href="/cars" className="w-full px-6 py-3 bg-muted text-foreground rounded-xl font-medium text-center hover:bg-muted/80 transition-colors">
+            <Link
+              href="/cars"
+              className="w-full px-6 py-3 bg-muted text-foreground rounded-xl font-medium text-center hover:bg-muted/80 transition-colors"
+            >
               Browse More Cars
             </Link>
           </div>
@@ -205,8 +277,12 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
             <div className="p-8 flex flex-col items-center text-center gap-4">
               <Loader2 className="w-12 h-12 text-primary animate-spin" />
               <div>
-                <h2 className="text-xl font-bold text-foreground mb-1">Connecting to M-Pesa</h2>
-                <p className="text-sm text-muted-foreground">Securing your booking and reaching Safaricom...</p>
+                <h2 className="text-xl font-bold text-foreground mb-1">
+                  Connecting to M-Pesa
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Securing your booking and reaching Safaricom...
+                </p>
               </div>
             </div>
           )}
@@ -223,20 +299,35 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
               </div>
 
               <div>
-                <h2 className="text-xl font-bold text-foreground mb-2">Check Your Phone</h2>
+                <h2 className="text-xl font-bold text-foreground mb-2">
+                  Check Your Phone
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  An M-Pesa prompt has been sent to <span className="font-medium text-foreground">{bookingData?.phone}</span>. Enter your PIN to pay <span className="font-bold text-foreground">Ksh {totalAmount.toLocaleString()}</span>.
+                  An M-Pesa prompt has been sent to{" "}
+                  <span className="font-medium text-foreground">
+                    {bookingData?.phone}
+                  </span>
+                  . Enter your PIN to pay{" "}
+                  <span className="font-bold text-foreground">
+                    Ksh {totalAmount.toLocaleString()}
+                  </span>
+                  .
                 </p>
               </div>
 
               <div className="bg-muted rounded-xl px-4 py-3 w-full flex items-center justify-center gap-3">
                 <Loader2 className="w-4 h-4 text-muted-foreground animate-spin shrink-0" />
-                <span className="text-sm text-muted-foreground">Waiting for your confirmation...</span>
+                <span className="text-sm text-muted-foreground">
+                  Waiting for your confirmation...
+                </span>
               </div>
 
               <p className="text-xs text-muted-foreground">
                 Prompt not received?{" "}
-                <a href={`tel:+${MPESA_SUPPORT_NUMBER}`} className="text-accent hover:underline inline-flex items-center gap-1">
+                <a
+                  href={`tel:+${MPESA_SUPPORT_NUMBER}`}
+                  className="text-accent hover:underline inline-flex items-center gap-1"
+                >
                   <Phone className="w-3 h-3" /> Call support
                 </a>
               </p>
@@ -249,15 +340,29 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
                 <XCircle className="w-8 h-8 text-destructive" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-foreground mb-2">Payment Failed</h2>
-                <p className="text-sm text-muted-foreground">{paymentMessage || "You cancelled the prompt or the request timed out."}</p>
+                <h2 className="text-xl font-bold text-foreground mb-2">
+                  Payment Failed
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {paymentMessage ||
+                    "You cancelled the prompt or the request timed out."}
+                </p>
               </div>
 
               <div className="flex flex-col gap-3 w-full">
-                <button onClick={() => { setPaymentState("idle"); setPaymentMessage(""); }} className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:opacity-90 transition-opacity">
+                <button
+                  onClick={() => {
+                    setPaymentState("idle");
+                    setPaymentMessage("");
+                  }}
+                  className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:opacity-90 transition-opacity"
+                >
                   Try Again
                 </button>
-                <a href={`tel:+${MPESA_SUPPORT_NUMBER}`} className="w-full px-6 py-3 bg-muted text-foreground rounded-xl font-medium text-center hover:bg-muted/80 transition-colors inline-flex items-center justify-center gap-2">
+                <a
+                  href={`tel:+${MPESA_SUPPORT_NUMBER}`}
+                  className="w-full px-6 py-3 bg-muted text-foreground rounded-xl font-medium text-center hover:bg-muted/80 transition-colors inline-flex items-center justify-center gap-2"
+                >
                   <Phone className="w-4 h-4" /> Contact Support
                 </a>
               </div>
@@ -268,7 +373,8 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
     );
   };
 
-  const isProcessingPayment = paymentState !== "idle" && paymentState !== "failed";
+  const isProcessingPayment =
+    paymentState !== "idle" && paymentState !== "failed";
 
   return (
     <>
@@ -276,7 +382,11 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
         <PaymentModal />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           <div className="lg:col-span-8">
-            <BookingForm carName={car.name} onSubmit={handleBooking} isLoading={isProcessingPayment} />
+            <BookingForm
+              carName={car.name}
+              onSubmit={handleBooking}
+              isLoading={isProcessingPayment}
+            />
           </div>
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4 sticky top-24 shadow-sm">
@@ -284,15 +394,20 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Vehicle</span>
-                  <span className="text-foreground font-medium">{car.name}</span>
+                  <span className="text-foreground font-medium">
+                    {car.name}
+                  </span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Daily rate</span>
-                  <span className="text-foreground font-medium">Ksh {car.price.toLocaleString()}</span>
+                  <span className="text-foreground font-medium">
+                    Ksh {car.price.toLocaleString()}
+                  </span>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground border-t border-border pt-4">
-                Payment is processed securely via M-Pesa. You will receive an STK push prompt on your registered Safaricom number.
+                Payment is processed securely via M-Pesa. You will receive an
+                STK push prompt on your registered Safaricom number.
               </p>
             </div>
           </div>
