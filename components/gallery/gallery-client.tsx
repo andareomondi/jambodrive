@@ -2,7 +2,14 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
-import { X, ChevronLeft, ChevronRight, Calendar, ImageIcon, ZoomIn } from "lucide-react";
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  ImageIcon,
+  ZoomIn,
+} from "lucide-react";
 import type { GalleryEvent } from "@/lib/services/gallery";
 import { cn } from "@/lib/utils";
 
@@ -36,12 +43,12 @@ function splitIntoColumns<T>(items: T[], cols: number): T[][] {
 
 function getAspectClass(index: number): string {
   const pattern = [
-    "aspect-[3/4]",   // portrait
-    "aspect-[4/3]",   // landscape
-    "aspect-square",  // square
-    "aspect-[3/4]",   // portrait
-    "aspect-[16/9]",  // wide
-    "aspect-square",  // square
+    "aspect-[3/4]", // portrait
+    "aspect-[4/3]", // landscape
+    "aspect-square", // square
+    "aspect-[3/4]", // portrait
+    "aspect-[16/9]", // wide
+    "aspect-square", // square
   ];
   return pattern[index % pattern.length];
 }
@@ -62,19 +69,19 @@ function Lightbox({
 
   const prev = useCallback(
     () => setIndex((i) => (i - 1 + items.length) % items.length),
-    [items.length]
+    [items.length],
   );
   const next = useCallback(
     () => setIndex((i) => (i + 1) % items.length),
-    [items.length]
+    [items.length],
   );
 
   // Keyboard navigation
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft")  prev();
+      if (e.key === "ArrowLeft") prev();
       if (e.key === "ArrowRight") next();
-      if (e.key === "Escape")     onClose();
+      if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -83,7 +90,9 @@ function Lightbox({
   // Prevent body scroll
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
   return (
@@ -109,7 +118,10 @@ function Lightbox({
       {items.length > 1 && (
         <button
           className="absolute left-3 sm:left-6 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
-          onClick={(e) => { e.stopPropagation(); prev(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            prev();
+          }}
           aria-label="Previous image"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -118,27 +130,29 @@ function Lightbox({
 
       {/* Image */}
       <div
-        className="relative w-full max-w-4xl max-h-[75vh] flex items-center justify-center"
+        className="relative w-full max-w-4xl flex items-center justify-center"
+        style={{ height: "75vh" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative w-full h-full max-h-[75vh]">
-          <Image
-            key={current.src}
-            src={current.src}
-            alt={current.alt}
-            fill
-            className="object-contain select-none"
-            sizes="(max-width: 768px) 100vw, 90vw"
-            priority
-          />
-        </div>
+        <Image
+          key={current.src}
+          src={current.src}
+          alt={current.alt}
+          fill
+          className="object-contain select-none"
+          sizes="(max-width: 768px) 100vw, 90vw"
+          priority
+        />
       </div>
 
       {/* Next */}
       {items.length > 1 && (
         <button
           className="absolute right-3 sm:right-6 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
-          onClick={(e) => { e.stopPropagation(); next(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            next();
+          }}
           aria-label="Next image"
         >
           <ChevronRight className="w-5 h-5" />
@@ -147,15 +161,22 @@ function Lightbox({
 
       {/* Caption */}
       {(current.caption || current.date) && (
-        <div className="mt-4 text-center max-w-xl px-4" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="mt-4 text-center max-w-xl px-4"
+          onClick={(e) => e.stopPropagation()}
+        >
           {current.caption && (
-            <p className="text-white font-semibold text-sm sm:text-base">{current.caption}</p>
+            <p className="text-white font-semibold text-sm sm:text-base">
+              {current.caption}
+            </p>
           )}
           {current.date && (
             <p className="text-white/50 text-xs mt-1 flex items-center justify-center gap-1">
               <Calendar className="w-3 h-3" />
               {new Date(current.date).toLocaleDateString("en-KE", {
-                day: "numeric", month: "long", year: "numeric",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
               })}
             </p>
           )}
@@ -168,14 +189,25 @@ function Lightbox({
           {items.map((item, i) => (
             <button
               key={i}
-              onClick={(e) => { e.stopPropagation(); setIndex(i); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIndex(i);
+              }}
               className={cn(
                 "relative w-10 h-10 rounded-md overflow-hidden shrink-0 border-2 transition-all",
-                i === index ? "border-accent scale-110" : "border-white/20 opacity-50 hover:opacity-80"
+                i === index
+                  ? "border-accent scale-110"
+                  : "border-white/20 opacity-50 hover:opacity-80",
               )}
               aria-label={`Go to image ${i + 1}`}
             >
-              <Image src={item.src} alt="" fill className="object-cover" sizes="40px" />
+              <Image
+                src={item.src}
+                alt=""
+                fill
+                className="object-cover"
+                sizes="40px"
+              />
             </button>
           ))}
         </div>
@@ -224,9 +256,13 @@ function FleetMasonry({
                   className="group relative w-full aspect-square rounded-xl overflow-hidden bg-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
                   aria-label={`View fleet image ${globalIdx + 1}`}
                 >
-                  <Image src={src} alt={`Fleet image ${globalIdx + 1}`}
-                    fill className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    sizes="50vw" />
+                  <Image
+                    src={src}
+                    alt={`Fleet image ${globalIdx + 1}`}
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    sizes="50vw"
+                  />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                     <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
@@ -250,13 +286,17 @@ function FleetMasonry({
                   onClick={() => onOpen(globalIdx)}
                   className={cn(
                     "group relative w-full rounded-xl overflow-hidden bg-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2",
-                    aspect
+                    aspect,
                   )}
                   aria-label={`View fleet image ${globalIdx + 1}`}
                 >
-                  <Image src={src} alt={`Fleet image ${globalIdx + 1}`}
-                    fill className="object-cover transition-transform duration-700 group-hover:scale-105"
-                    sizes="(max-width: 1024px) 33vw, 25vw" />
+                  <Image
+                    src={src}
+                    alt={`Fleet image ${globalIdx + 1}`}
+                    fill
+                    className="object-cover transition-transform duration-700 group-hover:scale-105"
+                    sizes="(max-width: 1024px) 33vw, 25vw"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
@@ -330,7 +370,9 @@ function EventsGrid({
               <p className="text-white/70 text-xs mt-1 flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
                 {new Date(event.event_date).toLocaleDateString("en-KE", {
-                  day: "numeric", month: "short", year: "numeric",
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
                 })}
               </p>
             )}
@@ -350,7 +392,10 @@ function EventsGrid({
 
 export function GalleryClient({ carImages, events }: GalleryClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>("fleet");
-  const [lightbox, setLightbox]   = useState<{ items: LightboxItem[]; index: number } | null>(null);
+  const [lightbox, setLightbox] = useState<{
+    items: LightboxItem[];
+    index: number;
+  } | null>(null);
 
   const fleetItems: LightboxItem[] = carImages.map((src, i) => ({
     src,
@@ -358,18 +403,20 @@ export function GalleryClient({ carImages, events }: GalleryClientProps) {
   }));
 
   const eventItems: LightboxItem[] = events.map((e) => ({
-    src:     e.image_url,
-    alt:     e.title,
+    src: e.image_url,
+    alt: e.title,
     caption: e.title,
-    date:    e.event_date,
+    date: e.event_date,
   }));
 
-  const openFleet  = (index: number) => setLightbox({ items: fleetItems,  index });
-  const openEvents = (index: number) => setLightbox({ items: eventItems, index });
+  const openFleet = (index: number) =>
+    setLightbox({ items: fleetItems, index });
+  const openEvents = (index: number) =>
+    setLightbox({ items: eventItems, index });
 
   const tabs: { id: Tab; label: string; count: number }[] = [
-    { id: "fleet",  label: "Our Fleet",   count: carImages.length },
-    { id: "events", label: "Events",      count: events.length    },
+    { id: "fleet", label: "Our Fleet", count: carImages.length },
+    { id: "events", label: "Events", count: events.length },
   ];
 
   return (
@@ -390,7 +437,8 @@ export function GalleryClient({ carImages, events }: GalleryClientProps) {
                 Our Gallery
               </h1>
               <p className="mt-4 text-lg text-muted-foreground max-w-lg">
-                Explore our premium fleet in detail and relive moments from our events across Kenya.
+                Explore our premium fleet in detail and relive moments from our
+                events across Kenya.
               </p>
             </div>
           </div>
@@ -408,16 +456,18 @@ export function GalleryClient({ carImages, events }: GalleryClientProps) {
                     "relative flex items-center gap-2 px-5 py-4 text-sm font-medium transition-colors",
                     activeTab === tab.id
                       ? "text-accent"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {tab.label}
-                  <span className={cn(
-                    "inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-bold",
-                    activeTab === tab.id
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-muted text-muted-foreground"
-                  )}>
+                  <span
+                    className={cn(
+                      "inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-bold",
+                      activeTab === tab.id
+                        ? "bg-accent text-accent-foreground"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
                     {tab.count}
                   </span>
                   {/* Active indicator */}

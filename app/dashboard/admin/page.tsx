@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCars } from "@/lib/services/cars";
 import { getBookings } from "@/lib/services/bookings";
 import { getProfiles } from "@/lib/services/profile";
+import { getGalleryEvents } from "@/lib/services/gallery";
 import { AdminDashboardClient } from "@/components/admin/admin-dashboard-client";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import type { Metadata } from "next";
@@ -34,10 +35,11 @@ async function AdminContent() {
   // Schema uses "super_admin" not "admin"
   if (profileData?.role !== "super_admin") redirect("/");
 
-  const [cars, bookings, profiles] = await Promise.all([
+  const [cars, bookings, profiles, galleryEvents] = await Promise.all([
     getCars(),
     getBookings(),
     getProfiles(),
+    getGalleryEvents().catch(() => []),
   ]);
 
   return (
@@ -47,6 +49,7 @@ async function AdminContent() {
         initialCars={cars}
         initialBookings={bookings}
         initialProfiles={profiles}
+        initialGalleryEvents={galleryEvents}
       />
     </>
   );
