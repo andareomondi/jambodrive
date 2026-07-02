@@ -273,42 +273,41 @@ function FleetMasonry({
         ))}
       </div>
 
-      {/* Tablet+: 3 columns with alternating aspect ratios */}
-      <div className="hidden sm:grid grid-cols-3 gap-3">
-        {cols3.map((col, ci) => (
-          <div key={ci} className="flex flex-col gap-3">
-            {col.map((src, ri) => {
-              const globalIdx = ri * 3 + ci;
-              const aspect = getAspectClass(globalIdx);
-              return (
-                <button
-                  key={src}
-                  onClick={() => onOpen(globalIdx)}
-                  className={cn(
-                    "group relative w-full rounded-xl overflow-hidden bg-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2",
-                    aspect,
-                  )}
-                  aria-label={`View fleet image ${globalIdx + 1}`}
-                >
-                  <Image
-                    src={src}
-                    alt={`Fleet image ${globalIdx + 1}`}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                    sizes="(max-width: 1024px) 33vw, 25vw"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
-                      <ZoomIn className="w-5 h-5 text-white" />
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+{/* Tablet+: Pure CSS Masonry Column Layout */}
+<div className="hidden sm:block [column-count:2] lg:[column-count:3] [column-gap:12px]">
+  {images.map((src, globalIdx) => {
+    // We can still use alternating aspect ratios safely here
+    const aspect = getAspectClass(globalIdx);
+    
+    return (
+      <div key={src} className="break-inside-avoid mb-3">
+        <button
+          onClick={() => onOpen(globalIdx)}
+          className={cn(
+            "group relative w-full rounded-xl overflow-hidden bg-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2",
+            aspect,
+          )}
+          aria-label={`View fleet image ${globalIdx + 1}`}
+        >
+          <Image
+            src={src}
+            alt={`Fleet image ${globalIdx + 1}`}
+            fill
+            className="object-cover transition-transform duration-700 group-hover:scale-105"
+            sizes="(max-width: 1024px) 50vw, 33vw"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
+              <ZoomIn className="w-5 h-5 text-white" />
+            </div>
           </div>
-        ))}
+        </button>
       </div>
+    );
+  })}
+</div>
+
     </>
   );
 }

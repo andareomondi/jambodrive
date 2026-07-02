@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ImageIcon, X, Loader2, Calendar, Save } from "lucide-react";
-import { uploadCarImage } from "@/lib/upload-image";
+import { createClient } from "@/lib/supabase/client"; // Ensure you have a standard client client init here
 import { createGalleryEvent } from "@/lib/actions/gallery";
 import { cn } from "@/lib/utils";
 import type { GalleryEvent } from "@/lib/services/gallery";
@@ -71,14 +71,39 @@ export function EventImageModal({
     setIsLoading(true);
     try {
       setPhase("uploading");
-      const imageUrl = await uploadCarImage(imageFile);
-      console.log(imageUrl);
+      
+      // 1. Direct Client-side Upload to Supabase Storage
+      const supabase = createClient();
+      
+      // Generate a unique filename to avoid overwrites
+      const fileExt = imageFile.name.split(".").pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const filePath = `events/${fileName}`;
 
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("car-images") // Reuses your existing public bucket name
+        .upload(filePath, imageFile, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
+      }
+
+      // 2. Get Public URL
+      const { data: urlData } = supabase.storage
+        .from("car-images")
+        .getPublicUrl(filePath);
+
+      const imageUrl = urlData.publicUrl;
+
+      // 3. Save Record to Database via Server Action
       setPhase("saving");
       const event = await createGalleryEvent({
         title: data.title,
-        description: data.description || null,
-        event_date: data.event_date || null,
+        description: data.description?.trim() || null,
+        event_date: data.event_date ? data.event_date : null, // Sanitized blank strings
         image_url: imageUrl,
       });
 
@@ -86,6 +111,7 @@ export function EventImageModal({
       onSuccess(event);
       handleClose();
     } catch (e: unknown) {
+      console.error(e);
       toast.error(e instanceof Error ? e.message : "Failed to save event.");
     } finally {
       setIsLoading(false);
@@ -101,8 +127,8 @@ export function EventImageModal({
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card shadow-xl overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card shadow-xl overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out">
           {/* Header */}
           <div className="p-6 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -119,7 +145,7 @@ export function EventImageModal({
               </div>
             </div>
             <Dialog.Close
-              className="rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+              className="rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
               disabled={isLoading}
             >
               <X className="h-4 w-4" />
@@ -236,8 +262,8 @@ export function EventImageModal({
               {isLoading && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/40 rounded-xl px-4 py-3">
                   <Loader2 className="w-4 h-4 animate-spin text-accent shrink-0" />
-                  {phase === "uploading" && "Uploading image..."}
-                  {phase === "saving" && "Saving to gallery..."}
+                  {phase === "uploading" && "Uploading image to storage..."}
+                  {phase === "saving" && "Saving metadata database..."}
                 </div>
               )}
             </div>

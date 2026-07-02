@@ -6,7 +6,9 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 function validateFile(file: File): void {
   if (!ALLOWED_TYPES.includes(file.type)) {
-    throw new Error(`Invalid file type: ${file.type}. Allowed: JPEG, PNG, WebP, GIF`);
+    throw new Error(
+      `Invalid file type: ${file.type}. Allowed: JPEG, PNG, WebP, GIF`,
+    );
   }
   if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
     throw new Error(`File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB`);
@@ -44,7 +46,7 @@ export async function uploadCarImages(files: File[]): Promise<string[]> {
   files.forEach(validateFile);
 
   const results = await Promise.allSettled(
-    files.map((file) => uploadCarImage(file))
+    files.map((file) => uploadCarImage(file)),
   );
 
   const urls: string[] = [];
@@ -54,7 +56,9 @@ export async function uploadCarImages(files: File[]): Promise<string[]> {
     if (result.status === "fulfilled") {
       urls.push(result.value);
     } else {
-      errors.push(`${files[i].name}: ${result.reason?.message ?? "Unknown error"}`);
+      errors.push(
+        `${files[i].name}: ${result.reason?.message ?? "Unknown error"}`,
+      );
     }
   });
 
@@ -65,7 +69,26 @@ export async function uploadCarImages(files: File[]): Promise<string[]> {
   return urls;
 }
 
-// ── Delete single image ────────────────────────────────────────────────────────
+// ── Event image upload — uses events/ subfolder ───────────────────────────────
+// Kept separate from car images so storage policies can be scoped per folder
+// if needed, and so car-images/events/* is visually distinct in the bucket.
+
+export async function uploadEventImage(file: File): Promise<string> {
+  validateFile(file);
+
+  const supabase = createClient();
+  const sanitised = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+  const path = `events/${Date.now()}-${sanitised}`;
+
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file, { upsert: false });
+
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
 
 export async function deleteCarImage(url: string): Promise<void> {
   const supabase = createClient();
@@ -82,9 +105,7 @@ export async function deleteCarImages(urls: string[]): Promise<void> {
   if (urls.length === 0) return;
 
   const supabase = createClient();
-  const paths = urls
-    .map((url) => url.split(`/${BUCKET}/`)[1])
-    .filter(Boolean);
+  const paths = urls.map((url) => url.split(`/${BUCKET}/`)[1]).filter(Boolean);
 
   if (paths.length === 0) return;
 
