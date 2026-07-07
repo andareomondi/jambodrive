@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // cacheComponents: true,
   images: {
+    qualities: [85, 100, 75],
     remotePatterns: [
       {
         protocol: "https",
@@ -11,7 +12,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  allowedDevOrigins: ["192.168.100.5"],
+  allowedDevOrigins: ["http://192.168.100.54:3000"],
 };
 
 export default nextConfig;

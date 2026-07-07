@@ -119,7 +119,7 @@ export function EventImageModal({
     }
   };
 
-  return (
+return (
     <Dialog.Root
       open={open}
       onOpenChange={(next) => {
@@ -128,9 +128,10 @@ export function EventImageModal({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card shadow-xl overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out">
-          {/* Header */}
-          <div className="p-6 border-b border-border flex items-center justify-between">
+        {/* Updated Dialog.Content: Added flex, flex-col, and max-h-[90vh] */}
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex flex-col w-full max-w-lg -translate-x-1/2 -translate-y-1/2 max-h-[90vh] rounded-2xl border border-border bg-card shadow-xl overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out">
+          {/* Header (Stays fixed at the top) */}
+          <div className="p-6 border-b border-border flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shrink-0">
                 <ImageIcon className="w-5 h-5 text-accent-foreground" />
@@ -152,8 +153,10 @@ export function EventImageModal({
             </Dialog.Close>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="p-6 space-y-5">
+          {/* Form wrapper gets overflow-hidden so the child can scroll */}
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col overflow-hidden">
+            {/* Scrollable Form Body: Added overflow-y-auto */}
+            <div className="p-6 space-y-5 overflow-y-auto">
               {/* Image upload */}
               <div className="space-y-2">
                 <Label className="text-xs font-semibold uppercase tracking-wider">
@@ -268,8 +271,8 @@ export function EventImageModal({
               )}
             </div>
 
-            {/* Footer */}
-            <div className="flex gap-3 px-6 pb-6">
+            {/* Footer (Stays fixed at the bottom): Added pt-4 and border-t for visual separation */}
+            <div className="flex gap-3 px-6 pb-6 pt-4 border-t border-border shrink-0">
               <Dialog.Close asChild>
                 <Button
                   type="button"
