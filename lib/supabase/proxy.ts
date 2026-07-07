@@ -19,6 +19,7 @@ const PUBLIC_ROUTES = [
   "/auth/error",
   "/terms",
   "/faq",
+  "/cpanel",
 ];
 
 const PUBLIC_PREFIXES = [
