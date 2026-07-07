@@ -420,7 +420,7 @@ export function AdminDashboardClient({
         {/* Process Returns shortcut — links admin directly to the facilitator tool */}
         {bookings.filter((b) => b.status === "confirmed").length > 0 && (
           <Link
-            href="/facilitator"
+            href="/dashboard/facilitator"
             className="flex items-center justify-between gap-4 px-5 py-4 rounded-xl bg-accent/5 border border-accent/20 hover:bg-accent/10 transition-colors group"
           >
             <div className="flex items-center gap-3">
@@ -620,7 +620,7 @@ export function AdminDashboardClient({
                                   <MessageCircle className="h-3.5 w-3.5" />{" "}
                                   Notify
                                 </Button>
-                                <Link href="/facilitator">
+                                <Link href="/dashboard/facilitator">
                                   <Button
                                     size="sm"
                                     variant="outline"
