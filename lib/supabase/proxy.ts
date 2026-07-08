@@ -73,6 +73,10 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
   if (user && AUTH_ONLY_ROUTES.includes(pathname)) {
+    const returnUrl = request.nextUrl.searchParams.get("returnUrl");
+    if (returnUrl) {
+      return NextResponse.redirect(new URL(returnUrl, request.url));
+    }
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
   const matchedRole = ROLE_ROUTES.find(({ prefix }) =>
