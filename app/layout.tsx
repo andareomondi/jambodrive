@@ -8,6 +8,7 @@ import { Footer } from "@/components/layout/footer";
 import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
 import { FloatingSupport } from "@/components/home/floating-support";
+import AuthProvider from "@/components/auth/auth-provider";
 
 export const dynamic = "force-dynamic";
 
@@ -106,13 +107,15 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Suspense fallback={<NavbarSkeleton />}>
-            <NavbarServer />
-          </Suspense>
-          {children}
-          <FloatingSupport />
-          <Footer />
-          <Toaster richColors position="top-right" />
+          <AuthProvider>
+            <Suspense fallback={<NavbarSkeleton />}>
+              <NavbarServer />
+            </Suspense>
+            {children}
+            <FloatingSupport />
+            <Footer />
+            <Toaster richColors position="top-right" />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

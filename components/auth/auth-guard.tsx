@@ -10,13 +10,13 @@ export function AuthGuard() {
   useEffect(() => {
     const supabase = createClient();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event) => {
-        if (event === "SIGNED_OUT") {
-          router.replace("/auth/login");
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        router.replace("/auth/login");
       }
-    );
+    });
 
     return () => subscription.unsubscribe();
   }, [router]);
