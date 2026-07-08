@@ -82,7 +82,6 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
 
       const days = calcDays(data);
       const total = days * car!.price;
-      const today = new Date();
 
       if (returnD <= pickup) {
         throw new Error("Return date must be after pickup date.");
@@ -121,9 +120,19 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
             table: "bookings",
             filter: `id=eq.${newBooking.id}`,
           },
-          (payload) => {
+          async (payload) => {
             const updated = payload.new as any;
             if (updated.status === "confirmed") {
+              try {
+                // Mark the vehicle as unavailable/booked in the database
+                await supabase
+                  .from("cars")
+                  .update({ available: false })
+                  .eq("id", car!.id);
+              } catch (carError) {
+                console.error("Failed to update car availability:", carError);
+              }
+
               setPaymentResult({
                 receiptNumber: updated.mpesa_receipt_number,
                 amount: updated.paid_amount,
@@ -188,7 +197,6 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
       setPaymentMessage(message);
     }
   };
-
   if (!car || !car.available) {
     return (
       <div className="flex-1 flex items-center justify-center">
