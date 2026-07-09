@@ -277,16 +277,14 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
         {/* WhatsApp alternative */}
         <div className="flex flex-col items-center pt-3 border-t border-border gap-1">
           <Button
-            type="submit"
-            variant="outline"
-            size="sm"
-            className="border-accent/30 text-accent hover:bg-accent/10 font-bold text-xs uppercase transition-all"
-            onClick={() => setUseWhatsApp(true)}
-          >
-            <MessageCircle className="w-4 h-4 mr-1.5" />
-            WhatsApp Me
-          </Button>
-          <p className="text-[10px] text-muted-foreground">
+  type="submit"
+  size="sm"
+  className="bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-xs uppercase transition-all border-none"
+  onClick={() => setUseWhatsApp(true)}
+>
+  <MessageCircle className="w-4 h-4 mr-1.5" />
+  WhatsApp Me
+</Button>          <p className="text-[10px] text-muted-foreground">
             Details will be sent to the admin and he will reach out to you.
           </p>
         </div>

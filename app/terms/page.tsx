@@ -134,7 +134,7 @@ export default function TermsPage() {
                 </p>
                 <p>
                   <span className="font-medium text-foreground">Phone:</span>{" "}
-                  +254 758 5009431
+                  +254 758 500943
                 </p>
                 <p>
                   <span className="font-medium text-foreground">Address:</span>{" "}

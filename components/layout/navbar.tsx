@@ -10,24 +10,22 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 
-
 const CAR_TYPES = [
-  { id: "compact",   name: "Compact"    },
-  { id: "economy",   name: "Economy"    },
-  { id: "executive", name: "Executive"  },
-  { id: "suv",       name: "SUV"        },
-  { id: "ssuv",      name: "Luxury SUV" },
-  { id: "vans",      name: "Vans"       },
-  { id: "safari",    name: "Safari"     },
-  { id: "wedding",   name: "Wedding"    },
+  { id: "compact", name: "Compact" },
+  { id: "economy", name: "Economy" },
+  { id: "executive", name: "Executive" },
+  { id: "suv", name: "SUV" },
+  { id: "ssuv", name: "Luxury SUV" },
+  { id: "vans", name: "Vans" },
+  { id: "safari", name: "Safari" },
+  { id: "wedding", name: "Wedding" },
 ] as const;
 
 const NAV_LINKS = [
-  { href: "/",       label: "Home"       },
-  { href: "/cars",   label: "Browse All" },
-  { href: "/contact",label: "Contact Us" },
+  { href: "/", label: "Home" },
+  { href: "/cars", label: "Browse All" },
+  { href: "/contact", label: "Contact Us" },
 ] as const;
-
 
 interface NavbarProps {
   initialUser: User | null;
@@ -37,34 +35,34 @@ interface NavbarProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function Navbar({ initialUser, initialRole }: NavbarProps) {
-  const [user, setUser]   = useState<User | null>(initialUser);
-  const [role, setRole]   = useState<string | null>(initialRole);
-  const [isOpen, setIsOpen]           = useState(false);
+  const [user, setUser] = useState<User | null>(initialUser);
+  const [role, setRole] = useState<string | null>(initialRole);
+  const [isOpen, setIsOpen] = useState(false);
   const [isFleetOpen, setIsFleetOpen] = useState(false);
-  const [scrolled, setScrolled]       = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   const fleetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const supabase = createClient();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
 
-        if (currentUser) {
-          const { data } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", currentUser.id)
-            .single();
-          setRole(data?.role ?? "customer");
-        } else {
-          setRole(null);
-        }
+      if (currentUser) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", currentUser.id)
+          .single();
+        setRole(data?.role ?? "customer");
+      } else {
+        setRole(null);
       }
-    );
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -118,12 +116,11 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
     <nav
       className={cn(
         "sticky top-0 z-50 bg-background/95 border-b border-border backdrop-blur-sm transition-shadow duration-200",
-        scrolled && "shadow-sm"
+        scrolled && "shadow-sm",
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-
           {/* Logo */}
           <Link
             href="/"
@@ -148,7 +145,6 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             >
               Home
             </Link>
-
             {/* Fleet dropdown */}
             <div
               ref={fleetRef}
@@ -166,7 +162,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 <ChevronDown
                   className={cn(
                     "w-4 h-4 transition-transform duration-200",
-                    isFleetOpen && "rotate-180"
+                    isFleetOpen && "rotate-180",
                   )}
                 />
               </button>
@@ -186,14 +182,12 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 </div>
               )}
             </div>
-
             <Link
               href="/cars"
               className="text-sm text-foreground hover:text-accent transition-colors"
             >
               Browse All
             </Link>
-
             {role === "super_admin" && (
               <Link
                 href="/dashboard/admin"
@@ -202,7 +196,6 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 Admin
               </Link>
             )}
-
             {role === "facilitator" && (
               <Link
                 href="/dashboard/facilitator"
@@ -211,19 +204,18 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 Facilitator
               </Link>
             )}
-
-             <Link
+            <Link
               href="/gallery"
               className="text-sm text-foreground hover:text-accent transition-colors"
             >
               Gallery
-            </Link>           <Link
+            </Link>{" "}
+            <Link
               href="/contact"
               className="text-sm text-foreground hover:text-accent transition-colors"
             >
               Contact Us
             </Link>
-
             <a
               href="tel:+254758500943"
               className="text-sm text-foreground hover:text-accent transition-colors flex items-center gap-1"
@@ -279,7 +271,6 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
         {isOpen && (
           <div className="md:hidden border-t border-border bg-background pb-6">
             <div className="flex flex-col pt-3 gap-0.5">
-
               <Link
                 href="/"
                 onClick={closeAll}

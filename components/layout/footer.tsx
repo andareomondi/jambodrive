@@ -90,10 +90,10 @@ export function Footer() {
                 <Phone className="w-4 h-4 mt-1 flex-shrink-0" />
                 <span>
                   <a
-                    href="tel:+2547585009431"
+                    href="tel:+254758500943"
                     className="hover:text-accent transition-colors"
                   >
-                    +254 758 5009431
+                    +254 758 500943
                   </a>
                 </span>
               </li>

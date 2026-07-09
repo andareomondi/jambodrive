@@ -41,9 +41,9 @@ export default function ContactPage() {
                 {
                   icon: Phone,
                   title: "Phone",
-                  info: "+2547 585 009431",
+                  info: "+2547 585 00943",
                   subtext: "Available 9 AM - 9 PM EAT",
-                  href: "tel:+2547585009431", // Proper tel format without spaces
+                  href: "tel:+254758500943",
                 },
                 {
                   icon: Mail,
@@ -57,7 +57,7 @@ export default function ContactPage() {
                   title: "Office",
                   info: "Nairobi, Kenya",
                   subtext: "Visit us during business hours",
-                  href: "https://maps.google.com/?q=Nairobi,+Kenya", // Optional Google Maps redirect
+                  href: "https://maps.google.com/?q=Nairobi,+Kenya",
                 },
               ].map((item, i) => {
                 const Icon = item.icon;
