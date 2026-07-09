@@ -40,8 +40,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
     "suv",
     "ssuv",
     "vans",
-    "safari",
-    "wedding",
+    "trucks",
   ];
   const transmissions = ["manual", "automatic"];
   const fuels = ["petrol", "diesel", "hybrid", "electric"];
@@ -171,7 +170,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
                   {filters.priceMax.toLocaleString()}
                 </span>
               </div>
-              
+
               <Slider.Root
                 defaultValue={[0, 100000]}
                 max={100000}

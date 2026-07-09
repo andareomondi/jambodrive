@@ -17,8 +17,7 @@ const CAR_TYPES = [
   { id: "suv", name: "SUV" },
   { id: "ssuv", name: "Luxury SUV" },
   { id: "vans", name: "Vans" },
-  { id: "safari", name: "Safari" },
-  { id: "wedding", name: "Wedding" },
+  { id: "trucks", name: "Trucks" },
 ] as const;
 
 const NAV_LINKS = [
