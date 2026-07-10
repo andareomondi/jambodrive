@@ -74,6 +74,7 @@ interface CarModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   car?: Car | null;
+  mode?: "add" | "edit" | "duplicate";
   onSuccess?: () => void;
 }
 
@@ -152,6 +153,7 @@ export function CarModal({
   open,
   onOpenChange,
   car,
+  mode = "add",
   onSuccess,
 }: CarModalProps) {
   const abortRef = useRef<AbortController | null>(null);
@@ -161,7 +163,8 @@ export function CarModal({
   const [isLoading, setIsLoading] = useState(false);
   const [phase, setPhase] = useState<"idle" | "uploading" | "saving">("idle");
 
-  const isEditing = !!car;
+  const isEditing = mode === "edit" && !!car;
+  const isDuplicating = mode === "duplicate" && !!car;
 
   const {
     register,
@@ -186,7 +189,7 @@ export function CarModal({
     },
   });
 
-  // Populate form when editing, reset when adding
+  // Populate form when editing or duplicating, reset when adding
   useEffect(() => {
     if (!open) {
       setPhase("idle");
@@ -195,7 +198,7 @@ export function CarModal({
 
     if (car) {
       reset({
-        name: car.name,
+        name: isDuplicating ? `${car.name} (Copy)` : car.name,
         model: car.model,
         year: car.year,
         price: car.price,
@@ -224,7 +227,7 @@ export function CarModal({
         available: true,
       });
     }
-  }, [car, reset, open]);
+  }, [car, reset, open, isDuplicating]);
 
   const onSubmit = async (data: CarFormData) => {
     abortRef.current = new AbortController();
@@ -235,14 +238,16 @@ export function CarModal({
 
     try {
       // ── 1. Upload cover image ──────────────────────────────────────────
-      let coverUrl: string | null = car?.image ?? null;
+      let coverUrl: string | null =
+        isEditing || isDuplicating ? (car?.image ?? null) : null;
       if (coverFile) {
         coverUrl = await uploadCarImage(coverFile);
         if (signal.aborted) return;
       }
 
       // ── 2. Upload gallery images in parallel ───────────────────────────
-      let galleryUrls: string[] = car?.images ?? [];
+      let galleryUrls: string[] =
+        isEditing || isDuplicating ? (car?.images ?? []) : [];
       if (galleryFiles.length > 0) {
         const newUrls = await uploadCarImages(galleryFiles);
         if (signal.aborted) return;
@@ -279,7 +284,13 @@ export function CarModal({
 
       if (signal.aborted) return;
 
-      toast.success(isEditing ? "Car updated!" : "Car added to fleet!");
+      toast.success(
+        isEditing
+          ? "Car updated!"
+          : isDuplicating
+            ? "Car duplicated successfully!"
+            : "Car added to fleet!",
+      );
 
       setTimeout(() => {
         setCoverFile(null);
@@ -331,12 +342,18 @@ export function CarModal({
               </div>
               <div>
                 <Dialog.Title className="text-xl font-bold text-foreground">
-                  {isEditing ? "Update Vehicle" : "New Listing"}
+                  {isEditing
+                    ? "Update Vehicle"
+                    : isDuplicating
+                      ? "Duplicate Vehicle"
+                      : "New Listing"}
                 </Dialog.Title>
                 <Dialog.Description className="text-sm text-muted-foreground">
                   {isEditing
                     ? `Editing ${car?.name} ${car?.model}`
-                    : "Add a premium car to your fleet"}
+                    : isDuplicating
+                      ? `Creating a copy of ${car?.name} ${car?.model}`
+                      : "Add a premium car to your fleet"}
                 </Dialog.Description>
               </div>
               <Dialog.Close className="ml-auto rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring">
@@ -617,7 +634,11 @@ export function CarModal({
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  {isEditing ? "Update Vehicle" : "Create Listing"}
+                  {isEditing
+                    ? "Update Vehicle"
+                    : isDuplicating
+                      ? "Save Duplicate"
+                      : "Create Listing"}
                 </>
               )}
             </Button>

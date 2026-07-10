@@ -20,6 +20,7 @@ import {
   Plus,
   Edit,
   Trash2,
+  Copy,
   MessageCircle,
   Filter,
   ChevronLeft,
@@ -211,6 +212,9 @@ export function AdminDashboardClient({
   const [profiles, setProfiles] = useState<Profile[]>(initialProfiles);
 
   const [carModalOpen, setCarModalOpen] = useState(false);
+  const [carModalMode, setCarModalMode] = useState<
+    "add" | "edit" | "duplicate"
+  >("add");
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [carToDelete, setCarToDelete] = useState<Car | null>(null);
@@ -354,12 +358,22 @@ export function AdminDashboardClient({
 
   const handleAddCar = () => {
     setSelectedCar(null);
+    setCarModalMode("add");
     setCarModalOpen(true);
   };
+
   const handleEditCar = (car: Car) => {
     setSelectedCar(car);
+    setCarModalMode("edit");
     setCarModalOpen(true);
   };
+
+  const handleDuplicateCar = (car: Car) => {
+    setSelectedCar(car);
+    setCarModalMode("duplicate");
+    setCarModalOpen(true);
+  };
+
   const openDeleteConfirm = (car: Car) => {
     setCarToDelete(car);
     setDeleteModalOpen(true);
@@ -984,22 +998,33 @@ export function AdminDashboardClient({
                         </span>
                       </p>
                     </div>
-                    <div className="mt-4 grid grid-cols-2 gap-2">
+                    <div className="mt-4 grid grid-cols-3 gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="rounded-xl border-border"
+                        className="rounded-xl border-border px-2"
                         onClick={() => handleEditCar(car)}
                       >
-                        <Edit className="h-3.5 w-3.5 mr-2" /> Edit
+                        <Edit className="h-3.5 w-3.5 sm:mr-1.5" />{" "}
+                        <span className="hidden sm:inline">Edit</span>
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="rounded-xl border-border text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-transparent"
+                        className="rounded-xl border-border px-2"
+                        onClick={() => handleDuplicateCar(car)}
+                      >
+                        <Copy className="h-3.5 w-3.5 sm:mr-1.5" />{" "}
+                        <span className="hidden sm:inline">Copy</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl border-border text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-transparent px-2"
                         onClick={() => openDeleteConfirm(car)}
                       >
-                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                        <Trash2 className="h-3.5 w-3.5 sm:mr-1.5" />{" "}
+                        <span className="hidden sm:inline">Delete</span>
                       </Button>
                     </div>
                     <div className="mt-4 pt-4 border-t border-border">
@@ -1047,6 +1072,7 @@ export function AdminDashboardClient({
         open={carModalOpen}
         onOpenChange={setCarModalOpen}
         car={selectedCar}
+        mode={carModalMode}
         onSuccess={refreshCars}
       />
       <BookingModal
