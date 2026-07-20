@@ -100,7 +100,7 @@ export function BookingSummaryModal({
                   Booking Confirmed
                 </p>
                 <p className="text-xs md:text-sm text-muted-foreground">
-                  Thank you for choosing Cozy Mobility Tours
+                  Thank you for choosing Cosmara! Your booking has been successfully confirmed.
                 </p>
               </div>
             </div>

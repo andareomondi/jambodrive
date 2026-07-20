@@ -23,8 +23,8 @@ const CONTACT_OPTIONS = [
   {
     icon: Mail,
     label: "Email",
-    description: "team@cosmara.co.ke",
-    href: "mailto:team@cosmara.co.ke",
+    description: "cosmararentals@gmail.com",
+    href: "mailto:cosmararentals@gmail.com",
     external: false,
   },
 ] as const;

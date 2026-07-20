@@ -130,7 +130,7 @@ export default function TermsPage() {
               <div className="space-y-2 text-muted-foreground">
                 <p>
                   <span className="font-medium text-foreground">Email:</span>{" "}
-                  team@cosmara.co.ke
+                  cosmararentals@gmail.com
                 </p>
                 <p>
                   <span className="font-medium text-foreground">Phone:</span>{" "}

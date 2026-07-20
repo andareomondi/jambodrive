@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CarCard } from "@/components/cars/car-card";
 import { HeroCarousel } from "@/components/home/hero-carousel";
 import { getAvailableCars } from "@/lib/services/cars";
+import { LocationTestimonial } from "@/components/home/location-testimonial";
 export const metadata: Metadata = {
   title: "Premium Car Rentals | Drive Your Dream Car Today",
   description:
@@ -149,6 +150,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      <LocationTestimonial />
       {/* ── Floating support widget ── */}
     </div>
   );

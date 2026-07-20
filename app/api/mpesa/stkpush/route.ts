@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
           CallBackURL: callbackUrl,
           // AccountReference is visible to the customer on the STK prompt
           AccountReference: `Booking-${bookingId.slice(0, 8).toUpperCase()}`,
-          TransactionDesc: "Car Rental Payment - Cozy Mobility",
+          TransactionDesc: "Car Rental Payment - Cosmara",
         }),
       },
     );

@@ -76,7 +76,7 @@ export function DepositFundsModal({
                 Deposit Funds
               </Dialog.Title>
               <Dialog.Description className="text-sm text-muted-foreground">
-                Add funds to your Cozy Mobility account
+                Add funds to your account to make bookings and enjoy our services seamlessly.
               </Dialog.Description>
             </div>
           </div>

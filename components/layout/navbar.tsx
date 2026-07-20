@@ -128,7 +128,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
           >
             <Image
               src="/logo.ico"
-              alt="Cozy Mobility Tours Logo"
+              alt="Cosmara Logo"
               width={32}
               height={32}
               className="rounded-sm"

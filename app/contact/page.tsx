@@ -48,16 +48,16 @@ export default function ContactPage() {
                 {
                   icon: Mail,
                   title: "Email",
-                  info: "team@cosmara.co.ke",
+                  info: "cosmararentals@gmail.com",
                   subtext: "Response within 24 hours",
-                  href: "mailto:team@cosmara.co.ke",
+                  href: "mailto:cosmararentals@gmail.com",
                 },
                 {
                   icon: MapPin,
                   title: "Office",
                   info: "Nairobi, Kenya",
                   subtext: "Visit us during business hours",
-                  href: "https://maps.google.com/?q=Nairobi,+Kenya",
+                  href: "https://maps.app.goo.gl/tsi4RBUgc1aoBGn58",
                 },
               ].map((item, i) => {
                 const Icon = item.icon;

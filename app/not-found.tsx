@@ -80,7 +80,7 @@ export default function NotFound() {
               className="mt-8 pt-6 border-t border-border"
             >
               <p className="text-xs text-muted-foreground/70">
-                JamboDrive - Quality is assured
+                Cosmara - Quality is assured
               </p>
             </motion.div>
           </CardContent>
