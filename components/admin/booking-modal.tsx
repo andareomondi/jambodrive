@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import type { Booking } from "@/types"; // Make sure to import Booking type
 
 interface BookingFormData {
   car_id: string;
@@ -54,10 +55,12 @@ export function BookingModal({
   open,
   onOpenChange,
   onSuccess,
+  booking, // Accept an optional pending booking
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  booking?: Booking | null;
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [availableCars, setAvailableCars] = useState<AvailableCar[]>([]);
@@ -85,33 +88,61 @@ export function BookingModal({
 
   useEffect(() => {
     if (!open) {
-      reset();
+      reset({
+        car_id: "",
+        profile_id: "none",
+        pickup_date: "",
+        return_date: "",
+        pickup_location: "Main Office",
+        return_location: "Main Office",
+        mpesa_phone: "",
+        total_price: 0,
+        insurance: false,
+      });
       setPaymentState("idle");
       channelRef.current?.unsubscribe();
       return;
     }
 
+    // Prefill form if a pending booking is provided[cite: 3]
+    if (booking) {
+      reset({
+        car_id: booking.car_id,
+        profile_id: booking.profile_id ?? "none",
+        // Extract YYYY-MM-DD from ISO strings for native date inputs
+        pickup_date: booking.pickup_date.split("T")[0],
+        return_date: booking.return_date.split("T")[0],
+        pickup_location: booking.pickup_location,
+        return_location: booking.return_location,
+        total_price: booking.total_price,
+        insurance: booking.insurance ?? false,
+        // Fallback to profile phone if booking mpesa_phone is empty
+        mpesa_phone: booking.mpesa_phone || booking.profiles?.phone || "",
+      });
+    }
+
     const supabase = createClient();
     Promise.all([
+      // Only require availability if it's a new booking; if editing an existing booking, the car might already be marked unavailable
       supabase
         .from("cars")
         .select("id, name, model, price")
-        .eq("available", true),
+        .or(`available.eq.true${booking ? `,id.eq.${booking.car_id}` : ''}`),
       supabase.from("profiles").select("id, full_name, email"),
     ]).then(([carsRes, profilesRes]) => {
       if (carsRes.data) setAvailableCars(carsRes.data);
       if (profilesRes.data) setProfiles(profilesRes.data);
     });
-  }, [open, reset]);
+  }, [open, reset, booking]);
 
-  // Cleanup channel on unmount
+  // Cleanup channel on unmount[cite: 3]
   useEffect(() => {
     return () => {
       channelRef.current?.unsubscribe();
     };
   }, []);
 
-  // Auto-calculate Total Price
+  // Auto-calculate Total Price[cite: 3]
   useEffect(() => {
     if (selectedCarId && pickupDate && returnDate) {
       const pDate = new Date(pickupDate);
@@ -139,38 +170,64 @@ export function BookingModal({
       const ms = new Date(data.return_date).getTime() - new Date(data.pickup_date).getTime();
       const days = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
 
-      // 1. Insert pending booking directly to get the ID for the Daraja callback
-      const { data: newBooking, error: bookingError } = await supabase
-        .from("bookings")
-        .insert({
-          car_id: data.car_id,
-          profile_id: data.profile_id === "none" ? null : data.profile_id,
-          pickup_date: new Date(data.pickup_date).toISOString(),
-          return_date: new Date(data.return_date).toISOString(),
-          pickup_location: data.pickup_location,
-          return_location: data.return_location,
-          total_price: data.total_price,
-          status: "pending",
-          mpesa_phone: data.mpesa_phone,
-          days,
-        })
-        .select()
-        .single();
+      let targetBookingId = booking?.id;
 
-      if (bookingError || !newBooking) {
-        throw new Error(bookingError?.message ?? "Failed to create pending booking.");
+      // 1. Update existing pending booking or insert a new one
+      if (targetBookingId) {
+        const { error: updateError } = await supabase
+          .from("bookings")
+          .update({
+            car_id: data.car_id,
+            profile_id: data.profile_id === "none" ? null : data.profile_id,
+            pickup_date: new Date(data.pickup_date).toISOString(),
+            return_date: new Date(data.return_date).toISOString(),
+            pickup_location: data.pickup_location,
+            return_location: data.return_location,
+            total_price: data.total_price,
+            mpesa_phone: data.mpesa_phone,
+            days,
+            insurance: data.insurance,
+          })
+          .eq("id", targetBookingId);
+
+        if (updateError) {
+          throw new Error(updateError.message ?? "Failed to update pending booking.");
+        }
+      } else {
+        const { data: newBooking, error: bookingError } = await supabase
+          .from("bookings")
+          .insert({
+            car_id: data.car_id,
+            profile_id: data.profile_id === "none" ? null : data.profile_id,
+            pickup_date: new Date(data.pickup_date).toISOString(),
+            return_date: new Date(data.return_date).toISOString(),
+            pickup_location: data.pickup_location,
+            return_location: data.return_location,
+            total_price: data.total_price,
+            status: "pending",
+            mpesa_phone: data.mpesa_phone,
+            days,
+            insurance: data.insurance,
+          })
+          .select()
+          .single();
+
+        if (bookingError || !newBooking) {
+          throw new Error(bookingError?.message ?? "Failed to create pending booking.");
+        }
+        targetBookingId = newBooking.id;
       }
 
-      // 2. Listen for Daraja webhook success
+      // 2. Listen for Daraja webhook success[cite: 3]
       const channel = supabase
-        .channel(`admin_booking_status_${newBooking.id}`)
+        .channel(`admin_booking_status_${targetBookingId}`)
         .on(
           "postgres_changes",
           {
             event: "UPDATE",
             schema: "public",
             table: "bookings",
-            filter: `id=eq.${newBooking.id}`,
+            filter: `id=eq.${targetBookingId}`,
           },
           async (payload) => {
             const updated = payload.new as any;
@@ -198,14 +255,14 @@ export function BookingModal({
 
       channelRef.current = channel;
 
-      // 3. Initiate the STK Push
+      // 3. Initiate the STK Push[cite: 3]
       const stkResponse = await fetch("/api/mpesa/stkpush", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: data.mpesa_phone,
           amount: data.total_price,
-          bookingId: newBooking.id,
+          bookingId: targetBookingId,
         }),
       });
 
@@ -216,13 +273,13 @@ export function BookingModal({
         await supabase
           .from("bookings")
           .update({ status: "failed", payment_failure_reason: stkData.error })
-          .eq("id", newBooking.id);
+          .eq("id", targetBookingId);
         throw new Error(stkData.error ?? "M-Pesa request failed.");
       }
 
       setPaymentState("waiting_for_pin");
 
-      // 4. Fallback timeout logic
+      // 4. Fallback timeout logic[cite: 3]
       setTimeout(() => {
         setPaymentState((current) => {
           if (current === "waiting_for_pin") {
@@ -258,81 +315,83 @@ export function BookingModal({
 
           {/* ── STK Push Processing Views ── */}
           {paymentState !== "idle" ? (
-            <div className="py-8">
-              {paymentState === "processing" && (
-                <div className="flex flex-col items-center text-center gap-4">
-                  <Loader2 className="w-12 h-12 text-[#25D366] animate-spin" />
-                  <div>
-                    <h2 className="text-xl font-bold text-foreground mb-1">Initiating STK Push</h2>
-                    <p className="text-sm text-muted-foreground">Connecting to Safaricom...</p>
-                  </div>
-                </div>
-              )}
-
-              {paymentState === "waiting_for_pin" && (
-                <div className="flex flex-col items-center text-center gap-5 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-[#25D366] animate-pulse" />
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-[#25D366]/20 rounded-full animate-ping" />
-                    <div className="relative w-20 h-20 bg-card border border-border rounded-full flex items-center justify-center shadow-inner">
-                      <Smartphone className="w-9 h-9 text-[#25D366]" />
-                      <Wifi className="w-4 h-4 text-[#25D366] absolute -top-1 -right-1 animate-pulse" />
-                    </div>
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-foreground mb-2">Awaiting PIN</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Prompt sent to the customer's phone. Waiting for them to enter their M-Pesa PIN.
-                    </p>
-                  </div>
-                  <div className="bg-muted rounded-xl px-4 py-3 w-full flex items-center justify-center gap-3">
-                    <Loader2 className="w-4 h-4 text-muted-foreground animate-spin shrink-0" />
-                    <span className="text-sm text-muted-foreground">Listening for payment callback...</span>
-                  </div>
-                </div>
-              )}
-
-              {paymentState === "success" && (
-                <div className="flex flex-col items-center text-center gap-4">
-                  <div className="w-20 h-20 rounded-full bg-[#25D366]/10 flex items-center justify-center border border-[#25D366]/20">
-                    <CheckCircle className="w-10 h-10 text-[#25D366]" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-foreground mb-1">Payment Received!</h2>
-                    <p className="text-sm text-muted-foreground">Booking has been secured.</p>
-                  </div>
-                </div>
-              )}
-
-              {paymentState === "failed" && (
-                <div className="flex flex-col items-center text-center gap-5">
-                  <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center border border-destructive/20">
-                    <XCircle className="w-8 h-8 text-destructive" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-foreground mb-2">Payment Failed</h2>
-                    <p className="text-sm text-muted-foreground">The transaction was cancelled or timed out.</p>
-                  </div>
-                  <Button
-                    onClick={() => setPaymentState("idle")}
-                    className="w-full bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl"
-                  >
-                    Try Again
-                  </Button>
-                </div>
-              )}
-            </div>
+             <div className="py-8">
+               {/* ... Processing views remain untouched ... */}
+               {paymentState === "processing" && (
+                 <div className="flex flex-col items-center text-center gap-4">
+                   <Loader2 className="w-12 h-12 text-[#25D366] animate-spin" />
+                   <div>
+                     <h2 className="text-xl font-bold text-foreground mb-1">Initiating STK Push</h2>
+                     <p className="text-sm text-muted-foreground">Connecting to Safaricom...</p>
+                   </div>
+                 </div>
+               )}
+ 
+               {paymentState === "waiting_for_pin" && (
+                 <div className="flex flex-col items-center text-center gap-5 relative overflow-hidden">
+                   <div className="absolute top-0 left-0 w-full h-1 bg-[#25D366] animate-pulse" />
+                   <div className="relative">
+                     <div className="absolute inset-0 bg-[#25D366]/20 rounded-full animate-ping" />
+                     <div className="relative w-20 h-20 bg-card border border-border rounded-full flex items-center justify-center shadow-inner">
+                       <Smartphone className="w-9 h-9 text-[#25D366]" />
+                       <Wifi className="w-4 h-4 text-[#25D366] absolute -top-1 -right-1 animate-pulse" />
+                     </div>
+                   </div>
+                   <div>
+                     <h2 className="text-xl font-bold text-foreground mb-2">Awaiting PIN</h2>
+                     <p className="text-sm text-muted-foreground">
+                       Prompt sent to the customer's phone. Waiting for them to enter their M-Pesa PIN.
+                     </p>
+                   </div>
+                   <div className="bg-muted rounded-xl px-4 py-3 w-full flex items-center justify-center gap-3">
+                     <Loader2 className="w-4 h-4 text-muted-foreground animate-spin shrink-0" />
+                     <span className="text-sm text-muted-foreground">Listening for payment callback...</span>
+                   </div>
+                 </div>
+               )}
+ 
+               {paymentState === "success" && (
+                 <div className="flex flex-col items-center text-center gap-4">
+                   <div className="w-20 h-20 rounded-full bg-[#25D366]/10 flex items-center justify-center border border-[#25D366]/20">
+                     <CheckCircle className="w-10 h-10 text-[#25D366]" />
+                   </div>
+                   <div>
+                     <h2 className="text-2xl font-bold text-foreground mb-1">Payment Received!</h2>
+                     <p className="text-sm text-muted-foreground">Booking has been secured.</p>
+                   </div>
+                 </div>
+               )}
+ 
+               {paymentState === "failed" && (
+                 <div className="flex flex-col items-center text-center gap-5">
+                   <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center border border-destructive/20">
+                     <XCircle className="w-8 h-8 text-destructive" />
+                   </div>
+                   <div>
+                     <h2 className="text-xl font-bold text-foreground mb-2">Payment Failed</h2>
+                     <p className="text-sm text-muted-foreground">The transaction was cancelled or timed out.</p>
+                   </div>
+                   <Button
+                     onClick={() => setPaymentState("idle")}
+                     className="w-full bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl"
+                   >
+                     Try Again
+                   </Button>
+                 </div>
+               )}
+             </div>
           ) : (
             <>
               {/* ── Standard Booking Form ── */}
               <div className="flex items-center gap-2 mb-6">
                 <Calendar className="w-5 h-5 text-accent" />
                 <Dialog.Title className="text-lg font-semibold text-foreground">
-                  Create M-Pesa Booking
+                  {booking ? "Process Pending Booking" : "Create M-Pesa Booking"}
                 </Dialog.Title>
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                {/* ... Form inputs remain unchanged ... */}
                 {/* Car */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold uppercase tracking-wider">

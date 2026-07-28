@@ -101,10 +101,10 @@ export function Footer() {
                 <Mail className="w-4 h-4 mt-1 flex-shrink-0" />
                 <span>
                   <a
-                    href="mailto:cosmararentals@gmail.com"
+                    href="mailto:cosmaragroup@gmail.com"
                     className="hover:text-accent transition-colors"
                   >
-                    cosmararentals@gmail.com{" "}
+                    cosmaragroup@gmail.com{" "}
                   </a>
                 </span>
               </li>

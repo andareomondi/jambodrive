@@ -224,6 +224,7 @@ export function AdminDashboardClient({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
   // ── Stats ─────────────────────────────────────────────────────────────────
 
@@ -589,14 +590,16 @@ export function AdminDashboardClient({
                             {booking.status === "pending" && (
                               <>
                                 <Button
-                                  size="sm"
-                                  className="bg-accent hover:bg-accent/90 text-accent-foreground h-8 px-3 rounded-lg"
-                                  onClick={() =>
-                                    handleBookingStatus(booking.id, "confirmed")
-                                  }
-                                >
-                                  Approve
-                                </Button>
+  size="sm"
+  className="bg-accent hover:bg-accent/90 text-accent-foreground h-8 px-3 rounded-lg"
+  onClick={(e) => {
+    e.stopPropagation(); // Prevents the row from expanding when clicking the button
+    setSelectedBooking(booking);
+    setBookingModalOpen(true);
+  }}
+>
+  Approve & Pay
+</Button>
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -1075,14 +1078,19 @@ export function AdminDashboardClient({
         mode={carModalMode}
         onSuccess={refreshCars}
       />
-      <BookingModal
-        open={bookingModalOpen}
-        onOpenChange={setBookingModalOpen}
-        onSuccess={() => {
-          refreshCars();
-          refreshBookings();
-        }}
-      />
+<BookingModal
+  open={bookingModalOpen}
+  onOpenChange={(open) => {
+    setBookingModalOpen(open);
+    if (!open) setSelectedBooking(null); // Clear the booking when closed
+  }}
+  onSuccess={() => {
+    refreshCars();
+    refreshBookings();
+    setSelectedBooking(null);
+  }}
+  booking={selectedBooking}
+/>
     </div>
   );
 }

@@ -48,9 +48,9 @@ export default function ContactPage() {
                 {
                   icon: Mail,
                   title: "Email",
-                  info: "cosmararentals@gmail.com",
+                  info: "cosmaragroup@gmail.com",
                   subtext: "Response within 24 hours",
-                  href: "mailto:cosmararentals@gmail.com",
+                  href: "mailto:cosmaragroup@gmail.com",
                 },
                 {
                   icon: MapPin,
