@@ -32,6 +32,8 @@ import {
   RotateCcw,
   Receipt,
   ClipboardCheck,
+  FileText,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -224,7 +226,8 @@ export function AdminDashboardClient({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
-const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   // ── Stats ─────────────────────────────────────────────────────────────────
 
@@ -379,6 +382,40 @@ const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
     setCarToDelete(car);
     setDeleteModalOpen(true);
   };
+
+  const handleGenerateReport = useCallback(async () => {
+    if (cars.length === 0) {
+      toast.error("No vehicles to include in the report.");
+      return;
+    }
+    setGeneratingReport(true);
+    try {
+      // Loaded on demand so pdf-lib isn't in the initial bundle.
+      const { generateFleetReportPdf } =
+        await import("@/lib/reports/generate-fleet-report");
+      const pdfBytes = await generateFleetReportPdf(cars, {
+        origin: window.location.origin,
+      });
+      const blob = new Blob([pdfBytes as BlobPart], {
+        type: "application/pdf",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `fleet-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Report downloaded.");
+    } catch (e: unknown) {
+      toast.error(
+        e instanceof Error ? e.message : "Could not generate report.",
+      );
+    } finally {
+      setGeneratingReport(false);
+    }
+  }, [cars]);
   const toggleExpandRow = (id: string) =>
     setExpandedBookingId((prev) => (prev === id ? null : id));
 
@@ -590,16 +627,16 @@ const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
                             {booking.status === "pending" && (
                               <>
                                 <Button
-  size="sm"
-  className="bg-accent hover:bg-accent/90 text-accent-foreground h-8 px-3 rounded-lg"
-  onClick={(e) => {
-    e.stopPropagation(); // Prevents the row from expanding when clicking the button
-    setSelectedBooking(booking);
-    setBookingModalOpen(true);
-  }}
->
-  Approve & Pay
-</Button>
+                                  size="sm"
+                                  className="bg-accent hover:bg-accent/90 text-accent-foreground h-8 px-3 rounded-lg"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Prevents the row from expanding when clicking the button
+                                    setSelectedBooking(booking);
+                                    setBookingModalOpen(true);
+                                  }}
+                                >
+                                  Approve & Pay
+                                </Button>
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -943,12 +980,27 @@ const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
               <h2 className="text-xl font-bold text-foreground">
                 Fleet Management
               </h2>
-              <Button
-                onClick={handleAddCar}
-                className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl"
-              >
-                <Plus className="h-4 w-4 mr-2" /> Add Vehicle
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  onClick={handleGenerateReport}
+                  disabled={generatingReport || cars.length === 0}
+                  className="w-full sm:w-auto border-border rounded-xl gap-2"
+                >
+                  {generatingReport ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="h-4 w-4" />
+                  )}
+                  {generatingReport ? "Generating…" : "Generate Report"}
+                </Button>
+                <Button
+                  onClick={handleAddCar}
+                  className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl"
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Add Vehicle
+                </Button>
+              </div>
             </div>
           </div>
           <div className="p-4 sm:p-6">
@@ -1078,19 +1130,19 @@ const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
         mode={carModalMode}
         onSuccess={refreshCars}
       />
-<BookingModal
-  open={bookingModalOpen}
-  onOpenChange={(open) => {
-    setBookingModalOpen(open);
-    if (!open) setSelectedBooking(null); // Clear the booking when closed
-  }}
-  onSuccess={() => {
-    refreshCars();
-    refreshBookings();
-    setSelectedBooking(null);
-  }}
-  booking={selectedBooking}
-/>
+      <BookingModal
+        open={bookingModalOpen}
+        onOpenChange={(open) => {
+          setBookingModalOpen(open);
+          if (!open) setSelectedBooking(null); // Clear the booking when closed
+        }}
+        onSuccess={() => {
+          refreshCars();
+          refreshBookings();
+          setSelectedBooking(null);
+        }}
+        booking={selectedBooking}
+      />
     </div>
   );
 }
