@@ -12,7 +12,19 @@ import { CheckCircle, Eye } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Car } from "@/types";
 
-export default function TestDriveClientPage({ car }: { car: Car | null }) {
+interface TestDriveClientPageProps {
+  car: Car | null;
+  booking?: {
+    car_id: string | null;
+    profile_id?: string | null;
+    pickup_date?: string;
+    return_date?: string;
+    pickup_location?: string;
+    return_location?: string;
+  } | null;
+}
+
+export default function TestDriveClientPage({ car }: TestDriveClientPageProps) {
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const supabase = createClient();
@@ -56,7 +68,7 @@ export default function TestDriveClientPage({ car }: { car: Car | null }) {
         pickup_location: data.pickupLocation,
         return_location: data.returnLocation,
         total_price: total,
-        status: "pending", // explicitly set to pending
+        status: "pending",
         days,
       });
 
@@ -129,7 +141,6 @@ export default function TestDriveClientPage({ car }: { car: Car | null }) {
             carName={car.name}
             onSubmit={handleBooking}
             isLoading={isSubmitting}
-            submitLabel="Submit Viewing Request"
           />
         </div>
         <div className="lg:col-span-4 space-y-6">

@@ -107,7 +107,7 @@ export function BookingModal({
     // Prefill form if a pending booking is provided[cite: 3]
     if (booking) {
       reset({
-        car_id: booking.car_id,
+        car_id: booking.car_id ?? "",
         profile_id: booking.profile_id ?? "none",
         // Extract YYYY-MM-DD from ISO strings for native date inputs
         pickup_date: booking.pickup_date.split("T")[0],
