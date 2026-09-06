@@ -109,6 +109,12 @@ export function CarCard({ car, days }: CarCardProps) {
               ) : (
                 <p className="text-xs text-muted-foreground">/ day</p>
               )}
+              {/* Chauffeured Notice */}
+              {car.chauffeured && (
+                <p className="text-[11px] font-semibold text-accent mt-0.5">
+                  Includes Driver
+                </p>
+              )}
             </div>
             <Button
               size="sm"

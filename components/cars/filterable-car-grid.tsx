@@ -21,6 +21,8 @@ export function FilterableCarGrid({
     typeof searchParams.from === "string" ? searchParams.from : undefined;
   const toParam =
     typeof searchParams.to === "string" ? searchParams.to : undefined;
+const serviceParam =
+  typeof searchParams.service === "string" ? searchParams.service : undefined;
 
   const [filters, setFilters] = useState<FilterState>({
     priceMin: 0,
@@ -29,6 +31,7 @@ export function FilterableCarGrid({
     transmission: [],
     fuel: [],
     search: "",
+chauffeured: serviceParam === "chauffeured" ? true : serviceParam === "self-chauffeured" ? false : null,
   });
 
   const days = useMemo(() => {
@@ -70,7 +73,9 @@ export function FilterableCarGrid({
       if (filters.fuel.length > 0 && !filters.fuel.includes(car.fuel)) {
         return false;
       }
-
+if (filters.chauffeured !== null && car.chauffeured !== filters.chauffeured) {
+      return false;
+    }
       return true;
     });
   }, [filters, initialCars]);

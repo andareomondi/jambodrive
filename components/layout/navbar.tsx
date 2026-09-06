@@ -3,8 +3,19 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ChevronDown, Phone } from "lucide-react";
+import {
+  Menu,
+  X,
+  ChevronDown,
+  CarFront,
+  UserCheck,
+  Map as MapIcon,
+  Plane,
+  Building,
+  PartyPopper,
+} from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -20,24 +31,17 @@ const CAR_TYPES = [
   { id: "trucks", name: "Trucks" },
 ] as const;
 
-const NAV_LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/cars", label: "Browse All" },
-  { href: "/contact", label: "Contact Us" },
-] as const;
-
 interface NavbarProps {
   initialUser: User | null;
   initialRole: string | null;
 }
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 export function Navbar({ initialUser, initialRole }: NavbarProps) {
   const [user, setUser] = useState<User | null>(initialUser);
   const [role, setRole] = useState<string | null>(initialRole);
   const [isOpen, setIsOpen] = useState(false);
   const [isFleetOpen, setIsFleetOpen] = useState(false);
+  const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   const fleetRef = useRef<HTMLDivElement>(null);
@@ -107,15 +111,74 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
   const closeAll = () => {
     setIsOpen(false);
     setIsFleetOpen(false);
+    setIsBookModalOpen(false);
   };
 
   const isLoggedIn = !!user;
+
+  // Booking Services Array
+  const BOOKING_SERVICES = [
+    {
+      href: "/cars?service=self-chauffeured",
+      title: "Self-Chauffeured",
+      desc: "Drive yourself at your own pace",
+      icon: CarFront,
+      comingSoon: false,
+    },
+    {
+      href: "/cars?service=chauffeured",
+      title: "Chauffeured",
+      desc: "Sit back and let our experts drive",
+      icon: UserCheck,
+      comingSoon: false,
+    },
+    {
+      href: "#",
+      title: "Tours",
+      desc: "Explore amazing destinations",
+      icon: MapIcon,
+      comingSoon: true,
+    },
+    {
+      href: "#",
+      title: "Airport Pickups",
+      desc: "Seamless airport transfers",
+      icon: Plane,
+      comingSoon: true,
+    },
+    {
+      href: "#",
+      title: "Hotel Bookings",
+      desc: "Comfortable stays guaranteed",
+      icon: Building,
+      comingSoon: true,
+    },
+    {
+      href: "#",
+      title: "Wedding Events",
+      desc: "Make your special day perfect",
+      icon: PartyPopper,
+      comingSoon: true,
+    },
+  ];
+
+  const handleServiceClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    service: typeof BOOKING_SERVICES[0]
+  ) => {
+    if (service.comingSoon) {
+      e.preventDefault();
+      toast.info(`${service.title} are still under development and coming soon!`);
+    } else {
+      closeAll();
+    }
+  };
 
   return (
     <nav
       className={cn(
         "sticky top-0 z-50 bg-background/95 border-b border-border backdrop-blur-sm transition-shadow duration-200",
-        scrolled && "shadow-sm",
+        scrolled && "shadow-sm"
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -161,7 +224,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 <ChevronDown
                   className={cn(
                     "w-4 h-4 transition-transform duration-200",
-                    isFleetOpen && "rotate-180",
+                    isFleetOpen && "rotate-180"
                   )}
                 />
               </button>
@@ -208,24 +271,17 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               className="text-sm text-foreground hover:text-accent transition-colors"
             >
               Gallery
-            </Link>{" "}
+            </Link>
             <Link
               href="/contact"
               className="text-sm text-foreground hover:text-accent transition-colors"
             >
               Contact Us
             </Link>
-            <a
-              href="tel:+254758500943"
-              className="text-sm text-foreground hover:text-accent transition-colors flex items-center gap-1"
-            >
-              <Phone className="w-3.5 h-3.5" />
-              +254 758 500943
-            </a>
           </div>
 
-          {/* Desktop auth */}
-          <div className="hidden md:flex items-center gap-2 w-[180px] justify-end">
+          {/* Desktop auth & CTA */}
+          <div className="hidden md:flex items-center gap-2 justify-end">
             {isLoggedIn ? (
               <>
                 <Button variant="outline" size="sm" asChild>
@@ -233,26 +289,24 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 </Button>
                 <Button
                   size="sm"
+                  variant="ghost"
                   onClick={handleLogout}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
                 >
                   Log Out
                 </Button>
               </>
             ) : (
-              <>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/auth/login">Sign In</Link>
-                </Button>
-                <Button
-                  size="sm"
-                  asChild
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                >
-                  <Link href="/auth/sign-up">Sign Up</Link>
-                </Button>
-              </>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/auth/login">Sign In</Link>
+              </Button>
             )}
+            <Button
+              size="sm"
+              onClick={() => setIsBookModalOpen(true)}
+              className="bg-accent hover:bg-accent/90 text-accent-foreground ml-2"
+            >
+              Book Now
+            </Button>
           </div>
 
           {/* Mobile toggle */}
@@ -339,54 +393,98 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 >
                   Contact Us
                 </Link>
-
-                <a
-                  href="tel:+254758500943"
-                  className="px-3 py-3 text-sm text-foreground hover:text-accent transition-colors flex items-center gap-2"
-                >
-                  <Phone className="w-4 h-4" />
-                  +254 758 500943
-                </a>
               </div>
             </div>
 
-            {/* Mobile auth */}
-            <div className="mt-3 pt-3 border-t border-border flex gap-2 px-1">
+            {/* Mobile auth & CTA */}
+            <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2 px-3">
               {isLoggedIn ? (
-                <>
+                <div className="flex gap-2">
                   <Button variant="outline" asChild className="flex-1">
                     <Link href="/dashboard" onClick={closeAll}>
                       Profile
                     </Link>
                   </Button>
                   <Button
-                    className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
+                    variant="outline"
+                    className="flex-1"
                     onClick={handleLogout}
                   >
                     Log Out
                   </Button>
-                </>
+                </div>
               ) : (
-                <>
-                  <Button variant="outline" asChild className="flex-1">
-                    <Link href="/auth/login" onClick={closeAll}>
-                      Sign In
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
-                  >
-                    <Link href="/auth/sign-up" onClick={closeAll}>
-                      Sign Up
-                    </Link>
-                  </Button>
-                </>
+                <Button variant="outline" asChild className="w-full">
+                  <Link href="/auth/login" onClick={closeAll}>
+                    Sign In
+                  </Link>
+                </Button>
               )}
+              <Button
+                onClick={() => {
+                  setIsOpen(false);
+                  setIsBookModalOpen(true);
+                }}
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground mt-2"
+              >
+                Book Now
+              </Button>
             </div>
           </div>
         )}
       </div>
+
+      {/* Book Now Modal */}
+      <Dialog.Root open={isBookModalOpen} onOpenChange={setIsBookModalOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-4xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 md:p-8 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
+            <Dialog.Close className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+              <X className="h-5 w-5" />
+              <span className="sr-only">Close</span>
+            </Dialog.Close>
+
+            <div className="mb-8 text-center md:text-left">
+              <Dialog.Title className="text-2xl md:text-3xl font-bold text-foreground">
+                What are you looking for?
+              </Dialog.Title>
+              <Dialog.Description className="text-sm md:text-base text-muted-foreground mt-2">
+                Select a service below to proceed with your booking.
+              </Dialog.Description>
+            </div>
+
+            {/* Mini Cards Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+              {BOOKING_SERVICES.map((item) => (
+                <Link
+                  key={item.title}
+                  href={item.href}
+                  onClick={(e) => handleServiceClick(e, item)}
+                  className="group flex flex-col items-center text-center p-5 rounded-xl border border-border bg-card hover:border-accent hover:bg-accent/5 transition-all relative overflow-hidden"
+                >
+                  <div className="h-14 w-14 rounded-full bg-accent/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-accent/20 transition-all">
+                    <item.icon className="h-7 w-7 text-accent" />
+                  </div>
+                  <h3 className="font-semibold text-foreground text-sm md:text-base">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1.5 hidden md:block">
+                    {item.desc}
+                  </p>
+                  
+                  {/* Subtle coming soon indicator badge */}
+                  {item.comingSoon && (
+                    <div className="absolute top-2 right-2 bg-muted/80 text-muted-foreground text-[10px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-semibold">
+                      Soon
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </nav>
   );
 }

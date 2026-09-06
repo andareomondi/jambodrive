@@ -68,6 +68,7 @@ interface CarFormData {
   features: string;
   description: string;
   available: boolean;
+  chauffeured: boolean;
 }
 
 interface CarModalProps {
@@ -186,6 +187,7 @@ export function CarModal({
       features: "",
       description: "",
       available: true,
+      chauffeured: false,
     },
   });
 
@@ -210,6 +212,7 @@ export function CarModal({
         features: (car.features ?? []).join(", "),
         description: car.description ?? "",
         available: car.available ?? true,
+        chauffeured: car.chauffeured ?? false,
       });
     } else {
       reset({
@@ -225,6 +228,7 @@ export function CarModal({
         features: "",
         description: "",
         available: true,
+        chauffeured: false,
       });
     }
   }, [car, reset, open, isDuplicating]);
@@ -278,6 +282,7 @@ export function CarModal({
           : [],
         description: data.description || null,
         available: data.available,
+        chauffeured: data.chauffeured,
       };
 
       await adminUpsertCar(payload as any);
@@ -582,6 +587,36 @@ export function CarModal({
                 </div>
                 <Controller
                   name="available"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch.Root
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className="relative inline-flex h-6 w-11 items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 data-[state=checked]:bg-accent data-[state=unchecked]:bg-muted"
+                    >
+                      <Switch.Thumb className="pointer-events-none block h-4 w-4 rounded-full bg-white shadow-lg transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0.5" />
+                    </Switch.Root>
+                  )}
+                />
+              </div>
+
+              {/* Service Mode Toggle */}
+              <div className="flex items-center justify-between bg-accent/5 border border-accent/20 rounded-xl p-4 mt-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center">
+                    <CarIcon className="w-4 h-4 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">
+                      Chauffeured Service
+                    </p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-tight">
+                      Includes professional driver
+                    </p>
+                  </div>
+                </div>
+                <Controller
+                  name="chauffeured"
                   control={control}
                   render={({ field }) => (
                     <Switch.Root

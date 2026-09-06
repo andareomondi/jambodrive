@@ -20,6 +20,7 @@ export interface Car {
   features: string[] | null;
   description: string | null;
   available: boolean | null;
+  chauffeured: boolean | null;
 }
 
 export type CarInsert = Omit<Car, "id" | "rating" | "reviews" | "available"> & {

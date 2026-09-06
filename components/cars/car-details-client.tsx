@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { CarCard } from "@/components/cars/car-card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -17,6 +16,7 @@ import {
   X,
   ArrowLeft,
   MessageCircle,
+  UserCheck, // Added this import for the chauffeured icon
 } from "lucide-react";
 import type { Car } from "@/types";
 
@@ -200,6 +200,13 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                 <span className="text-4xl font-bold text-accent">Ksh {car.price.toLocaleString()}</span>
                 <span className="text-muted-foreground text-sm">/day</span>
               </div>
+              {/* Chauffeured Notice */}
+              {car.chauffeured && (
+                <div className="flex items-center gap-1.5 mt-2 text-sm font-medium text-accent">
+                  <UserCheck className="w-4 h-4" />
+                  <span>Price is inclusive of driver</span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">

@@ -20,6 +20,7 @@ export interface FilterState {
   transmission: string[];
   fuel: string[];
   search: string;
+chauffeured: boolean | null;
 }
 
 export function CarFilters({ onFilterChange }: CarFiltersProps) {
@@ -30,6 +31,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
     transmission: [],
     fuel: [],
     search: "",
+    chauffeured: null,
   });
   const [isOpen, setIsOpen] = useState(false);
 
@@ -69,6 +71,7 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
       transmission: [],
       fuel: [],
       search: "",
+      chauffeured: null,
     };
     setFilters(reset);
     onFilterChange(reset);
@@ -232,6 +235,38 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
                 </div>
               </div>
             ))}
+            {/* Chauffeured Option */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Chauffeured</Label>
+              <div className="flex gap-2">
+                <FilterPill
+                  label="Yes"
+                  isSelected={filters.chauffeured === true}
+                  onClick={() => {
+                    const newFilters = {
+                      ...filters,
+                      chauffeured:
+                        filters.chauffeured === true ? null : true,
+                    };
+                    setFilters(newFilters);
+                    onFilterChange(newFilters);
+                  }}
+                />
+                <FilterPill
+                  label="No"
+                  isSelected={filters.chauffeured === false}
+                  onClick={() => {
+                    const newFilters = {
+                      ...filters,
+                      chauffeured:
+                        filters.chauffeured === false ? null : false,
+                    };
+                    setFilters(newFilters);
+                    onFilterChange(newFilters);
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Footer Mobile Actions (Sticky-ish bottom UX) */}
