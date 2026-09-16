@@ -213,10 +213,10 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
               {car.available ? (
                 <div className="flex flex-col gap-3">
                   <Button asChild className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                    <Link href={`/booking/${car.id}`}>Book Now (Pay with M-Pesa)</Link>
+                    <Link href={`/booking/${car.id}`}>Book and Pay Now</Link>
                   </Button>
                   <Button asChild variant="outline" className="w-full border-accent/40 text-accent hover:bg-accent/10">
-                    <Link href={`/testdrive/${car.id}`}>Request Physical Viewing</Link>
+                    <Link href={`/testdrive/${car.id}`}>Book and Pay Later</Link>
                   </Button>
                 </div>
               ) : (
