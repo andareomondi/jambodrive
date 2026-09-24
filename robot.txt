@@ -1,0 +1,9 @@
+# robots.txt for Car Rental Platform
+# Blocks search engine crawlers from accessing dashboard and admin areas
+
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+
+# Crawl delay to prevent excessive server resource usage
+Crawl-delay: 1
