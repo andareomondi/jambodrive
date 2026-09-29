@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useTransition } from "react";
 import Image from "next/image";
 import {
   X,
@@ -9,8 +9,13 @@ import {
   Calendar,
   ImageIcon,
   ZoomIn,
+  Loader2,
 } from "lucide-react";
-import type { GalleryEvent } from "@/lib/services/gallery";
+import {
+  type GalleryEvent,
+  getCarGalleryImages,
+  getGalleryEvents,
+} from "@/lib/services/gallery";
 import { cn } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -25,13 +30,12 @@ interface LightboxItem {
 }
 
 interface GalleryClientProps {
-  carImages: string[];
-  events: GalleryEvent[];
+  initialCarImages: string[];
+  initialEvents: GalleryEvent[];
+  limit?: number;
 }
 
 // ── Masonry column splitter ───────────────────────────────────────────────────
-// Splits items into N columns in reading order so the layout
-// fills naturally without JS-measured heights.
 
 function splitIntoColumns<T>(items: T[], cols: number): T[][] {
   const columns: T[][] = Array.from({ length: cols }, () => []);
@@ -39,16 +43,16 @@ function splitIntoColumns<T>(items: T[], cols: number): T[][] {
   return columns;
 }
 
-// ── Aspect ratio helper — alternates tall/wide for visual variety ─────────────
+// ── Aspect ratio helper ───────────────────────────────────────────────────────
 
 function getAspectClass(index: number): string {
   const pattern = [
-    "aspect-[3/4]", // portrait
-    "aspect-[4/3]", // landscape
-    "aspect-square", // square
-    "aspect-[3/4]", // portrait
-    "aspect-[16/9]", // wide
-    "aspect-square", // square
+    "aspect-[3/4]",
+    "aspect-[4/3]",
+    "aspect-square",
+    "aspect-[3/4]",
+    "aspect-[16/9]",
+    "aspect-square",
   ];
   return pattern[index % pattern.length];
 }
@@ -76,7 +80,6 @@ function Lightbox({
     [items.length],
   );
 
-  // Keyboard navigation
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") prev();
@@ -87,7 +90,6 @@ function Lightbox({
     return () => window.removeEventListener("keydown", handler);
   }, [prev, next, onClose]);
 
-  // Prevent body scroll
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
@@ -100,7 +102,6 @@ function Lightbox({
       className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4"
       onClick={onClose}
     >
-      {/* Close */}
       <button
         className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
         onClick={onClose}
@@ -109,12 +110,10 @@ function Lightbox({
         <X className="w-5 h-5" />
       </button>
 
-      {/* Counter */}
       <p className="absolute top-5 left-1/2 -translate-x-1/2 text-white/50 text-xs font-medium tabular-nums">
         {index + 1} / {items.length}
       </p>
 
-      {/* Prev */}
       {items.length > 1 && (
         <button
           className="absolute left-3 sm:left-6 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
@@ -128,7 +127,6 @@ function Lightbox({
         </button>
       )}
 
-      {/* Image */}
       <div
         className="relative w-full max-w-4xl flex items-center justify-center"
         style={{ height: "75vh" }}
@@ -145,7 +143,6 @@ function Lightbox({
         />
       </div>
 
-      {/* Next */}
       {items.length > 1 && (
         <button
           className="absolute right-3 sm:right-6 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
@@ -159,7 +156,6 @@ function Lightbox({
         </button>
       )}
 
-      {/* Caption */}
       {(current.caption || current.date) && (
         <div
           className="mt-4 text-center max-w-xl px-4"
@@ -183,7 +179,6 @@ function Lightbox({
         </div>
       )}
 
-      {/* Thumbnail strip */}
       {items.length > 1 && (
         <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 px-4 overflow-x-auto">
           {items.map((item, i) => (
@@ -237,13 +232,10 @@ function FleetMasonry({
     );
   }
 
-  // 1 col mobile, 2 col tablet, 3 col desktop
   const cols2 = splitIntoColumns(images, 2);
-  const cols3 = splitIntoColumns(images, 3);
 
   return (
     <>
-      {/* Mobile: 2 columns */}
       <div className="grid grid-cols-2 gap-2 sm:hidden">
         {cols2.map((col, ci) => (
           <div key={ci} className="flex flex-col gap-2">
@@ -273,41 +265,38 @@ function FleetMasonry({
         ))}
       </div>
 
-{/* Tablet+: Pure CSS Masonry Column Layout */}
-<div className="hidden sm:block [column-count:2] lg:[column-count:3] [column-gap:12px]">
-  {images.map((src, globalIdx) => {
-    // We can still use alternating aspect ratios safely here
-    const aspect = getAspectClass(globalIdx);
-    
-    return (
-      <div key={src} className="break-inside-avoid mb-3">
-        <button
-          onClick={() => onOpen(globalIdx)}
-          className={cn(
-            "group relative w-full rounded-xl overflow-hidden bg-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2",
-            aspect,
-          )}
-          aria-label={`View fleet image ${globalIdx + 1}`}
-        >
-          <Image
-            src={src}
-            alt={`Fleet image ${globalIdx + 1}`}
-            fill
-            className="object-cover transition-transform duration-700 group-hover:scale-105"
-            sizes="(max-width: 1024px) 50vw, 33vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
-              <ZoomIn className="w-5 h-5 text-white" />
-            </div>
-          </div>
-        </button>
-      </div>
-    );
-  })}
-</div>
+      <div className="hidden sm:block [column-count:2] lg:[column-count:3] [column-gap:12px]">
+        {images.map((src, globalIdx) => {
+          const aspect = getAspectClass(globalIdx);
 
+          return (
+            <div key={src} className="break-inside-avoid mb-3">
+              <button
+                onClick={() => onOpen(globalIdx)}
+                className={cn(
+                  "group relative w-full rounded-xl overflow-hidden bg-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2",
+                  aspect,
+                )}
+                aria-label={`View fleet image ${globalIdx + 1}`}
+              >
+                <Image
+                  src={src}
+                  alt={`Fleet image ${globalIdx + 1}`}
+                  fill
+                  className="object-cover transition-transform duration-700 group-hover:scale-105"
+                  sizes="(max-width: 1024px) 50vw, 33vw"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
+                    <ZoomIn className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </>
   );
 }
@@ -342,7 +331,6 @@ function EventsGrid({
           className="group relative rounded-2xl overflow-hidden bg-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 text-left"
           aria-label={`View event: ${event.title}`}
         >
-          {/* Image */}
           <div className="relative aspect-[4/3] w-full overflow-hidden">
             <Image
               src={event.image_url}
@@ -351,16 +339,13 @@ function EventsGrid({
               className="object-cover transition-transform duration-700 group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
-            {/* Gradient overlay always present */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-            {/* Zoom hint */}
             <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
               <ZoomIn className="w-4 h-4 text-white" />
             </div>
           </div>
 
-          {/* Caption pinned to bottom of image */}
           <div className="absolute bottom-0 left-0 right-0 p-4">
             <p className="font-semibold text-white text-sm sm:text-base leading-snug line-clamp-2">
               {event.title}
@@ -389,12 +374,31 @@ function EventsGrid({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function GalleryClient({ carImages, events }: GalleryClientProps) {
+export function GalleryClient({
+  initialCarImages,
+  initialEvents,
+  limit = 12,
+}: GalleryClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>("fleet");
   const [lightbox, setLightbox] = useState<{
     items: LightboxItem[];
     index: number;
   } | null>(null);
+
+  // Pagination states
+  const [carImages, setCarImages] = useState<string[]>(initialCarImages);
+  const [carPage, setCarPage] = useState<number>(0);
+  const [hasMoreCars, setHasMoreCars] = useState<boolean>(
+    initialCarImages.length >= limit,
+  );
+
+  const [events, setEvents] = useState<GalleryEvent[]>(initialEvents);
+  const [eventPage, setEventPage] = useState<number>(0);
+  const [hasMoreEvents, setHasMoreEvents] = useState<boolean>(
+    initialEvents.length >= limit,
+  );
+
+  const [isPending, startTransition] = useTransition();
 
   const fleetItems: LightboxItem[] = carImages.map((src, i) => ({
     src,
@@ -413,17 +417,36 @@ export function GalleryClient({ carImages, events }: GalleryClientProps) {
   const openEvents = (index: number) =>
     setLightbox({ items: eventItems, index });
 
+  const handleLoadMore = () => {
+    startTransition(async () => {
+      if (activeTab === "fleet") {
+        const nextPage = carPage + 1;
+        const newImages = await getCarGalleryImages(nextPage, limit);
+        setCarImages((prev) => [...prev, ...newImages]);
+        setCarPage(nextPage);
+        setHasMoreCars(newImages.length >= limit);
+      } else {
+        const nextPage = eventPage + 1;
+        const newEvents = await getGalleryEvents(nextPage, limit);
+        setEvents((prev) => [...prev, ...newEvents]);
+        setEventPage(nextPage);
+        setHasMoreEvents(newEvents.length >= limit);
+      }
+    });
+  };
+
   const tabs: { id: Tab; label: string; count: number }[] = [
     { id: "fleet", label: "Our Fleet", count: carImages.length },
     { id: "events", label: "Events", count: events.length },
   ];
+
+  const hasMore = activeTab === "fleet" ? hasMoreCars : hasMoreEvents;
 
   return (
     <>
       <div className="min-h-screen bg-background">
         {/* ── Hero ───────────────────────────────────────────────────────── */}
         <div className="relative py-20 sm:py-28 overflow-hidden">
-          {/* Decorative background */}
           <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-transparent pointer-events-none" />
           <div className="absolute top-0 right-0 w-96 h-96 bg-accent/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
@@ -469,7 +492,6 @@ export function GalleryClient({ carImages, events }: GalleryClientProps) {
                   >
                     {tab.count}
                   </span>
-                  {/* Active indicator */}
                   {activeTab === tab.id && (
                     <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent rounded-full" />
                   )}
@@ -486,6 +508,20 @@ export function GalleryClient({ carImages, events }: GalleryClientProps) {
           )}
           {activeTab === "events" && (
             <EventsGrid events={events} onOpen={openEvents} />
+          )}
+
+          {/* ── Load More Button ─────────────────────────────────────────── */}
+          {hasMore && (
+            <div className="mt-12 flex justify-center">
+              <button
+                onClick={handleLoadMore}
+                disabled={isPending}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-accent text-accent-foreground font-medium rounded-full hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isPending ? "Loading..." : "Load More"}
+              </button>
+            </div>
           )}
         </div>
       </div>

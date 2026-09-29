@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
-import { getGalleryEvents } from "@/lib/services/gallery";
+import { getGalleryEvents, getCarGalleryImages } from "@/lib/services/gallery";
 import { GalleryClient } from "@/components/gallery/gallery-client";
 
 export const metadata: Metadata = {
@@ -15,38 +14,20 @@ export const metadata: Metadata = {
   },
 };
 
-async function getCarGalleryImages(): Promise<string[]> {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.storage
-      .from("car-images")
-      .list("cars", {
-        limit: 100,
-        sortBy: { column: "created_at", order: "desc" },
-      });
-
-    if (error || !data) return [];
-
-    return data
-      .filter((f) => f.name && !f.name.startsWith("."))
-      .map((f) => {
-        const { data: urlData } = supabase.storage
-          .from("car-images")
-          .getPublicUrl(`cars/${f.name}`);
-        return urlData.publicUrl;
-      });
-  } catch {
-    return [];
-  }
-}
-
 async function GalleryContent() {
+  const limit = 12; // Number of items per page
   const [carImages, events] = await Promise.all([
-    getCarGalleryImages(),
-    getGalleryEvents().catch(() => []),
+    getCarGalleryImages(0, limit),
+    getGalleryEvents(0, limit).catch(() => []),
   ]);
 
-  return <GalleryClient carImages={carImages} events={events} />;
+  return (
+    <GalleryClient 
+      initialCarImages={carImages} 
+      initialEvents={events} 
+      limit={limit} 
+    />
+  );
 }
 
 export default function GalleryPage() {
@@ -64,4 +45,3 @@ export default function GalleryPage() {
     </main>
   );
 }
-

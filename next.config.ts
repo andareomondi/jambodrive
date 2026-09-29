@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // cacheComponents: true,
+  //cacheComponents: true,
   images: {
     unoptimized: false,
     qualities: [75, 85, 100],
