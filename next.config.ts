@@ -1,9 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  //cacheComponents: true,
+  cacheComponents: true,
+  output: "standalone",
+  experimental: {
+    imgOptTimeoutInSeconds: 30,
+    optimizePackageImports: ["lucide-react", "lodash-es"],
+  },
   images: {
     unoptimized: false,
+    minimumCacheTTL: 86400,
     qualities: [75, 85, 100],
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -16,7 +22,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  allowedDevOrigins: ["http://192.168.100.54:3000"],
 };
 
 export default nextConfig;
