@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  output: "standalone",
+  // output: "standalone",
   experimental: {
     imgOptTimeoutInSeconds: 30,
     optimizePackageImports: ["lucide-react", "lodash-es"],
