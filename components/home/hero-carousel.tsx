@@ -14,9 +14,9 @@ const HERO_IMAGES = [
 const SLIDE_DURATION = 6000;
 
 const STATS = [
-  { label: "Fleet Size",    value: "100+" },
+  { label: "Fleet Size", value: "100+" },
   { label: "Happy Clients", value: "10k+" },
-  { label: "Support",       value: "24/7" },
+  { label: "Support", value: "24/7" },
 ] as const;
 
 export function HeroCarousel() {
@@ -46,7 +46,6 @@ export function HeroCarousel() {
 
   return (
     <section className="relative min-h-[85vh] flex items-center overflow-hidden bg-black">
-
       {/* Background slides */}
       <div className="absolute inset-0 z-0">
         {HERO_IMAGES.map((img, i) => (
@@ -63,7 +62,7 @@ export function HeroCarousel() {
               priority={i === 0}
               className="object-cover"
               sizes="100vw"
-              quality={85}
+              quality={75}
             />
             {/* Gradient left → right so left-side text is always readable */}
             <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/10 z-10" />
@@ -76,7 +75,6 @@ export function HeroCarousel() {
       {/* Content */}
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 relative z-20 pt-20">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
-
           {/* Left — headline */}
           <div className="space-y-8 animate-in fade-in slide-in-from-left duration-1000">
             <div>
@@ -84,9 +82,7 @@ export function HeroCarousel() {
                 Premium Car Rental
               </span>
               <h1 className="text-5xl md:text-7xl font-bold text-white leading-[1.1] tracking-tight">
-                Drive Your{" "}
-                <span className="text-accent">Dream</span>{" "}
-                Car Today.
+                Drive Your <span className="text-accent">Dream</span> Car Today.
               </h1>
               <p className="mt-6 text-lg md:text-xl text-white/70 max-w-lg leading-relaxed">
                 Experience luxury and performance with our exclusive fleet.
