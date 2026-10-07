@@ -36,6 +36,7 @@ export function Footer() {
                 <Link
                   href="/"
                   className="text-muted-foreground hover:text-accent transition-colors"
+                  title="Back to Homepage"
                 >
                   Home
                 </Link>
@@ -44,24 +45,27 @@ export function Footer() {
                 <Link
                   href="/cars"
                   className="text-muted-foreground hover:text-accent transition-colors"
+                  title="View our cars"
                 >
                   Browse Cars
                 </Link>
               </li>
               <li>
                 <Link
-                  href="/dashboard"
+                  href="/gallery"
                   className="text-muted-foreground hover:text-accent transition-colors"
+                  title="View our catalogue"
                 >
-                  Dashboard
+                  Gallery
                 </Link>
               </li>
               <li>
                 <Link
-                  href="/gallery"
+                  href="/dashboard"
                   className="text-muted-foreground hover:text-accent transition-colors"
+                  title="View Profile"
                 >
-                  Gallery
+                  Dashboard
                 </Link>
               </li>
             </ul>
@@ -75,6 +79,7 @@ export function Footer() {
                 <Link
                   href="/cars?service=self-chauffeured"
                   className="text-muted-foreground hover:text-accent transition-colors"
+                  title="Self Drive"
                 >
                   Self Drive
                 </Link>
@@ -83,6 +88,7 @@ export function Footer() {
                 <Link
                   href="/cars?service=chauffeured"
                   className="text-muted-foreground hover:text-accent transition-colors"
+                  title="Get Personal Driver"
                 >
                   Chauffeured
                 </Link>
@@ -136,6 +142,7 @@ export function Footer() {
                 <Link
                   href="/faq"
                   className="text-muted-foreground hover:text-accent transition-colors"
+                  title="Frequently Asked Questions"
                 >
                   FAQ
                 </Link>
@@ -144,6 +151,7 @@ export function Footer() {
                 <Link
                   href="/contact"
                   className="text-muted-foreground hover:text-accent transition-colors"
+                  title="Reach out to Us"
                 >
                   Contact Us
                 </Link>
@@ -152,6 +160,7 @@ export function Footer() {
                 <Link
                   href="/terms"
                   className="text-muted-foreground hover:text-accent transition-colors"
+                  title="Terms and Conditions"
                 >
                   Terms & Conditions
                 </Link>
