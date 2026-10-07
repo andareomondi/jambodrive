@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -16,29 +16,214 @@ import {
   X,
   ArrowLeft,
   MessageCircle,
-  UserCheck, // Added this import for the chauffeured icon
+  UserCheck,
+  CreditCard,
+  Clock,
+  Loader2,
+  Smartphone,
+  Wifi,
+  Copy,
+  Phone,
+  XCircle,
 } from "lucide-react";
+import {
+  BookingForm,
+  BookingFormData,
+} from "@/components/booking/booking-form";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 import type { Car } from "@/types";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface CarDetailsClientProps {
   car: Car;
   relatedCars: Car[];
 }
 
-const PERKS = [
-  { icon: Shield,   label: "Insurance Included" },
-  { icon: Calendar, label: "Flexible Dates"      },
-  { icon: MapPin,   label: "Multiple Locations"  },
-] as const;
+type BookingMode = "pay_now" | "pay_later";
+type ModalStep = "form" | "summary" | "processing" | "waiting_pin" | "success" | "failed";
 
-export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
+const MPESA_SUPPORT_NUMBER = "254758500943";
+
+export function CarDetailsClient({ car }: CarDetailsClientProps) {
   const images = car.images ?? (car.image ? [car.image] : []);
   const features = car.features ?? [];
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [bookingMode, setBookingMode] = useState<BookingMode>("pay_now");
+  const [modalStep, setModalStep] = useState<ModalStep>("form");
+  const [formData, setFormData] = useState<BookingFormData | null>(null);
+  const [paymentMessage, setPaymentMessage] = useState("");
+  const [receiptNumber, setReceiptNumber] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    return () => {
+      channelRef.current?.unsubscribe();
+    };
+  }, []);
+
   const activeImage = images[selectedImage] ?? car.image;
+
+  const calcDays = (data: BookingFormData) => {
+    const ms = new Date(data.returnDate).getTime() - new Date(data.pickupDate).getTime();
+    return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+  };
+
+  const openBookingModal = (mode: BookingMode) => {
+    setBookingMode(mode);
+    setModalStep("form");
+    setFormData(null);
+    setPaymentMessage("");
+    setReceiptNumber(null);
+    setIsModalOpen(true);
+  };
+
+  const handleFormSubmit = (data: BookingFormData) => {
+    setFormData(data);
+    setModalStep("summary");
+  };
+
+  // Triggered when user clicks "Initiate Payment" (Pay Now) or "Confirm Booking" (Pay Later)
+  const handleFinalAction = async () => {
+    if (!formData) return;
+
+    try {
+      setIsSubmitting(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast.error("Please log in to make a booking.");
+        return;
+      }
+
+      const days = calcDays(formData);
+      const total = days * car.price;
+
+      if (bookingMode === "pay_later") {
+        // Pay Later Flow: Insert booking and set success immediately
+        const { error: bookingError } = await supabase.from("bookings").insert({
+          car_id: car.id,
+          profile_id: user.id,
+          pickup_date: new Date(formData.pickupDate).toISOString(),
+          return_date: new Date(formData.returnDate).toISOString(),
+          pickup_location: formData.pickupLocation,
+          return_location: formData.returnLocation,
+          total_price: total,
+          status: "pending",
+          days,
+        });
+
+        if (bookingError) throw new Error(bookingError.message);
+
+        setModalStep("success");
+      } else {
+        // Pay Now Flow: Insert pending booking and trigger M-Pesa STK Push
+        setModalStep("processing");
+
+        const { data: newBooking, error: bookingError } = await supabase
+          .from("bookings")
+          .insert({
+            car_id: car.id,
+            profile_id: user.id,
+            pickup_date: new Date(formData.pickupDate).toISOString(),
+            return_date: new Date(formData.returnDate).toISOString(),
+            pickup_location: formData.pickupLocation,
+            return_location: formData.returnLocation,
+            total_price: total,
+            status: "pending",
+            days,
+          })
+          .select()
+          .single();
+
+        if (bookingError || !newBooking) {
+          throw new Error(bookingError?.message ?? "Failed to create booking.");
+        }
+
+        // Listen for Realtime Payment Confirmation
+        const channel = supabase
+          .channel(`booking_status_${newBooking.id}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "bookings",
+              filter: `id=eq.${newBooking.id}`,
+            },
+            async (payload) => {
+              const updated = payload.new as any;
+              if (updated.status === "confirmed") {
+                await supabase.from("cars").update({ available: false }).eq("id", car.id);
+                setReceiptNumber(updated.mpesa_receipt_number ?? null);
+                setModalStep("success");
+                toast.success("Payment confirmed! Vehicle reserved.");
+                channel.unsubscribe();
+              } else if (updated.status === "failed") {
+                setModalStep("failed");
+                setPaymentMessage(updated.payment_failure_reason ?? "Payment was cancelled or failed.");
+                channel.unsubscribe();
+              }
+            }
+          )
+          .subscribe();
+
+        channelRef.current = channel;
+
+        // Initiate STK Push API Call
+        const stkResponse = await fetch("/api/mpesa/stkpush", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: formData.phone,
+            amount: total,
+            bookingId: newBooking.id,
+          }),
+        });
+
+        const stkData = await stkResponse.json();
+
+        if (!stkResponse.ok || !stkData.success) {
+          channel.unsubscribe();
+          await supabase
+            .from("bookings")
+            .update({ status: "failed", payment_failure_reason: stkData.error })
+            .eq("id", newBooking.id);
+          throw new Error(stkData.error ?? "M-Pesa STK request failed.");
+        }
+
+        setModalStep("waiting_pin");
+
+        // Timeout fallback after 90 seconds
+        setTimeout(() => {
+          setModalStep((curr) => {
+            if (curr === "waiting_pin") {
+              channel.unsubscribe();
+              setPaymentMessage("Payment request timed out. Please check your M-Pesa statements or try again.");
+              return "failed";
+            }
+            return curr;
+          });
+        }, 90_000);
+      }
+    } catch (err: unknown) {
+      console.error("[BookingModal] Error:", err);
+      setModalStep("failed");
+      setPaymentMessage(err instanceof Error ? err.message : "An unexpected error occurred.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleWhatsAppInquiry = () => {
     const message = [
@@ -51,11 +236,11 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
       `Could you please provide more details on the booking process?`,
     ].join("\n");
 
-    window.open(
-      `https://wa.me/254758500943?text=${encodeURIComponent(message)}`,
-      "_blank"
-    );
+    window.open(`https://wa.me/254758500943?text=${encodeURIComponent(message)}`, "_blank");
   };
+
+  const totalDays = formData ? calcDays(formData) : 0;
+  const totalPrice = totalDays * car.price;
 
   return (
     <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
@@ -68,7 +253,7 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
-        {/* Images & Details */}
+        {/* Left Column: Images & Overview */}
         <div className="lg:col-span-2">
           {activeImage ? (
             <div
@@ -88,36 +273,10 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                   <span className="text-white text-xl font-semibold">Not Available</span>
                 </div>
               )}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                <span className="opacity-0 group-hover:opacity-100 text-white text-sm font-medium bg-black/50 px-4 py-2 rounded-full transition-opacity">
-                  Click to expand
-                </span>
-              </div>
             </div>
           ) : (
             <div className="h-96 bg-muted rounded-xl mb-4 flex items-center justify-center">
               <p className="text-muted-foreground text-sm">No image available</p>
-            </div>
-          )}
-
-          {isFullscreen && activeImage && (
-            <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 md:p-8">
-              <div
-                className="absolute inset-0 cursor-pointer"
-                onClick={() => setIsFullscreen(false)}
-              />
-              <div className="relative w-full h-full max-w-6xl max-h-[85vh] pointer-events-none flex items-center justify-center">
-                <div className="relative w-full h-full pointer-events-auto">
-                  <Image src={activeImage} alt={car.name} fill className="object-contain" priority />
-                </div>
-              </div>
-              <button
-                onClick={() => setIsFullscreen(false)}
-                className="absolute top-4 right-4 md:top-8 md:right-8 text-white hover:text-accent bg-black/50 rounded-full p-3 transition-colors"
-                aria-label="Close fullscreen"
-              >
-                <X className="w-6 h-6" />
-              </button>
             </div>
           )}
 
@@ -130,9 +289,8 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                   className={`relative h-20 w-20 shrink-0 snap-start rounded-md overflow-hidden border-2 transition-colors ${
                     selectedImage === idx ? "border-accent" : "border-border"
                   }`}
-                  aria-label={`View image ${idx + 1}`}
                 >
-                  <Image src={image} alt={`${car.name} view ${idx + 1}`} fill className="object-cover" sizes="80px" />
+                  <Image src={image} alt={`${car.name} ${idx + 1}`} fill className="object-cover" sizes="80px" />
                 </button>
               ))}
             </div>
@@ -141,9 +299,7 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
           <div className="mt-12 space-y-8">
             <div>
               <h2 className="text-2xl font-bold text-foreground mb-4">About This Vehicle</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                {car.description ?? "No description available."}
-              </p>
+              <p className="text-muted-foreground leading-relaxed">{car.description ?? "No description available."}</p>
             </div>
 
             {features.length > 0 && (
@@ -162,7 +318,7 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
           </div>
         </div>
 
-        {/* Booking Card */}
+        {/* Right Column: Pricing & Booking Action Card */}
         <div className="lg:col-span-1">
           <Card className="p-6 sticky top-24 border-border shadow-sm">
             <div className="mb-6">
@@ -200,7 +356,6 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                 <span className="text-4xl font-bold text-accent">Ksh {car.price.toLocaleString()}</span>
                 <span className="text-muted-foreground text-sm">/day</span>
               </div>
-              {/* Chauffeured Notice */}
               {car.chauffeured && (
                 <div className="flex items-center gap-1.5 mt-2 text-sm font-medium text-accent">
                   <UserCheck className="w-4 h-4" />
@@ -212,32 +367,276 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
             <div className="space-y-3">
               {car.available ? (
                 <div className="flex flex-col gap-3">
-                  <Button asChild className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                    <Link href={`/booking/${car.id}`}>Book and Pay Now</Link>
+                  <Button
+                    onClick={() => openBookingModal("pay_now")}
+                    className="w-full bg-accent hover:bg-accent/90 text-accent-foreground flex items-center justify-center gap-2"
+                  >
+                    <CreditCard className="w-4 h-4" /> Book & Pay Now
                   </Button>
-                  <Button asChild variant="outline" className="w-full border-accent/40 text-accent hover:bg-accent/10">
-                    <Link href={`/testdrive/${car.id}`}>Book and Pay Later</Link>
+                  <Button
+                    onClick={() => openBookingModal("pay_later")}
+                    variant="outline"
+                    className="w-full border-accent/40 text-accent hover:bg-accent/10 flex items-center justify-center gap-2"
+                  >
+                    <Clock className="w-4 h-4" /> Book & Pay Later
                   </Button>
                 </div>
               ) : (
-                <>
-                  <Button
-                    onClick={handleWhatsAppInquiry}
-                    variant="outline"
-                    className="w-full border-accent/40 text-accent hover:bg-accent/10 gap-2"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    Join Waitlist via WhatsApp
-                  </Button>
-                  <p className="text-center text-xs text-muted-foreground">
-                    This vehicle is currently unavailable. Message us to join the waitlist.
-                  </p>
-                </>
+                <Button
+                  onClick={handleWhatsAppInquiry}
+                  variant="outline"
+                  className="w-full border-accent/40 text-accent hover:bg-accent/10 gap-2"
+                >
+                  <MessageCircle className="w-4 h-4" /> Join Waitlist via WhatsApp
+                </Button>
               )}
             </div>
           </Card>
         </div>
       </div>
+
+      {/* ================= MODAL DIALOG ================= */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-2xl mx-auto overflow-hidden my-8 max-h-[90vh] flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-border shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">
+                  {bookingMode === "pay_now" ? "Reserve & Pay Online" : "Book for Physical Viewing / Pay Later"}
+                </h2>
+                <p className="text-xs text-muted-foreground">{car.name} ({car.model})</p>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content Steps */}
+            <div className="p-6 overflow-y-auto flex-1">
+              
+              {/* STEP 1: Form Fill */}
+              {modalStep === "form" && (
+                <BookingForm
+                  carName={car.name}
+                  onSubmit={handleFormSubmit}
+                  isLoading={false}
+                />
+              )}
+
+              {/* STEP 2: Summary / Receipt Confirmation */}
+              {modalStep === "summary" && formData && (
+                <div className="space-y-6">
+                  <div className="bg-muted/40 border border-border rounded-2xl p-5 space-y-4">
+                    <h3 className="font-semibold text-lg text-foreground border-b border-border pb-3">
+                      Booking Summary
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground block text-xs">Customer Name</span>
+                        <span className="font-medium text-foreground">{formData.firstName} {formData.lastName}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-xs">Contact Phone</span>
+                        <span className="font-medium text-foreground">{formData.phone}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-xs">Pickup Location</span>
+                        <span className="font-medium text-foreground">{formData.pickupLocation}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-xs">Return Location</span>
+                        <span className="font-medium text-foreground">{formData.returnLocation}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-xs">Dates</span>
+                        <span className="font-medium text-foreground">
+                          {formData.pickupDate} to {formData.returnDate} ({totalDays} {totalDays === 1 ? "day" : "days"})
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-xs">Daily Rate</span>
+                        <span className="font-medium text-foreground">Ksh {car.price.toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-border pt-4 flex items-center justify-between">
+                      <span className="font-semibold text-foreground">Total Estimated Price</span>
+                      <span className="text-2xl font-bold text-accent">
+                        Ksh {totalPrice.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Mode-specific Notice */}
+                  {bookingMode === "pay_now" ? (
+                    <p className="text-xs text-muted-foreground bg-accent/10 border border-accent/20 p-3.5 rounded-xl">
+                      Clicking <strong>Initiate Payment</strong> will send an M-Pesa STK push prompt directly to{" "}
+                      <strong>{formData.phone}</strong>.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground bg-muted p-3.5 rounded-xl border border-border">
+                      No payment required now. Clicking <strong>Confirm Booking</strong> locks in your dates tentatively. An admin will contact you to facilitate viewing and subsequent payment.
+                    </p>
+                  )}
+
+                  {/* Modal Step Actions */}
+                  <div className="flex items-center gap-3 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setModalStep("form")}
+                      className="w-1/3"
+                      disabled={isSubmitting}
+                    >
+                      Edit Info
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleFinalAction}
+                      disabled={isSubmitting}
+                      className="w-2/3 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                    >
+                      {isSubmitting ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Processing...
+                        </span>
+                      ) : bookingMode === "pay_now" ? (
+                        "Initiate Payment"
+                      ) : (
+                        "Confirm Booking"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: Payment Processing */}
+              {modalStep === "processing" && (
+                <div className="py-12 flex flex-col items-center text-center gap-4">
+                  <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground">Connecting to M-Pesa</h3>
+                    <p className="text-sm text-muted-foreground">Securing your booking and sending request to Safaricom...</p>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 4: Waiting for M-Pesa PIN */}
+              {modalStep === "waiting_pin" && (
+                <div className="py-8 flex flex-col items-center text-center gap-5 relative">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
+                    <div className="relative w-20 h-20 bg-card border border-border rounded-full flex items-center justify-center">
+                      <Smartphone className="w-9 h-9 text-primary" />
+                      <Wifi className="w-4 h-4 text-primary absolute -top-1 -right-1 animate-pulse" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">Check Your Phone</h3>
+                    <p className="text-sm text-muted-foreground">
+                      An M-Pesa prompt was sent to <span className="font-medium text-foreground">{formData?.phone}</span>. Enter your PIN to authorise <span className="font-bold text-foreground">Ksh {totalPrice.toLocaleString()}</span>.
+                    </p>
+                  </div>
+
+                  <div className="bg-muted rounded-xl px-4 py-3 w-full flex items-center justify-center gap-3">
+                    <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+                    <span className="text-sm text-muted-foreground">Waiting for your PIN entry...</span>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 5: Success Confirmation Screen */}
+              {modalStep === "success" && (
+                <div className="py-8 flex flex-col items-center text-center space-y-6">
+                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto border border-primary/20">
+                    <CheckCircle className="w-10 h-10 text-primary" />
+                  </div>
+
+                  <div>
+                    <h3 className="text-2xl font-bold text-foreground mb-2">
+                      {bookingMode === "pay_now" ? "Booking Confirmed!" : "Request Submitted!"}
+                    </h3>
+                    <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+                      {bookingMode === "pay_now"
+                        ? `Your ${car.name} has been successfully reserved.`
+                        : `Booking request initiated successfully. An admin will contact you shortly to coordinate physical viewing or payment.`}
+                    </p>
+                  </div>
+
+                  {receiptNumber && (
+                    <div className="bg-card border border-border rounded-2xl p-4 w-full text-left space-y-2">
+                      <p className="text-xs text-muted-foreground uppercase font-medium">M-Pesa Receipt</p>
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-lg font-bold text-foreground">{receiptNumber}</span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(receiptNumber);
+                            toast.success("Receipt number copied!");
+                          }}
+                          className="p-2 rounded-lg hover:bg-muted transition-colors"
+                        >
+                          <Copy className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-3 w-full pt-2">
+                    <Link
+                      href="/dashboard"
+                      className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium text-center hover:opacity-90 transition-opacity"
+                    >
+                      View My Bookings
+                    </Link>
+                    <button
+                      onClick={() => setIsModalOpen(false)}
+                      className="w-full px-6 py-3 bg-muted text-foreground rounded-xl font-medium text-center hover:bg-muted/80 transition-colors"
+                    >
+                      Close Window
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 6: Payment Failed Screen */}
+              {modalStep === "failed" && (
+                <div className="py-8 flex flex-col items-center text-center gap-5">
+                  <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center border border-destructive/20">
+                    <XCircle className="w-8 h-8 text-destructive" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">Request Unsuccessful</h3>
+                    <p className="text-sm text-muted-foreground">{paymentMessage || "The operation was cancelled or timed out."}</p>
+                  </div>
+
+                  <div className="flex flex-col gap-3 w-full">
+                    <Button
+                      onClick={() => setModalStep("summary")}
+                      className="w-full"
+                    >
+                      Try Again
+                    </Button>
+                    <a
+                      href={`tel:+${MPESA_SUPPORT_NUMBER}`}
+                      className="w-full px-6 py-3 bg-muted text-foreground rounded-xl font-medium text-center hover:bg-muted/80 transition-colors inline-flex items-center justify-center gap-2"
+                    >
+                      <Phone className="w-4 h-4" /> Contact Support
+                    </a>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

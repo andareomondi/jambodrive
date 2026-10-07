@@ -100,9 +100,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.className} antialiased min-h-screen min-w-screen`}
-      >
+      <body className={`${geistSans.className} antialiased min-h-screen`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <AuthProvider>
             <Suspense fallback={<NavbarSkeleton />}>
