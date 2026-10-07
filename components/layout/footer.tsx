@@ -9,7 +9,7 @@ export function Footer() {
   return (
     <footer className="bg-secondary border-t border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-8">
           {/* Company Info */}
           <div>
             <div className="flex items-center gap-2 mb-4">
@@ -46,6 +46,83 @@ export function Footer() {
                   className="text-muted-foreground hover:text-accent transition-colors"
                 >
                   Browse Cars
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/dashboard"
+                  className="text-muted-foreground hover:text-accent transition-colors"
+                >
+                  Dashboard
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/gallery"
+                  className="text-muted-foreground hover:text-accent transition-colors"
+                >
+                  Gallery
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Services */}
+          <div>
+            <h3 className="font-semibold text-foreground mb-4">Services</h3>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link
+                  href="/cars?service=self-chauffeured"
+                  className="text-muted-foreground hover:text-accent transition-colors"
+                >
+                  Self Drive
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/cars?service=chauffeured"
+                  className="text-muted-foreground hover:text-accent transition-colors"
+                >
+                  Chauffeured
+                </Link>
+              </li>
+
+              {/* Diabled links for upcoming services which on hover should show coming soon*/}
+              <li>
+                <Link
+                  href="#"
+                  className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
+                  title="Coming Soon"
+                >
+                  Airport Transfers
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="#"
+                  className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
+                  title="Coming Soon"
+                >
+                  Tours And Excursions
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="#"
+                  className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
+                  title="Coming Soon"
+                >
+                  Hotel Transfers
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="#"
+                  className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
+                  title="Coming Soon"
+                >
+                  Wedding Events
                 </Link>
               </li>
             </ul>

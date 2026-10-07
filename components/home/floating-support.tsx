@@ -1,7 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { HelpCircle, X, MessageCircle, Phone, Mail } from "lucide-react";
+import {
+  HelpCircle,
+  X,
+  MessageCircle,
+  Phone,
+  Mail,
+  Instagram,
+  Twitter,
+  Linkedin,
+  Facebook,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import * as Dialog from "@radix-ui/react-dialog";
 
@@ -26,6 +36,33 @@ const CONTACT_OPTIONS = [
     description: "cosmaragroup@gmail.com",
     href: "mailto:cosmaragroup@gmail.com",
     external: false,
+  },
+] as const;
+
+const SOCIAL_MEDIA = [
+  {
+    icon: Instagram,
+    label: "Instagram",
+    href: "https://instagram.com/#",
+    color: "text-pink-600 hover:bg-pink-600/10",
+  },
+  {
+    icon: Twitter,
+    label: "Twitter",
+    href: "https://twitter.com/#",
+    color: "text-blue-400 hover:bg-blue-400/10",
+  },
+  {
+    icon: Linkedin,
+    label: "LinkedIn",
+    href: "https://linkedin.com/#",
+    color: "text-blue-700 hover:bg-blue-700/10",
+  },
+  {
+    icon: Facebook,
+    label: "Facebook",
+    href: "https://facebook.com/#",
+    color: "text-blue-600 hover:bg-blue-600/10",
   },
 ] as const;
 
@@ -118,6 +155,25 @@ export function FloatingSupport() {
               },
             )}
           </div>
+
+          {/* Social Media Icons */}
+          <div className="px-5 py-3 border-t border-border">
+            <div className="flex justify-center gap-3">
+              {SOCIAL_MEDIA.map(({ icon: Icon, label, href, color }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 ${color}`}
+                >
+                  <Icon className="w-4 h-4" />
+                </a>
+              ))}
+            </div>
+          </div>
+
           {/* Footer note */}
           <div className="px-5 pb-4">
             <p className="text-xs text-muted-foreground text-center">
