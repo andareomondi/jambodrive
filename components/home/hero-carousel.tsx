@@ -59,7 +59,7 @@ export function HeroCarousel() {
               src={img.src}
               alt={img.alt}
               fill
-              priority={i === 0}
+              priority
               className="object-cover"
               sizes="100vw"
               quality={75}
