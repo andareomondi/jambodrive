@@ -10,7 +10,7 @@ import "./globals.css";
 import { FloatingSupport } from "@/components/home/floating-support";
 import AuthProvider from "@/components/auth/auth-provider";
 
-// export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
