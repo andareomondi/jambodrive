@@ -13,6 +13,7 @@ import type { Car } from "@/types";
 interface CarCardProps {
   car: Car;
   days?: number;
+  index?: number; // Added to intercept loading hierarchy
 }
 
 const FUEL_ICON: Record<string, React.ReactNode> = {
@@ -29,33 +30,32 @@ function formatType(type: string | null) {
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
-export function CarCard({ car, days }: CarCardProps) {
+export function CarCard({ car, days, index = 3 }: CarCardProps) {
   const router = useRouter();
   const prefetchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const targetHref = `/cars/${car.id}`;
 
   const handleMouseEnter = () => {
-    // Only prefetch if the car is available to be viewed/rented
     if (!car.available) return;
-
-    // Trigger prefetch only if user hovers with intent for at least 100ms
     prefetchTimerRef.current = setTimeout(() => {
       router.prefetch(targetHref);
     }, 100);
   };
 
   const handleMouseLeave = () => {
-    // Cancel the prefetch network request if the mouse moves away before 100ms
     if (prefetchTimerRef.current) {
       clearTimeout(prefetchTimerRef.current);
     }
   };
 
+  // ⚡ OPTIMIZATION: Only flag the top row (first 3 cars) as high-priority images above the fold
+  const isAboveFold = index < 3;
+
   return (
     <Link
       href={targetHref}
       className="group block h-full"
-      prefetch={false} // Disable auto-loading all cars in viewport
+      prefetch={false}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -67,15 +67,15 @@ export function CarCard({ car, days }: CarCardProps) {
               src={car.image}
               alt={car.name}
               fill
-              priority
-              loading="eager"
+              priority={isAboveFold}
+              loading={isAboveFold ? "eager" : "lazy"}
               className="object-cover transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
           )}
 
           {/* Availability badge */}
-          <div className="absolute top-3 right-3">
+          <div className="absolute top-3 right-3 z-10">
             {car.available ? (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent text-accent-foreground shadow-sm backdrop-blur-sm">
                 Available
@@ -89,7 +89,7 @@ export function CarCard({ car, days }: CarCardProps) {
 
           {/* Unavailable overlay */}
           {!car.available && (
-            <div className="absolute inset-0 bg-foreground/40 flex items-center justify-center">
+            <div className="absolute inset-0 bg-foreground/40 flex items-center justify-center z-10">
               <span className="text-background font-semibold text-sm">
                 Not Available
               </span>
@@ -139,7 +139,6 @@ export function CarCard({ car, days }: CarCardProps) {
               ) : (
                 <p className="text-xs text-muted-foreground">/ day</p>
               )}
-              {/* Chauffeured Notice */}
               {car.chauffeured && (
                 <p className="text-[11px] font-semibold text-accent mt-0.5">
                   Includes Driver
@@ -150,7 +149,7 @@ export function CarCard({ car, days }: CarCardProps) {
               size="sm"
               className="bg-accent hover:bg-accent/90 text-accent-foreground"
               disabled={!car.available}
-              tabIndex={-1} // parent Link handles navigation
+              tabIndex={-1}
             >
               View
             </Button>

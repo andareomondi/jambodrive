@@ -5,7 +5,8 @@ import { CarCard } from "@/components/cars/car-card";
 import { CarFilters, FilterState } from "@/components/cars/car-filters";
 import { EmptyState } from "@/components/common/empty-state";
 import { Car as CarIcon } from "lucide-react";
-import type { Car } from "@/types"; 
+import type { Car } from "@/types";
+
 interface FilterableCarGridProps {
   initialCars: Car[];
   searchParams: { [key: string]: string | string[] | undefined };
@@ -21,8 +22,8 @@ export function FilterableCarGrid({
     typeof searchParams.from === "string" ? searchParams.from : undefined;
   const toParam =
     typeof searchParams.to === "string" ? searchParams.to : undefined;
-const serviceParam =
-  typeof searchParams.service === "string" ? searchParams.service : undefined;
+  const serviceParam =
+    typeof searchParams.service === "string" ? searchParams.service : undefined;
 
   const [filters, setFilters] = useState<FilterState>({
     priceMin: 0,
@@ -31,7 +32,12 @@ const serviceParam =
     transmission: [],
     fuel: [],
     search: "",
-chauffeured: serviceParam === "chauffeured" ? true : serviceParam === "self-chauffeured" ? false : null,
+    chauffeured:
+      serviceParam === "chauffeured"
+        ? true
+        : serviceParam === "self-chauffeured"
+          ? false
+          : null,
   });
 
   const days = useMemo(() => {
@@ -73,9 +79,13 @@ chauffeured: serviceParam === "chauffeured" ? true : serviceParam === "self-chau
       if (filters.fuel.length > 0 && !filters.fuel.includes(car.fuel)) {
         return false;
       }
-if (filters.chauffeured !== null && car.chauffeured !== filters.chauffeured) {
-      return false;
-    }
+
+      if (
+        filters.chauffeured !== null &&
+        car.chauffeured !== filters.chauffeured
+      ) {
+        return false;
+      }
       return true;
     });
   }, [filters, initialCars]);
@@ -104,8 +114,9 @@ if (filters.chauffeured !== null && car.chauffeured !== filters.chauffeured) {
                 Showing {filteredCars.length} of {initialCars.length} vehicles
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCars.map((car) => (
-                  <CarCard key={car.id} car={car} days={days} />
+                {filteredCars.map((car, index) => (
+                  // ⚡ OPTIMIZATION: Pass the current index down to evaluate high-priority images
+                  <CarCard key={car.id} car={car} days={days} index={index} />
                 ))}
               </div>
             </>
