@@ -32,8 +32,8 @@ const AUTH_ONLY_ROUTES = [
   "/auth/forgot-password",
 ];
 const ROLE_ROUTES: { prefix: string; requiredRole: string }[] = [
-  { prefix: "/admin", requiredRole: "super_admin" },
-  { prefix: "/facilitator", requiredRole: "facilitator" },
+  { prefix: "/dashboard/admin", requiredRole: "super_admin" },
+  { prefix: "/dashboard/facilitator", requiredRole: "facilitator" },
 ];
 function isPublic(pathname: string): boolean {
   return (
@@ -42,6 +42,16 @@ function isPublic(pathname: string): boolean {
   );
 }
 export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (isPublic(pathname)) {
+    return NextResponse.next({ request });
+  }
+  const isPrefetch =
+    request.headers.get("purpose") === "prefetch" ||
+    request.headers.get("next-router-prefetch") === "1";
+  if (isPrefetch) {
+    return NextResponse.next({ request });
+  }
   let supabaseResponse = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -66,13 +76,12 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { pathname } = request.nextUrl;
-  if (!user && !isPublic(pathname)) {
+  if (!user) {
     const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("returnUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
-  if (user && AUTH_ONLY_ROUTES.includes(pathname)) {
+  if (AUTH_ONLY_ROUTES.includes(pathname)) {
     const returnUrl = request.nextUrl.searchParams.get("returnUrl");
     if (returnUrl) {
       return NextResponse.redirect(new URL(returnUrl, request.url));
@@ -82,18 +91,18 @@ export async function updateSession(request: NextRequest) {
   const matchedRole = ROLE_ROUTES.find(({ prefix }) =>
     pathname.startsWith(prefix),
   );
-  if (user && matchedRole) {
+  if (matchedRole) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
     const userRole = profile?.role ?? "customer";
-    const { requiredRole, prefix } = matchedRole;
+    const { requiredRole } = matchedRole;
     const hasAccess = userRole === "super_admin" || userRole === requiredRole;
     if (!hasAccess) {
       const fallback =
-        userRole === "facilitator" ? "/facilitator" : "/dashboard";
+        userRole === "facilitator" ? "/dashboard/facilitator" : "/dashboard";
       return NextResponse.redirect(new URL(fallback, request.url));
     }
   }
