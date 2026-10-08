@@ -7,6 +7,8 @@ import { DashboardClient } from "@/components/dashboard/dashboard-client";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import type { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "My Dashboard",
   description:

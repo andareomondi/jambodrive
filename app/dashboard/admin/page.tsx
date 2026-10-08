@@ -9,6 +9,8 @@ import { AdminDashboardClient } from "@/components/admin/admin-dashboard-client"
 import { AuthGuard } from "@/components/auth/auth-guard";
 import type { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Admin Dashboard",
   description: "Manage fleet, users, and bookings for Cosmara Car Hire.",

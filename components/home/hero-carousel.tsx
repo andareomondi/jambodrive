@@ -59,7 +59,8 @@ export function HeroCarousel() {
               src={img.src}
               alt={img.alt}
               fill
-              priority
+              priority={i === current} // only the current slide is prioritized
+              loading={i === current ? "eager" : "lazy"}
               className="object-cover"
               sizes="100vw"
               quality={75}

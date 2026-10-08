@@ -5,6 +5,8 @@ import { Metadata } from "next";
 import { Loader2 } from "lucide-react";
 import { Car } from "@/types";
 
+export const revalidate = 900;
+
 export const metadata: Metadata = {
   title: "Browse Our Fleet | Cosmara",
   description:

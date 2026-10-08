@@ -5,6 +5,8 @@ import { FacilitatorClient } from "@/components/facilitator/facilitator-client";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import type { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Facilitator Dashboard",
   description: "Perform vehicle inspections and process car returns.",
@@ -14,7 +16,10 @@ export const metadata: Metadata = {
 async function FacilitatorContent() {
   const supabase = await createClient();
 
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
   if (error || !user) redirect("/auth/login");
 
   const { data: profileData } = await supabase
