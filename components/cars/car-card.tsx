@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,8 +30,35 @@ function formatType(type: string | null) {
 }
 
 export function CarCard({ car, days }: CarCardProps) {
+  const router = useRouter();
+  const prefetchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const targetHref = `/cars/${car.id}`;
+
+  const handleMouseEnter = () => {
+    // Only prefetch if the car is available to be viewed/rented
+    if (!car.available) return;
+
+    // Trigger prefetch only if user hovers with intent for at least 100ms
+    prefetchTimerRef.current = setTimeout(() => {
+      router.prefetch(targetHref);
+    }, 100);
+  };
+
+  const handleMouseLeave = () => {
+    // Cancel the prefetch network request if the mouse moves away before 100ms
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+    }
+  };
+
   return (
-    <Link href={`/cars/${car.id}`} className="group block h-full">
+    <Link
+      href={targetHref}
+      className="group block h-full"
+      prefetch={false} // Disable auto-loading all cars in viewport
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <Card className="p-2 overflow-hidden h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-border">
         {/* Image */}
         <div className="relative h-52 bg-muted rounded-md overflow-hidden">

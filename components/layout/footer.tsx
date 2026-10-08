@@ -60,8 +60,10 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                {/* Auth-protected routes shouldn't prefetch automatically */}
                 <Link
                   href="/dashboard"
+                  prefetch={false}
                   className="text-muted-foreground hover:text-accent transition-colors"
                   title="View Profile"
                 >
@@ -94,10 +96,11 @@ export function Footer() {
                 </Link>
               </li>
 
-              {/* Diabled links for upcoming services which on hover should show coming soon*/}
+              {/* Disabled links for upcoming services - disabled prefetching since they don't lead to pages */}
               <li>
                 <Link
                   href="#"
+                  prefetch={false}
                   className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
                   title="Coming Soon"
                 >
@@ -107,6 +110,7 @@ export function Footer() {
               <li>
                 <Link
                   href="#"
+                  prefetch={false}
                   className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
                   title="Coming Soon"
                 >
@@ -116,6 +120,7 @@ export function Footer() {
               <li>
                 <Link
                   href="#"
+                  prefetch={false}
                   className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
                   title="Coming Soon"
                 >
@@ -125,6 +130,7 @@ export function Footer() {
               <li>
                 <Link
                   href="#"
+                  prefetch={false}
                   className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
                   title="Coming Soon"
                 >

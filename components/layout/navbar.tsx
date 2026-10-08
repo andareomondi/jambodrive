@@ -164,11 +164,13 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
 
   const handleServiceClick = (
     e: React.MouseEvent<HTMLAnchorElement>,
-    service: typeof BOOKING_SERVICES[0]
+    service: (typeof BOOKING_SERVICES)[0],
   ) => {
     if (service.comingSoon) {
       e.preventDefault();
-      toast.info(`${service.title} are still under development and coming soon!`);
+      toast.info(
+        `${service.title} are still under development and coming soon!`,
+      );
     } else {
       closeAll();
     }
@@ -178,7 +180,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
     <nav
       className={cn(
         "sticky top-0 z-50 bg-background/95 border-b border-border backdrop-blur-sm transition-shadow duration-200",
-        scrolled && "shadow-sm"
+        scrolled && "shadow-sm",
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -224,7 +226,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 <ChevronDown
                   className={cn(
                     "w-4 h-4 transition-transform duration-200",
-                    isFleetOpen && "rotate-180"
+                    isFleetOpen && "rotate-180",
                   )}
                 />
               </button>
@@ -253,6 +255,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             {role === "super_admin" && (
               <Link
                 href="/dashboard/admin"
+                prefetch={false}
                 className="text-sm text-foreground hover:text-accent transition-colors"
               >
                 Admin
@@ -261,6 +264,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             {role === "facilitator" && (
               <Link
                 href="/dashboard/facilitator"
+                prefetch={false}
                 className="text-sm text-foreground hover:text-accent transition-colors"
               >
                 Facilitator
@@ -285,19 +289,19 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             {isLoggedIn ? (
               <>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href="/dashboard">Profile</Link>
+                  <Link href="/dashboard" prefetch={false}>
+                    Profile
+                  </Link>
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleLogout}
-                >
+                <Button size="sm" variant="ghost" onClick={handleLogout}>
                   Log Out
                 </Button>
               </>
             ) : (
               <Button variant="outline" size="sm" asChild>
-                <Link href="/auth/login">Sign In</Link>
+                <Link href="/auth/login" prefetch={false}>
+                  Sign In
+                </Link>
               </Button>
             )}
             <Button
@@ -363,6 +367,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 {role === "super_admin" && (
                   <Link
                     href="/dashboard/admin"
+                    prefetch={false}
                     onClick={closeAll}
                     className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
                   >
@@ -373,6 +378,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 {role === "facilitator" && (
                   <Link
                     href="/dashboard/facilitator"
+                    prefetch={false}
                     onClick={closeAll}
                     className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
                   >
@@ -401,7 +407,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               {isLoggedIn ? (
                 <div className="flex gap-2">
                   <Button variant="outline" asChild className="flex-1">
-                    <Link href="/dashboard" onClick={closeAll}>
+                    <Link href="/dashboard" prefetch={false} onClick={closeAll}>
                       Profile
                     </Link>
                   </Button>
@@ -415,7 +421,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 </div>
               ) : (
                 <Button variant="outline" asChild className="w-full">
-                  <Link href="/auth/login" onClick={closeAll}>
+                  <Link href="/auth/login" prefetch={false} onClick={closeAll}>
                     Sign In
                   </Link>
                 </Button>
@@ -460,6 +466,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 <Link
                   key={item.title}
                   href={item.href}
+                  prefetch={item.comingSoon ? false : undefined}
                   onClick={(e) => handleServiceClick(e, item)}
                   className="group flex flex-col items-center text-center p-5 rounded-xl border border-border bg-card hover:border-accent hover:bg-accent/5 transition-all relative overflow-hidden"
                 >
@@ -472,7 +479,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                   <p className="text-xs text-muted-foreground mt-1.5 hidden md:block">
                     {item.desc}
                   </p>
-                  
+
                   {/* Subtle coming soon indicator badge */}
                   {item.comingSoon && (
                     <div className="absolute top-2 right-2 bg-muted/80 text-muted-foreground text-[10px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-semibold">
