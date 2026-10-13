@@ -10,17 +10,26 @@ import {
 } from "@/lib/actions/facilitator";
 import { toast } from "sonner";
 import {
-  Loader2, ClipboardCheck, AlertTriangle, Car as CarIcon,
-  Settings, Smartphone, Wifi, XCircle, CheckCircle, X,
+  Loader2,
+  ClipboardCheck,
+  AlertTriangle,
+  Car as CarIcon,
+  Settings,
+  Smartphone,
+  Wifi,
+  XCircle,
+  CheckCircle,
+  X,
+  Phone,
 } from "lucide-react";
 import type { Booking } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type PaymentState = "idle" | "processing" | "waiting_for_pin" | "success" | "failed";
+type PaymentState =
+  "idle" | "processing" | "waiting_for_pin" | "success" | "failed";
 
-// Extend Booking.cars to include price (fetched in page.tsx with cars(name, image, price))
 type BookingWithCarPrice = Booking & {
   cars: { name: string; image: string | null; price: number } | null;
 };
@@ -36,51 +45,57 @@ const CHECKLIST_FIELDS = [
     label: "Tire Infrastructure",
     key: "tire" as const,
     options: [
-      { value: "Good",    label: "Good (Treads match metrics)"      },
-      { value: "Worn",    label: "Worn (Flagged for replacement)"   },
-      { value: "Damaged", label: "Damaged (Puncture/flat)"          },
+      { value: "Good", label: "Good (Treads match metrics)" },
+      { value: "Worn", label: "Worn (Flagged for replacement)" },
+      { value: "Damaged", label: "Damaged (Puncture/flat)" },
     ],
   },
   {
     label: "Exterior Panels",
     key: "exterior" as const,
     options: [
-      { value: "Good",                label: "Good (Zero new body marks)"  },
-      { value: "Minor Scratches",     label: "Minor Scratches"             },
-      { value: "Dents / Major Damage",label: "Dents / Structural Damage"   },
+      { value: "Good", label: "Good (Zero new body marks)" },
+      { value: "Minor Scratches", label: "Minor Scratches" },
+      { value: "Dents / Major Damage", label: "Dents / Structural Damage" },
     ],
   },
   {
     label: "Cabin Interior",
     key: "interior" as const,
     options: [
-      { value: "Clean",       label: "Clean (Match on entry)"        },
-      { value: "Minor Dirt",  label: "Minor Dirt (Standard wash)"    },
-      { value: "Damaged",     label: "Upholstery stains / tearing"   },
+      { value: "Clean", label: "Clean (Match on entry)" },
+      { value: "Minor Dirt", label: "Minor Dirt (Standard wash)" },
+      { value: "Damaged", label: "Upholstery stains / tearing" },
     ],
   },
   {
     label: "Fuel Level",
     key: "fuel" as const,
     options: [
-      { value: "Full",  label: "Full (Match on handover)" },
-      { value: "1/2",   label: "Half Tank"                },
-      { value: "Empty", label: "Empty (Refuel required)"  },
+      { value: "Full", label: "Full (Match on handover)" },
+      { value: "1/2", label: "Half Tank" },
+      { value: "Empty", label: "Empty (Refuel required)" },
     ],
   },
 ] as const;
 
-type ChecklistKey = typeof CHECKLIST_FIELDS[number]["key"];
+type ChecklistKey = (typeof CHECKLIST_FIELDS)[number]["key"];
 type ChecklistState = Record<ChecklistKey, string>;
 
 const DEFAULT_CHECKLIST: ChecklistState = {
-  tire: "Good", exterior: "Good", interior: "Clean", fuel: "Full",
+  tire: "Good",
+  exterior: "Good",
+  interior: "Clean",
+  fuel: "Full",
 };
 
 // ── Payment overlay ───────────────────────────────────────────────────────────
 
 function PaymentOverlay({
-  state, message, phone, amount,
+  state,
+  message,
+  phone,
+  amount,
   onRetry,
 }: {
   state: PaymentState;
@@ -92,9 +107,8 @@ function PaymentOverlay({
   if (state === "idle") return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 backdrop-blur-md p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/85 backdrop-blur-md p-4">
       <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-sm mx-auto overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-
         {state === "processing" && (
           <div className="p-8 flex flex-col items-center text-center gap-4">
             <Loader2 className="w-12 h-12 text-accent animate-spin" />
@@ -113,7 +127,6 @@ function PaymentOverlay({
 
         {state === "waiting_for_pin" && (
           <div className="p-8 flex flex-col items-center text-center gap-5 relative overflow-hidden">
-            {/* Accent pulse bar at top */}
             <div className="absolute top-0 left-0 w-full h-1 bg-accent animate-pulse" />
             <div className="relative">
               <div className="absolute inset-0 bg-accent/20 rounded-full animate-ping" />
@@ -124,15 +137,15 @@ function PaymentOverlay({
             </div>
             <div>
               <h2 className="text-xl font-bold text-foreground mb-2">
-                Check Customer's Phone
+                Check Customer&apos;s Phone
               </h2>
               <p className="text-sm text-muted-foreground">
                 An M-Pesa prompt has been sent to{" "}
-                <span className="font-medium text-foreground">{phone}</span>{" "}
-                for{" "}
+                <span className="font-medium text-foreground">{phone}</span> for{" "}
                 <strong className="text-foreground">
                   Ksh {amount.toLocaleString()}
-                </strong>.
+                </strong>
+                .
               </p>
             </div>
             <div className="bg-muted/50 rounded-xl p-4 w-full flex items-center justify-center gap-3">
@@ -150,7 +163,9 @@ function PaymentOverlay({
               <CheckCircle className="w-12 h-12 text-accent" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-foreground">Return Complete</h2>
+              <h2 className="text-xl font-bold text-foreground">
+                Return Complete
+              </h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Car returned and marked available in the fleet.
               </p>
@@ -164,7 +179,9 @@ function PaymentOverlay({
               <XCircle className="w-8 h-8 text-destructive" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Payment Failed</h2>
+              <h2 className="text-xl font-bold text-foreground mb-2">
+                Payment Failed
+              </h2>
               <p className="text-sm text-muted-foreground">
                 {message || "The payment was cancelled or timed out."}
               </p>
@@ -185,41 +202,62 @@ function PaymentOverlay({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function FacilitatorClient({ initialBookings }: FacilitatorClientProps) {
-  const [bookings, setBookings]             = useState(initialBookings);
-  const [selectedBooking, setSelectedBooking] = useState<BookingWithCarPrice | null>(null);
-  const [paymentState, setPaymentState]     = useState<PaymentState>("idle");
+  const [bookings, setBookings] = useState(initialBookings);
+  const [selectedBooking, setSelectedBooking] =
+    useState<BookingWithCarPrice | null>(null);
+  const [paymentState, setPaymentState] = useState<PaymentState>("idle");
   const [paymentMessage, setPaymentMessage] = useState("");
-  const [checklist, setChecklist]           = useState<ChecklistState>(DEFAULT_CHECKLIST);
-  const [customNotes, setCustomNotes]       = useState("");
-  const [damageFee, setDamageFee]           = useState(0);
+  const [checklist, setChecklist] = useState<ChecklistState>(DEFAULT_CHECKLIST);
+  const [customNotes, setCustomNotes] = useState("");
+  const [damageFee, setDamageFee] = useState(0);
+  const [overridePhone, setOverridePhone] = useState("");
 
-  const channelRef       = useRef<RealtimeChannel | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const compiledNotesRef = useRef("");
-  const totalFeesRef     = useRef(0);
+  const totalFeesRef = useRef(0);
 
-  // ── Late fee calculation ──────────────────────────────────────────────────
+  // ── Late fee calculation (50% extra per day, exempting return day) ────────
 
   const lateFeeDetails = useMemo(() => {
     if (!selectedBooking) return { daysLate: 0, fee: 0 };
     const returnDate = new Date(selectedBooking.return_date);
+    returnDate.setHours(0, 0, 0, 0);
+
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     if (today > returnDate) {
-      const daysLate = Math.ceil(
-        (today.getTime() - returnDate.getTime()) / 86_400_000,
-      );
-      // cars(price) is now included in the query
-      const dailyRate = selectedBooking.cars?.price ?? 0;
-      return { daysLate, fee: Math.round(daysLate * dailyRate * 1.1) };
+      // Calculate days late (exempting the expected day of return)
+      const diffTime = today.getTime() - returnDate.getTime();
+      const daysLate = Math.floor(diffTime / 86_400_000);
+
+      if (daysLate > 0) {
+        const dailyRate = selectedBooking.cars?.price ?? 0;
+        // 50% extra per day: dailyRate * 1.5 per late day
+        const fee = Math.round(daysLate * (dailyRate * 1.5));
+        return { daysLate, fee };
+      }
     }
     return { daysLate: 0, fee: 0 };
   }, [selectedBooking]);
 
   const totalAdditionalFees = damageFee + lateFeeDetails.fee;
 
+  // ── Modal Open handler ────────────────────────────────────────────────────
+
+  const handleOpenInspect = (booking: BookingWithCarPrice) => {
+    setSelectedBooking(booking);
+    setOverridePhone(booking.profiles?.phone ?? "");
+    setChecklist(DEFAULT_CHECKLIST);
+    setCustomNotes("");
+    setDamageFee(0);
+  };
+
   // ── Close + reset ─────────────────────────────────────────────────────────
 
   const closeModal = useCallback(() => {
-    if (paymentState === "processing" || paymentState === "waiting_for_pin") return;
+    if (paymentState === "processing" || paymentState === "waiting_for_pin")
+      return;
     channelRef.current?.unsubscribe();
     channelRef.current = null;
     setSelectedBooking(null);
@@ -228,20 +266,22 @@ export function FacilitatorClient({ initialBookings }: FacilitatorClientProps) {
     setChecklist(DEFAULT_CHECKLIST);
     setCustomNotes("");
     setDamageFee(0);
+    setOverridePhone("");
     compiledNotesRef.current = "";
     totalFeesRef.current = 0;
   }, [paymentState]);
 
   // ── Build inspection note ────────────────────────────────────────────────
 
-  const buildNotes = () => `
+  const buildNotes = () =>
+    `
 [INSPECTION REPORT]
 Tires: ${checklist.tire} | Exterior: ${checklist.exterior}
 Interior: ${checklist.interior} | Fuel: ${checklist.fuel}
 ---
 [FEES]
 Damage/Missing: Ksh ${damageFee}
-Late Fee (${lateFeeDetails.daysLate} days): Ksh ${lateFeeDetails.fee}
+Late Fee (${lateFeeDetails.daysLate} days @ +50%/day): Ksh ${lateFeeDetails.fee}
 Total Charged: Ksh ${totalAdditionalFees}
 ---
 [NOTES]
@@ -270,20 +310,25 @@ ${customNotes || "None."}
         if (!res.success) throw new Error(res.error);
         setPaymentState("success");
         setTimeout(() => {
-          setBookings((prev) => prev.filter((b) => b.id !== selectedBooking.id));
+          setBookings((prev) =>
+            prev.filter((b) => b.id !== selectedBooking.id),
+          );
           closeModal();
         }, 2500);
       } catch (err: unknown) {
         setPaymentState("failed");
-        setPaymentMessage(err instanceof Error ? err.message : "Failed to complete return.");
+        setPaymentMessage(
+          err instanceof Error ? err.message : "Failed to complete return.",
+        );
       }
       return;
     }
 
-    // Has fees — STK push flow
-    const phone = selectedBooking.profiles?.phone;
-    if (!phone) {
-      toast.error("Customer phone number is missing.");
+    const targetPhone = overridePhone.trim() || selectedBooking.profiles?.phone;
+    if (!targetPhone) {
+      toast.error(
+        "A valid customer phone number is required for M-Pesa STK push.",
+      );
       return;
     }
 
@@ -291,7 +336,6 @@ ${customNotes || "None."}
     setPaymentMessage("");
 
     try {
-      // Set up Realtime listener BEFORE triggering STK to avoid missing the callback
       const supabase = createClient();
       const channel = supabase
         .channel(`facilitator_fee_${selectedBooking.id}`)
@@ -321,7 +365,9 @@ ${customNotes || "None."}
                 );
                 setPaymentState("success");
                 setTimeout(() => {
-                  setBookings((prev) => prev.filter((b) => b.id !== selectedBooking.id));
+                  setBookings((prev) =>
+                    prev.filter((b) => b.id !== selectedBooking.id),
+                  );
                   closeModal();
                 }, 2500);
               } catch (err: unknown) {
@@ -337,7 +383,8 @@ ${customNotes || "None."}
               channelRef.current = null;
               setPaymentState("failed");
               setPaymentMessage(
-                updated.additional_fee_reason || "Payment was cancelled or failed.",
+                updated.additional_fee_reason ||
+                  "Payment was cancelled or failed.",
               );
             }
           },
@@ -348,7 +395,7 @@ ${customNotes || "None."}
 
       const stkResponse = await initiateFacilitatorCharge(
         selectedBooking.id,
-        phone,
+        targetPhone,
         totalAdditionalFees,
         selectedBooking.id.slice(0, 12),
       );
@@ -361,7 +408,6 @@ ${customNotes || "None."}
 
       setPaymentState("waiting_for_pin");
 
-      // 90s safety timeout — if Safaricom doesn't call back
       setTimeout(() => {
         setPaymentState((current) => {
           if (current === "waiting_for_pin") {
@@ -379,7 +425,9 @@ ${customNotes || "None."}
       channelRef.current?.unsubscribe();
       channelRef.current = null;
       setPaymentState("failed");
-      setPaymentMessage(err instanceof Error ? err.message : "Something went wrong.");
+      setPaymentMessage(
+        err instanceof Error ? err.message : "Something went wrong.",
+      );
     }
   };
 
@@ -388,10 +436,11 @@ ${customNotes || "None."}
   return (
     <div className="min-h-screen bg-background">
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10 space-y-6">
-
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Facilitator Dashboard</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Facilitator Dashboard
+          </h1>
           <p className="text-muted-foreground mt-1">
             Perform visual inspections and handle return balances.
           </p>
@@ -402,7 +451,9 @@ ${customNotes || "None."}
           {bookings.length === 0 ? (
             <div className="p-8 text-center bg-card rounded-xl border border-border">
               <ClipboardCheck className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-              <h3 className="text-lg font-medium text-foreground">No Active Trips</h3>
+              <h3 className="text-lg font-medium text-foreground">
+                No Active Trips
+              </h3>
               <p className="text-sm text-muted-foreground mt-1">
                 All vehicles are back in the garage lot.
               </p>
@@ -427,7 +478,9 @@ ${customNotes || "None."}
                   <p className="text-xs text-muted-foreground">
                     Due:{" "}
                     {new Date(booking.return_date).toLocaleDateString("en-KE", {
-                      day: "numeric", month: "short", year: "numeric",
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
                     })}
                     {new Date() > new Date(booking.return_date) && (
                       <span className="ml-2 text-destructive font-semibold">
@@ -437,7 +490,7 @@ ${customNotes || "None."}
                   </p>
                 </div>
                 <Button
-                  onClick={() => setSelectedBooking(booking)}
+                  onClick={() => handleOpenInspect(booking)}
                   className="bg-accent hover:bg-accent/90 text-accent-foreground w-full sm:w-auto rounded-xl shrink-0"
                 >
                   Inspect & Return
@@ -448,11 +501,11 @@ ${customNotes || "None."}
         </div>
       </main>
 
-      {/* Payment overlay — renders above inspection modal */}
+      {/* Payment overlay */}
       <PaymentOverlay
         state={paymentState}
         message={paymentMessage}
-        phone={selectedBooking?.profiles?.phone}
+        phone={overridePhone || selectedBooking?.profiles?.phone}
         amount={totalFeesRef.current}
         onRetry={() => setPaymentState("idle")}
       />
@@ -461,13 +514,15 @@ ${customNotes || "None."}
       {selectedBooking && paymentState === "idle" && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-200">
-
             {/* Modal header */}
             <div className="flex justify-between items-start p-6 border-b border-border sticky top-0 bg-card z-10">
               <div>
-                <h2 className="text-xl font-bold text-foreground">Return Inspection</h2>
+                <h2 className="text-xl font-bold text-foreground">
+                  Return Inspection
+                </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {selectedBooking.cars?.name} — {selectedBooking.profiles?.full_name}
+                  {selectedBooking.cars?.name} —{" "}
+                  {selectedBooking.profiles?.full_name}
                 </p>
               </div>
               <Button
@@ -481,6 +536,24 @@ ${customNotes || "None."}
             </div>
 
             <div className="p-6 space-y-8">
+              {/* Customer Phone Prompt Field */}
+              <section className="bg-muted/30 rounded-2xl p-4 border border-border space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-accent" /> M-Pesa Payment
+                  Phone Number
+                </label>
+                <Input
+                  type="text"
+                  placeholder="e.g. 254712345678"
+                  value={overridePhone}
+                  onChange={(e) => setOverridePhone(e.target.value)}
+                  className="bg-background border-border rounded-xl h-10 text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Verify or update the phone number to prompt the customer for
+                  extra return balances.
+                </p>
+              </section>
 
               {/* Vehicle checklist */}
               <section>
@@ -497,11 +570,16 @@ ${customNotes || "None."}
                         className="w-full bg-muted/40 border border-border rounded-xl px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring appearance-none cursor-pointer"
                         value={checklist[field.key]}
                         onChange={(e) =>
-                          setChecklist((prev) => ({ ...prev, [field.key]: e.target.value }))
+                          setChecklist((prev) => ({
+                            ...prev,
+                            [field.key]: e.target.value,
+                          }))
                         }
                       >
                         {field.options.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -525,25 +603,31 @@ ${customNotes || "None."}
               {/* Surcharges */}
               <section className="bg-muted/30 rounded-2xl p-5 border border-border space-y-4">
                 <h3 className="font-semibold flex items-center gap-2 text-foreground">
-                  <AlertTriangle className="w-5 h-5 text-destructive" /> Surcharges
+                  <AlertTriangle className="w-5 h-5 text-destructive" />{" "}
+                  Surcharges
                 </h3>
 
                 {lateFeeDetails.daysLate > 0 && (
                   <div className="flex justify-between items-center text-destructive bg-destructive/10 p-3 rounded-xl border border-destructive/20 text-sm">
                     <div>
-                      <p className="font-bold">Late Return</p>
+                      <p className="font-bold">Late Return (+50% per day)</p>
                       <p className="text-xs opacity-90">
-                        {lateFeeDetails.daysLate} day(s) × (base rate + 10%)
+                        {lateFeeDetails.daysLate} day(s) late (return day
+                        exempted)
                       </p>
                     </div>
-                    <p className="font-bold">+ Ksh {lateFeeDetails.fee.toLocaleString()}</p>
+                    <p className="font-bold">
+                      + Ksh {lateFeeDetails.fee.toLocaleString()}
+                    </p>
                   </div>
                 )}
 
                 <div className="flex justify-between items-center">
                   <div className="text-sm">
                     <p className="font-medium text-foreground">Damage Fee</p>
-                    <p className="text-xs text-muted-foreground">Enter 0 if none</p>
+                    <p className="text-xs text-muted-foreground">
+                      Enter 0 if none
+                    </p>
                   </div>
                   <div className="relative w-36">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-medium">
@@ -554,13 +638,17 @@ ${customNotes || "None."}
                       min="0"
                       className="pl-10 bg-muted/40 border-border h-10 text-sm rounded-xl"
                       value={damageFee}
-                      onChange={(e) => setDamageFee(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setDamageFee(Number(e.target.value) || 0)
+                      }
                     />
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center border-t border-border pt-4">
-                  <p className="font-bold text-base text-foreground">Total Additional</p>
+                  <p className="font-bold text-base text-foreground">
+                    Total Additional
+                  </p>
                   <p className="font-bold text-2xl text-accent">
                     Ksh {totalAdditionalFees.toLocaleString()}
                   </p>

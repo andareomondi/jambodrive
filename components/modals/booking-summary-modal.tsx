@@ -9,6 +9,8 @@ import {
   MapPin,
   Banknote,
   CheckCircle,
+  XCircle,
+  AlertCircle,
   Download,
   Share2,
   X,
@@ -27,6 +29,7 @@ const STATUS_STYLES: Record<string, string> = {
   pending: "bg-muted text-muted-foreground",
   completed: "bg-accent text-accent-foreground",
   cancelled: "bg-destructive text-destructive-foreground",
+  failed: "bg-destructive/20 text-destructive-foreground",
 };
 
 function formatDate(dateStr: string) {
@@ -55,19 +58,93 @@ export function BookingSummaryModal({
 
   // Car data comes from the Supabase join — no extra fetch needed
   const car = booking.cars ?? null;
+  const status = booking.status ?? "pending";
 
   const handleShare = async () => {
-    const text = `Booking ${booking.id} — ${car?.name ?? "Car"}\nPickup: ${formatDate(booking.pickup_date)} at ${booking.pickup_location}\nReturn: ${formatDate(booking.return_date)} at ${booking.return_location}\nTotal: Ksh ${booking.total_price}`;
+    const text = `Booking ${booking.id} — ${car?.name ?? "Car"}\nStatus: ${status.toUpperCase()}\nPickup: ${formatDate(booking.pickup_date)} at ${booking.pickup_location}\nReturn: ${formatDate(booking.return_date)} at ${booking.return_location}\nTotal: Ksh ${booking.total_price}`;
     await navigator.clipboard.writeText(text);
     toast.success("Booking details copied to clipboard");
   };
 
-  const handleDownloadReceipt = () => {
-    // Receipt generation goes here
-    toast.success("Receipt downloaded successfully");
+  const handleDownloadReceipt = async () => {
+    try {
+      const { generateBookingReceiptPdf } =
+        await import("@/lib/reports/generate-booking-receipt");
+      const pdfBytes = await generateBookingReceiptPdf(booking);
+
+      const blob = new Blob([pdfBytes as BlobPart], {
+        type: "application/pdf",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `cosmara-receipt-${booking.id.slice(0, 8)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      toast.success("Receipt downloaded successfully");
+    } catch (e: unknown) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to generate receipt PDF.",
+      );
+    }
   };
 
-  const statusClass = STATUS_STYLES[booking.status ?? "pending"];
+  const statusClass = STATUS_STYLES[status] ?? STATUS_STYLES.pending;
+
+  // Dynamic banner configuration based on booking status
+  const getStatusBannerContent = () => {
+    switch (status) {
+      case "confirmed":
+      case "completed":
+        return {
+          icon: <CheckCircle className="h-5 w-5 text-accent mt-0.5 shrink-0" />,
+          title:
+            status === "completed" ? "Trip Completed" : "Booking Confirmed",
+          description:
+            "Thank you for choosing Cosmara! Your booking has been successfully processed.",
+          containerStyle: "bg-accent/10 border-accent/20 text-foreground",
+        };
+      case "cancelled":
+        return {
+          icon: (
+            <XCircle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+          ),
+          title: "Booking Cancelled",
+          description:
+            "This booking has been cancelled and is no longer active.",
+          containerStyle:
+            "bg-destructive/10 border-destructive/20 text-destructive-foreground",
+        };
+      case "failed":
+        return {
+          icon: (
+            <AlertCircle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+          ),
+          title: "Payment Failed",
+          description: booking.payment_failure_reason
+            ? `Reason: ${booking.payment_failure_reason}`
+            : "The payment transaction for this booking was unsuccessful.",
+          containerStyle:
+            "bg-destructive/10 border-destructive/20 text-destructive-foreground",
+        };
+      case "pending":
+      default:
+        return {
+          icon: (
+            <Calendar className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+          ),
+          title: "Booking Pending",
+          description:
+            "Your booking request is received and is awaiting confirmation or payment processing.",
+          containerStyle: "bg-muted/40 border-border text-foreground",
+        };
+    }
+  };
+
+  const banner = getStatusBannerContent();
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -87,20 +164,22 @@ export function BookingSummaryModal({
               Booking Summary
             </Dialog.Title>
             <Dialog.Description className="text-sm text-muted-foreground mt-0.5">
-              View your completed booking details and receipt
+              View your booking details, history, and receipt
             </Dialog.Description>
           </div>
 
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-            {/* Status banner — uses theme tokens, not hardcoded blue */}
-            <div className="flex gap-3 items-start p-3 md:p-4 bg-accent/10 border border-accent/20 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-accent mt-0.5 shrink-0" />
+            {/* Dynamic Status Banner */}
+            <div
+              className={`flex gap-3 items-start p-3 md:p-4 border rounded-lg ${banner.containerStyle}`}
+            >
+              {banner.icon}
               <div>
                 <p className="font-semibold text-sm md:text-base text-foreground">
-                  Booking Confirmed
+                  {banner.title}
                 </p>
                 <p className="text-xs md:text-sm text-muted-foreground">
-                  Thank you for choosing Cosmara! Your booking has been successfully confirmed.
+                  {banner.description}
                 </p>
               </div>
             </div>
@@ -116,7 +195,7 @@ export function BookingSummaryModal({
               <div className="space-y-0.5">
                 <p className="text-xs text-muted-foreground">Status</p>
                 <Badge className={`capitalize text-xs mt-1 ${statusClass}`}>
-                  {booking.status ?? "pending"}
+                  {status}
                 </Badge>
               </div>
             </div>
@@ -212,7 +291,7 @@ export function BookingSummaryModal({
                 )}
                 <div className="border-t border-accent/20 pt-2 mt-1 flex justify-between">
                   <span className="font-semibold text-foreground">
-                    Total Paid
+                    Total Amount
                   </span>
                   <span className="font-bold text-accent text-base md:text-lg">
                     Ksh {booking.total_price.toLocaleString()}

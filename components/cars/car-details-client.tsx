@@ -23,6 +23,8 @@ import {
   Phone,
   XCircle,
   Loader2,
+  Download,
+  FileText,
 } from "lucide-react";
 import {
   BookingForm,
@@ -55,6 +57,7 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
   const [formData, setFormData] = useState<BookingFormData | null>(null);
   const [paymentMessage, setPaymentMessage] = useState("");
   const [receiptNumber, setReceiptNumber] = useState<string | null>(null);
+  const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -82,12 +85,38 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
     setFormData(null);
     setPaymentMessage("");
     setReceiptNumber(null);
+    setCreatedBookingId(null);
     setIsModalOpen(true);
   };
 
   const handleFormSubmit = (data: BookingFormData) => {
     setFormData(data);
     setModalStep("summary");
+  };
+
+  const handleDownloadAgreement = async (bookingId: string) => {
+    try {
+      const { generateBookingReceiptPdf } =
+        await import("@/lib/reports/generate-booking-receipt");
+      const pdfBytes = await generateBookingReceiptPdf(bookingId);
+
+      const blob = new Blob([pdfBytes as BlobPart], {
+        type: "application/pdf",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `cosmara-hire-agreement-${bookingId.slice(0, 8)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      toast.success("Hire Agreement & Contract PDF downloaded!");
+    } catch (e: unknown) {
+      console.error(e);
+      toast.error("Failed to generate agreement PDF.");
+    }
   };
 
   const handleFinalAction = async () => {
@@ -106,22 +135,35 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
 
       const days = calcDays(formData);
       const total = days * car.price;
+      const modeLabel =
+        bookingMode === "pay_now"
+          ? "Pay Now (M-Pesa STK)"
+          : "Pay Later (In-Person)";
 
       if (bookingMode === "pay_later") {
-        const { error: bookingError } = await supabase.from("bookings").insert({
-          car_id: car.id,
-          profile_id: user.id,
-          pickup_date: new Date(formData.pickupDate).toISOString(),
-          return_date: new Date(formData.returnDate).toISOString(),
-          pickup_location: formData.pickupLocation,
-          return_location: formData.returnLocation,
-          total_price: total,
-          status: "pending",
-          days,
-        });
+        const { data: newBooking, error: bookingError } = await supabase
+          .from("bookings")
+          .insert({
+            car_id: car.id,
+            profile_id: user.id,
+            pickup_date: new Date(formData.pickupDate).toISOString(),
+            return_date: new Date(formData.returnDate).toISOString(),
+            pickup_location: formData.pickupLocation,
+            return_location: formData.returnLocation,
+            total_price: total,
+            status: "pending",
+            days,
+            notes: `Mode: ${modeLabel}`,
+          })
+          .select()
+          .single();
 
-        if (bookingError) throw new Error(bookingError.message);
+        if (bookingError || !newBooking)
+          throw new Error(bookingError?.message ?? "Failed to create booking.");
+
+        setCreatedBookingId(newBooking.id);
         setModalStep("success");
+        handleDownloadAgreement(newBooking.id);
       } else {
         setModalStep("processing");
 
@@ -137,6 +179,7 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
             total_price: total,
             status: "pending",
             days,
+            notes: `Mode: ${modeLabel}`,
           })
           .select()
           .single();
@@ -145,6 +188,7 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
           throw new Error(bookingError?.message ?? "Failed to create booking.");
         }
 
+        setCreatedBookingId(newBooking.id);
         if (channelRef.current) channelRef.current.unsubscribe();
 
         const channel = supabase
@@ -167,6 +211,7 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                 setReceiptNumber(updated.mpesa_receipt_number ?? null);
                 setModalStep("success");
                 toast.success("Payment confirmed! Vehicle reserved.");
+                handleDownloadAgreement(newBooking.id);
                 channel.unsubscribe();
               } else if (updated.status === "failed") {
                 setModalStep("failed");
@@ -455,6 +500,7 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
             <div className="p-6 overflow-y-auto flex-1">
               {modalStep === "form" && (
                 <BookingForm
@@ -468,7 +514,7 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                 <div className="space-y-6">
                   <div className="bg-muted/40 border border-border rounded-2xl p-5 space-y-4">
                     <h3 className="font-semibold text-lg text-foreground border-b border-border pb-3">
-                      Booking Summary
+                      Booking Summary & Terms
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
@@ -481,35 +527,36 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                       </div>
                       <div>
                         <span className="text-muted-foreground block text-xs">
-                          Contact Phone
+                          Payment Mode
                         </span>
-                        <span className="font-medium text-foreground">
-                          {formData.phone}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground block text-xs">
-                          Pickup Location
-                        </span>
-                        <span className="font-medium text-foreground">
-                          {formData.pickupLocation}
+                        <span className="font-medium text-accent">
+                          {bookingMode === "pay_now"
+                            ? "Pay Now (M-Pesa STK)"
+                            : "Pay Later (In-Person)"}
                         </span>
                       </div>
                       <div>
                         <span className="text-muted-foreground block text-xs">
-                          Return Location
+                          Pickup Schedule & Location
                         </span>
                         <span className="font-medium text-foreground">
-                          {formData.returnLocation}
+                          {formData.pickupDate} ({formData.pickupLocation})
                         </span>
                       </div>
                       <div>
                         <span className="text-muted-foreground block text-xs">
-                          Dates
+                          Expected Return Schedule
                         </span>
                         <span className="font-medium text-foreground">
-                          {formData.pickupDate} to {formData.returnDate} (
-                          {totalDays} {totalDays === 1 ? "day" : "days"})
+                          {formData.returnDate} ({formData.returnLocation})
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-xs">
+                          Rental Duration
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {totalDays} {totalDays === 1 ? "day" : "days"}
                         </span>
                       </div>
                       <div>
@@ -531,16 +578,48 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                     </div>
                   </div>
 
+                  {/* Minified Terms & Conditions & Car Hire Guidelines */}
+                  <div className="bg-muted/30 border border-border rounded-2xl p-4 space-y-2 text-xs">
+                    <h4 className="font-semibold text-foreground">
+                      Car Hire Rules & Summary Agreement
+                    </h4>
+                    <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+                      <li>
+                        <strong>Driver Requirements:</strong> Driver must be 21+
+                        years with a valid license.
+                      </li>
+                      <li>
+                        <strong>Fuel Policy:</strong> Vehicle is provided with a
+                        full tank and must be returned full.
+                      </li>
+                      <li>
+                        <strong>Return Timing:</strong> Expected return is
+                        strictly by the agreed return date. Late returns incur
+                        additional hourly/daily fees.
+                      </li>
+                      <li>
+                        <strong>Usage:</strong> Unlimited mileage for lawful use
+                        within Kenya. Off-road racing is prohibited.
+                      </li>
+                    </ul>
+                    <p className="text-[11px] text-muted-foreground italic pt-1">
+                      By clicking confirm or initiating payment, you agree to
+                      Cosmara&apos;s binding Terms & Conditions (automatically
+                      attached in your agreement PDF).
+                    </p>
+                  </div>
+
                   {bookingMode === "pay_now" ? (
                     <p className="text-xs text-muted-foreground bg-accent/10 border border-accent/20 p-3.5 rounded-xl">
                       Clicking <strong>Initiate Payment</strong> will send an
                       M-Pesa STK push prompt directly to{" "}
-                      <strong>{formData.phone}</strong>.
+                      <strong>{formData.phone}</strong> and generate your
+                      agreement contract PDF.
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground bg-muted p-3.5 rounded-xl border border-border">
-                      No payment required now. An admin will contact you shortly
-                      to coordinate details.
+                      No payment required now. Confirming will generate your
+                      agreement contract PDF and notify our team.
                     </p>
                   )}
 
@@ -566,9 +645,9 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                           Processing...
                         </span>
                       ) : bookingMode === "pay_now" ? (
-                        "Initiate Payment"
+                        "Initiate Payment & Contract"
                       ) : (
-                        "Confirm Booking"
+                        "Confirm Booking & Contract"
                       )}
                     </Button>
                   </div>
@@ -609,7 +688,7 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
 
               {modalStep === "success" && (
                 <div className="py-8 flex flex-col items-center text-center space-y-6">
-                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center border border-primary/25">
                     <CheckCircle className="w-10 h-10 text-primary" />
                   </div>
                   <div>
@@ -619,7 +698,8 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                         : "Request Submitted!"}
                     </h3>
                     <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-                      Your reservation for the {car.name} is complete.
+                      Your hire agreement contract and receipt have been
+                      generated and downloaded.
                     </p>
                   </div>
                   {receiptNumber && (
@@ -644,6 +724,18 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                     </div>
                   )}
                   <div className="flex flex-col gap-3 w-full pt-2">
+                    {createdBookingId && (
+                      <Button
+                        onClick={() =>
+                          handleDownloadAgreement(createdBookingId)
+                        }
+                        variant="outline"
+                        className="w-full gap-2 border-accent/40 text-accent hover:bg-accent/10"
+                      >
+                        <Download className="w-4 h-4" /> Download Agreement
+                        Contract PDF Again
+                      </Button>
+                    )}
                     <Link
                       href="/dashboard"
                       className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium text-center"

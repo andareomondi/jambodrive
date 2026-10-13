@@ -583,7 +583,7 @@ export function AdminDashboardClient({
                   bookingsPagination.paged.map((booking) => (
                     <React.Fragment key={booking.id}>
                       <tr
-                        className={`hover:bg-muted/30 cursor-pointer transition-colors ${booking.status === "failed" ? "bg-destructive/5" : ""}`}
+                        className={`hover:bg-muted/35 cursor-pointer transition-colors ${booking.status === "failed" ? "bg-destructive/5" : ""}`}
                         onClick={() => toggleExpandRow(booking.id)}
                       >
                         <td className="px-4 py-3 pl-6 font-medium text-foreground whitespace-nowrap">
@@ -623,79 +623,74 @@ export function AdminDashboardClient({
                           className="px-4 py-3 pr-6 whitespace-nowrap"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="flex gap-2 items-center">
-                            {booking.status === "pending" && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  className="bg-accent hover:bg-accent/90 text-accent-foreground h-8 px-3 rounded-lg"
-                                  onClick={(e) => {
-                                    e.stopPropagation(); // Prevents the row from expanding when clicking the button
-                                    setSelectedBooking(booking);
-                                    setBookingModalOpen(true);
-                                  }}
-                                >
-                                  Approve & Pay
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="text-destructive hover:bg-destructive/10 h-8 px-3 rounded-lg"
-                                  onClick={() =>
-                                    handleBookingStatus(booking.id, "cancelled")
-                                  }
-                                >
-                                  Reject
-                                </Button>
-                              </>
-                            )}
-                            {booking.status === "confirmed" && (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="border-accent/30 text-accent hover:bg-accent/10 h-8 px-3 rounded-lg flex items-center gap-1.5"
-                                  onClick={() => {
-                                    const phone =
-                                      booking.profiles?.phone ??
-                                      booking.mpesa_phone;
-                                    if (!phone) {
-                                      toast.error(
-                                        "No phone number for this booking.",
-                                      );
-                                      return;
-                                    }
-                                    openWhatsApp(
-                                      phone,
-                                      `Hello, we have confirmed your booking.\n\n*Booking Details:*\n🚗 Vehicle: ${booking.cars?.name}\n📅 Pickup: ${new Date(booking.pickup_date).toLocaleDateString("en-KE")}\n📍 Location: ${booking.pickup_location}\n💰 Total: KES ${booking.total_price.toLocaleString()}\n\nPlease let us know if you have any questions!`,
-                                    );
-                                  }}
-                                >
-                                  <MessageCircle className="h-3.5 w-3.5" />{" "}
-                                  Notify
-                                </Button>
-                                <Link href="/dashboard/facilitator">
+                          <div className="flex flex-col gap-1.5 items-start">
+                            <div className="flex gap-2 items-center">
+                              {booking.status === "pending" && (
+                                <>
                                   <Button
                                     size="sm"
-                                    variant="outline"
-                                    className="border-border text-foreground hover:bg-muted h-8 px-3 rounded-lg flex items-center gap-1.5"
+                                    className="bg-accent hover:bg-accent/90 text-accent-foreground h-8 px-3 rounded-lg"
+                                    onClick={(e) => {
+                                      e.stopPropagation(); // Prevents the row from expanding when clicking the button
+                                      setSelectedBooking(booking);
+                                      setBookingModalOpen(true);
+                                    }}
                                   >
-                                    <ClipboardCheck className="h-3.5 w-3.5" />{" "}
-                                    Return
+                                    Approve & Pay
                                   </Button>
-                                </Link>
-                              </>
-                            )}
-                            {booking.status === "failed" && (
-                              <>
-                                {booking.payment_failure_reason && (
-                                  <span
-                                    title={booking.payment_failure_reason}
-                                    className="inline-flex items-center gap-1 text-xs text-destructive cursor-default"
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-destructive hover:bg-destructive/10 h-8 px-3 rounded-lg"
+                                    onClick={() =>
+                                      handleBookingStatus(
+                                        booking.id,
+                                        "cancelled",
+                                      )
+                                    }
                                   >
-                                    <AlertCircle className="h-3.5 w-3.5" /> Why?
-                                  </span>
-                                )}
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                              {booking.status === "confirmed" && (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-accent/30 text-accent hover:bg-accent/10 h-8 px-3 rounded-lg flex items-center gap-1.5"
+                                    onClick={() => {
+                                      const phone =
+                                        booking.profiles?.phone ??
+                                        booking.mpesa_phone;
+                                      if (!phone) {
+                                        toast.error(
+                                          "No phone number for this booking.",
+                                        );
+                                        return;
+                                      }
+                                      openWhatsApp(
+                                        phone,
+                                        `Hello, we have confirmed your booking.\n\n*Booking Details:*\n🚗 Vehicle: ${booking.cars?.name}\n📅 Pickup: ${new Date(booking.pickup_date).toLocaleDateString("en-KE")}\n📍 Location: ${booking.pickup_location}\n💰 Total: KES ${booking.total_price.toLocaleString()}\n\nPlease let us know if you have any questions!`,
+                                      );
+                                    }}
+                                  >
+                                    <MessageCircle className="h-3.5 w-3.5" />{" "}
+                                    Notify
+                                  </Button>
+                                  <Link href="/dashboard/facilitator">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-border text-foreground hover:bg-muted h-8 px-3 rounded-lg flex items-center gap-1.5"
+                                    >
+                                      <ClipboardCheck className="h-3.5 w-3.5" />{" "}
+                                      Return
+                                    </Button>
+                                  </Link>
+                                </>
+                              )}
+                              {booking.status === "failed" && (
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -706,14 +701,28 @@ export function AdminDashboardClient({
                                 >
                                   <RotateCcw className="h-3.5 w-3.5" /> Dismiss
                                 </Button>
-                              </>
-                            )}
-                            {(booking.status === "completed" ||
-                              booking.status === "cancelled") && (
-                              <span className="text-xs text-muted-foreground px-2">
-                                Processed
-                              </span>
-                            )}
+                              )}
+                              {(booking.status === "completed" ||
+                                booking.status === "cancelled") && (
+                                <span className="text-xs text-muted-foreground px-2">
+                                  Processed
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Failure reason shown as an explicit column/row detail for small screens */}
+                            {booking.status === "failed" &&
+                              booking.payment_failure_reason && (
+                                <div className="flex items-start gap-1.5 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-2.5 py-1.5 max-w-xs">
+                                  <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                  <span>
+                                    <strong className="font-semibold">
+                                      Failure reason:
+                                    </strong>{" "}
+                                    {booking.payment_failure_reason}
+                                  </span>
+                                </div>
+                              )}
                           </div>
                         </td>
                       </tr>
