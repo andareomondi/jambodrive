@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
@@ -39,7 +39,8 @@ interface CarDetailsClientProps {
 }
 
 type BookingMode = "pay_now" | "pay_later";
-type ModalStep = "form" | "summary" | "processing" | "waiting_pin" | "success" | "failed";
+type ModalStep =
+  "form" | "summary" | "processing" | "waiting_pin" | "success" | "failed";
 
 const MPESA_SUPPORT_NUMBER = "254758500943";
 
@@ -70,7 +71,8 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
   const activeImage = images[selectedImage] ?? car.image;
 
   const calcDays = (data: BookingFormData) => {
-    const ms = new Date(data.returnDate).getTime() - new Date(data.pickupDate).getTime();
+    const ms =
+      new Date(data.returnDate).getTime() - new Date(data.pickupDate).getTime();
     return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
   };
 
@@ -93,7 +95,9 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
 
     try {
       setIsSubmitting(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       if (!user) {
         toast.error("Please log in to make a booking.");
@@ -156,17 +160,22 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
             async (payload) => {
               const updated = payload.new as any;
               if (updated.status === "confirmed") {
-                await supabase.from("cars").update({ available: false }).eq("id", car.id);
+                await supabase
+                  .from("cars")
+                  .update({ available: false })
+                  .eq("id", car.id);
                 setReceiptNumber(updated.mpesa_receipt_number ?? null);
                 setModalStep("success");
                 toast.success("Payment confirmed! Vehicle reserved.");
                 channel.unsubscribe();
               } else if (updated.status === "failed") {
                 setModalStep("failed");
-                setPaymentMessage(updated.payment_failure_reason ?? "Payment failed.");
+                setPaymentMessage(
+                  updated.payment_failure_reason ?? "Payment failed.",
+                );
                 channel.unsubscribe();
               }
-            }
+            },
           )
           .subscribe();
 
@@ -199,7 +208,9 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
           setModalStep((curr) => {
             if (curr === "waiting_pin") {
               channel.unsubscribe();
-              setPaymentMessage("Payment request timed out. Please check your statements.");
+              setPaymentMessage(
+                "Payment request timed out. Please check your statements.",
+              );
               return "failed";
             }
             return curr;
@@ -209,7 +220,9 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
     } catch (err: unknown) {
       console.error(err);
       setModalStep("failed");
-      setPaymentMessage(err instanceof Error ? err.message : "An unexpected error occurred.");
+      setPaymentMessage(
+        err instanceof Error ? err.message : "An unexpected error occurred.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -222,7 +235,10 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
       `*Price:* Ksh ${car.price}/day`,
       `*Link:* ${window.location.href}`,
     ].join("");
-    window.open(`https://wa.me/254758500943?text=${encodeURIComponent(message)}`, "_blank");
+    window.open(
+      `https://wa.me/254758500943?text=${encodeURIComponent(message)}`,
+      "_blank",
+    );
   };
 
   const totalDays = formData ? calcDays(formData) : 0;
@@ -253,13 +269,17 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
               />
               {!car.available && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
-                  <span className="text-white text-xl font-semibold">Not Available</span>
+                  <span className="text-white text-xl font-semibold">
+                    Not Available
+                  </span>
                 </div>
               )}
             </div>
           ) : (
             <div className="h-[450px] bg-muted rounded-xl mb-4 flex items-center justify-center">
-              <p className="text-muted-foreground text-sm">No image available</p>
+              <p className="text-muted-foreground text-sm">
+                No image available
+              </p>
             </div>
           )}
 
@@ -273,7 +293,13 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                     selectedImage === idx ? "border-accent" : "border-border"
                   }`}
                 >
-                  <Image src={image} alt={`${car.name} ${idx + 1}`} fill className="object-cover" sizes="80px" />
+                  <Image
+                    src={image}
+                    alt={`${car.name} ${idx + 1}`}
+                    fill
+                    className="object-cover"
+                    sizes="80px"
+                  />
                 </button>
               ))}
             </div>
@@ -281,16 +307,25 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
 
           <div className="mt-12 space-y-8">
             <div>
-              <h2 className="text-2xl font-bold text-foreground mb-4">About This Vehicle</h2>
-              <p className="text-muted-foreground leading-relaxed">{car.description ?? "No description available."}</p>
+              <h2 className="text-2xl font-bold text-foreground mb-4">
+                About This Vehicle
+              </h2>
+              <p className="text-muted-foreground leading-relaxed">
+                {car.description ?? "No description available."}
+              </p>
             </div>
 
             {features.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-foreground mb-4">Features</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-4">
+                  Features
+                </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {features.map((feature, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm text-foreground">
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 text-sm text-foreground"
+                    >
                       <CheckCircle className="w-4 h-4 text-accent shrink-0" />
                       <span>{feature}</span>
                     </div>
@@ -318,21 +353,31 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Transmission</span>
-                <span className="font-medium text-foreground capitalize">{car.transmission}</span>
+                <span className="font-medium text-foreground capitalize">
+                  {car.transmission}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Fuel</span>
                 <span className="font-medium text-foreground flex items-center gap-1 capitalize">
-                  {car.fuel === "electric" || car.fuel === "hybrid" ? <Zap className="w-4 h-4 text-accent" /> : <Fuel className="w-4 h-4 text-accent" />}
+                  {car.fuel === "electric" || car.fuel === "hybrid" ? (
+                    <Zap className="w-4 h-4 text-accent" />
+                  ) : (
+                    <Fuel className="w-4 h-4 text-accent" />
+                  )}
                   {car.fuel}
                 </span>
               </div>
             </div>
 
             <div className="mb-6 pb-6 border-b border-border">
-              <p className="text-xs text-muted-foreground mb-1">Price per day</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                Price per day
+              </p>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-accent">Ksh {car.price.toLocaleString()}</span>
+                <span className="text-4xl font-bold text-accent">
+                  Ksh {car.price.toLocaleString()}
+                </span>
                 <span className="text-muted-foreground text-sm">/day</span>
               </div>
               {car.chauffeured && (
@@ -366,7 +411,8 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                   variant="outline"
                   className="w-full border-accent/40 text-accent hover:bg-accent/10 gap-2"
                 >
-                  <MessageCircle className="w-4 h-4" /> Join Waitlist via WhatsApp
+                  <MessageCircle className="w-4 h-4" /> Join Waitlist via
+                  WhatsApp
                 </Button>
               )}
             </div>
@@ -376,7 +422,9 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
 
       {relatedCars.length > 0 && (
         <div className="border-t border-border pt-16">
-          <h3 className="text-2xl font-bold text-foreground mb-8">Similar Vehicles You Might Like</h3>
+          <h3 className="text-2xl font-bold text-foreground mb-8">
+            Similar Vehicles You Might Like
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {relatedCars.map((relatedCar) => (
               <CarCard key={relatedCar.id} car={relatedCar} />
@@ -391,47 +439,137 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
             <div className="flex items-center justify-between p-6 border-b border-border shrink-0">
               <div>
                 <h2 className="text-xl font-bold text-foreground">
-                  {bookingMode === "pay_now" ? "Reserve & Pay Online" : "Book & Pay Later"}
+                  {bookingMode === "pay_now"
+                    ? "Reserve & Pay Online"
+                    : "Book & Pay Later"}
                 </h2>
-                <p className="text-xs text-muted-foreground">{car.name} ({car.model})</p>
+                <p className="text-xs text-muted-foreground">
+                  {car.name} ({car.model})
+                </p>
               </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-muted"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-
             <div className="p-6 overflow-y-auto flex-1">
-              {modalStep === "form" && <BookingForm carName={car.name} onSubmit={handleFormSubmit} isLoading={false} />}
+              {modalStep === "form" && (
+                <BookingForm
+                  carName={car.name}
+                  onSubmit={handleFormSubmit}
+                  isLoading={false}
+                />
+              )}
 
               {modalStep === "summary" && formData && (
                 <div className="space-y-6">
                   <div className="bg-muted/40 border border-border rounded-2xl p-5 space-y-4">
-                    <h3 className="font-semibold text-lg text-foreground border-b border-border pb-3">Booking Summary</h3>
+                    <h3 className="font-semibold text-lg text-foreground border-b border-border pb-3">
+                      Booking Summary
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div><span className="text-muted-foreground block text-xs">Customer Name</span><span className="font-medium text-foreground">{formData.firstName} {formData.lastName}</span></div>
-                      <div><span className="text-muted-foreground block text-xs">Contact Phone</span><span className="font-medium text-foreground">{formData.phone}</span></div>
-                      <div><span className="text-muted-foreground block text-xs">Pickup Location</span><span className="font-medium text-foreground">{formData.pickupLocation}</span></div>
-                      <div><span className="text-muted-foreground block text-xs">Return Location</span><span className="font-medium text-foreground">{formData.returnLocation}</span></div>
-                      <div><span className="text-muted-foreground block text-xs">Dates</span><span className="font-medium text-foreground">{formData.pickupDate} to {formData.returnDate} ({totalDays} {totalDays === 1 ? "day" : "days"})</span></div>
-                      <div><span className="text-muted-foreground block text-xs">Daily Rate</span><span className="font-medium text-foreground">Ksh {car.price.toLocaleString()}</span></div>
+                      <div>
+                        <span className="text-muted-foreground block text-xs">
+                          Customer Name
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {formData.firstName} {formData.lastName}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-xs">
+                          Contact Phone
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {formData.phone}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-xs">
+                          Pickup Location
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {formData.pickupLocation}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-xs">
+                          Return Location
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {formData.returnLocation}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-xs">
+                          Dates
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {formData.pickupDate} to {formData.returnDate} (
+                          {totalDays} {totalDays === 1 ? "day" : "days"})
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-xs">
+                          Daily Rate
+                        </span>
+                        <span className="font-medium text-foreground">
+                          Ksh {car.price.toLocaleString()}
+                        </span>
+                      </div>
                     </div>
                     <div className="border-t border-border pt-4 flex items-center justify-between">
-                      <span className="font-semibold text-foreground">Total Estimated Price</span>
-                      <span className="text-2xl font-bold text-accent">Ksh {totalPrice.toLocaleString()}</span>
+                      <span className="font-semibold text-foreground">
+                        Total Estimated Price
+                      </span>
+                      <span className="text-2xl font-bold text-accent">
+                        Ksh {totalPrice.toLocaleString()}
+                      </span>
                     </div>
                   </div>
 
                   {bookingMode === "pay_now" ? (
                     <p className="text-xs text-muted-foreground bg-accent/10 border border-accent/20 p-3.5 rounded-xl">
-                      Clicking <strong>Initiate Payment</strong> will send an M-Pesa STK push prompt directly to <strong>{formData.phone}</strong>.
+                      Clicking <strong>Initiate Payment</strong> will send an
+                      M-Pesa STK push prompt directly to{" "}
+                      <strong>{formData.phone}</strong>.
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground bg-muted p-3.5 rounded-xl border border-border">
-                      No payment required now. An admin will contact you shortly to coordinate details.
+                      No payment required now. An admin will contact you shortly
+                      to coordinate details.
                     </p>
                   )}
 
                   <div className="flex items-center gap-3 pt-2">
-                    <Button type="button" variant="outline" onClick={() => setModalStep("form")} className="w-1/3" disabled={isSubmitting}>Edit Info</Button>
-                    <Button type="button" onClick={handleFinalAction} disabled={isSubmitting} className="w-2/3">
-                      {isSubmitting ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Processing...</span> : bookingMode === "pay_now" ? "Initiate Payment" : "Confirm Booking"}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setModalStep("form")}
+                      className="w-1/3"
+                      disabled={isSubmitting}
+                    >
+                      Edit Info
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleFinalAction}
+                      disabled={isSubmitting}
+                      className="w-2/3"
+                    >
+                      {isSubmitting ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />{" "}
+                          Processing...
+                        </span>
+                      ) : bookingMode === "pay_now" ? (
+                        "Initiate Payment"
+                      ) : (
+                        "Confirm Booking"
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -440,7 +578,14 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
               {modalStep === "processing" && (
                 <div className="py-12 flex flex-col items-center text-center gap-4">
                   <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                  <div><h3 className="text-xl font-bold text-foreground">Connecting to M-Pesa</h3><p className="text-sm text-muted-foreground">Sending STK push prompt...</p></div>
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground">
+                      Connecting to M-Pesa
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Sending STK push prompt...
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -451,39 +596,96 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                     <Wifi className="w-4 h-4 text-primary absolute -top-1 -right-1 animate-pulse" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-foreground mb-2">Check Your Phone</h3>
-                    <p className="text-sm text-muted-foreground">Enter M-Pesa PIN on phone <strong>{formData?.phone}</strong> to authorize charge.</p>
+                    <h3 className="text-xl font-bold text-foreground mb-2">
+                      Check Your Phone
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Enter M-Pesa PIN on phone{" "}
+                      <strong>{formData?.phone}</strong> to authorize charge.
+                    </p>
                   </div>
                 </div>
               )}
 
               {modalStep === "success" && (
                 <div className="py-8 flex flex-col items-center text-center space-y-6">
-                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20"><CheckCircle className="w-10 h-10 text-primary" /></div>
+                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                    <CheckCircle className="w-10 h-10 text-primary" />
+                  </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-foreground mb-2">{bookingMode === "pay_now" ? "Booking Confirmed!" : "Request Submitted!"}</h3>
-                    <p className="text-muted-foreground text-sm max-w-sm mx-auto">Your reservation for the {car.name} is complete.</p>
+                    <h3 className="text-2xl font-bold text-foreground mb-2">
+                      {bookingMode === "pay_now"
+                        ? "Booking Confirmed!"
+                        : "Request Submitted!"}
+                    </h3>
+                    <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+                      Your reservation for the {car.name} is complete.
+                    </p>
                   </div>
                   {receiptNumber && (
                     <div className="bg-card border border-border rounded-2xl p-4 w-full text-left flex items-center justify-between">
-                      <div><p className="text-xs text-muted-foreground uppercase">M-Pesa Receipt</p><span className="font-mono text-lg font-bold text-foreground">{receiptNumber}</span></div>
-                      <button onClick={() => { navigator.clipboard.writeText(receiptNumber); toast.success("Copied!"); }} className="p-2 hover:bg-muted rounded-lg"><Copy className="w-4 h-4 text-muted-foreground" /></button>
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase">
+                          M-Pesa Receipt
+                        </p>
+                        <span className="font-mono text-lg font-bold text-foreground">
+                          {receiptNumber}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(receiptNumber);
+                          toast.success("Copied!");
+                        }}
+                        className="p-2 hover:bg-muted rounded-lg"
+                      >
+                        <Copy className="w-4 h-4 text-muted-foreground" />
+                      </button>
                     </div>
                   )}
                   <div className="flex flex-col gap-3 w-full pt-2">
-                    <Link href="/dashboard" className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium text-center">View Bookings</Link>
-                    <button onClick={() => setIsModalOpen(false)} className="w-full px-6 py-3 bg-muted text-foreground rounded-xl font-medium">Close</button>
+                    <Link
+                      href="/dashboard"
+                      className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium text-center"
+                    >
+                      View Bookings
+                    </Link>
+                    <button
+                      onClick={() => setIsModalOpen(false)}
+                      className="w-full px-6 py-3 bg-muted text-foreground rounded-xl font-medium"
+                    >
+                      Close
+                    </button>
                   </div>
                 </div>
               )}
 
               {modalStep === "failed" && (
                 <div className="py-8 flex flex-col items-center text-center gap-5">
-                  <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center border border-destructive/20"><XCircle className="w-8 h-8 text-destructive" /></div>
-                  <div><h3 className="text-xl font-bold text-foreground mb-2">Request Unsuccessful</h3><p className="text-sm text-muted-foreground">{paymentMessage}</p></div>
+                  <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center border border-destructive/20">
+                    <XCircle className="w-8 h-8 text-destructive" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">
+                      Request Unsuccessful
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {paymentMessage}
+                    </p>
+                  </div>
                   <div className="flex flex-col gap-3 w-full">
-                    <Button onClick={() => setModalStep("summary")} className="w-full">Try Again</Button>
-                    <a href={`tel:+${MPESA_SUPPORT_NUMBER}`} className="w-full px-6 py-3 bg-muted text-foreground rounded-xl font-medium text-center inline-flex items-center justify-center gap-2"><Phone className="w-4 h-4" /> Contact Support</a>
+                    <Button
+                      onClick={() => setModalStep("summary")}
+                      className="w-full"
+                    >
+                      Try Again
+                    </Button>
+                    <a
+                      href={`tel:+${MPESA_SUPPORT_NUMBER}`}
+                      className="w-full px-6 py-3 bg-muted text-foreground rounded-xl font-medium text-center inline-flex items-center justify-center gap-2"
+                    >
+                      <Phone className="w-4 h-4" /> Contact Support
+                    </a>
                   </div>
                 </div>
               )}
@@ -494,4 +696,3 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
     </div>
   );
 }
-
