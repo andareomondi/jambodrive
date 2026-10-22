@@ -1,12 +1,6 @@
 "use client";
 
-import React, {
-  useState,
-  useMemo,
-  useCallback,
-  useEffect,
-  Suspense,
-} from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -51,6 +45,15 @@ import {
   fetchAdminProfiles,
 } from "@/lib/actions/admin";
 import type { Car, Booking, Profile, BookingStatus } from "@/types";
+
+// ── Props Interface ───────────────────────────────────────────────────────────
+
+export interface AdminDashboardClientProps {
+  initialCars: Car[];
+  initialBookings: Booking[];
+  initialProfiles: Profile[];
+  initialGalleryEvents?: GalleryEvent[];
+}
 
 const STATUS_STYLES: Record<string, string> = {
   confirmed: "bg-primary text-primary-foreground",
@@ -141,7 +144,6 @@ function openWhatsApp(phone: string, message: string) {
   );
 }
 
-// ⚡ Sleek Shimmer Skeleton Placeholder Grid for Fleet
 function FleetCardSkeletonGrid() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 animate-pulse">
@@ -190,7 +192,6 @@ export function AdminDashboardClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [generatingReport, setGeneratingReport] = useState(false);
 
   const totalRevenue = useMemo(
     () =>
@@ -320,7 +321,7 @@ export function AdminDashboardClient({
           ))}
         </div>
 
-        {/* ── Fleet Management Section with Shimmer Fallback ── */}
+        {/* ── Fleet Management Section ── */}
         <Card className="border-border shadow-sm overflow-hidden">
           <div className="p-4 sm:p-6 border-b border-border flex items-center justify-between">
             <h2 className="text-xl font-bold text-foreground">
