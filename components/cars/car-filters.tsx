@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import * as Slider from "@radix-ui/react-slider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Filter, RotateCcw, Search, Check } from "lucide-react";
+import { Filter, RotateCcw, Search, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CarFiltersProps {
@@ -20,7 +20,7 @@ export interface FilterState {
   transmission: string[];
   fuel: string[];
   search: string;
-chauffeured: boolean | null;
+  chauffeured: boolean | null;
 }
 
 export function CarFilters({ onFilterChange }: CarFiltersProps) {
@@ -90,10 +90,10 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
     <button
       onClick={onClick}
       className={cn(
-        "px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border",
+        "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border",
         isSelected
-          ? "bg-accent text-accent-foreground border-accent shadow-sm"
-          : "bg-background text-muted-foreground border-border hover:border-accent/50 hover:bg-muted",
+          ? "bg-accent text-accent-foreground border-accent shadow-none"
+          : "bg-background text-muted-foreground border-border/80 hover:border-border hover:bg-secondary/50",
       )}
     >
       {formatLabel(label)}
@@ -109,29 +109,34 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
   return (
     <div className="w-full">
       {/* Top Search & Toggle Bar */}
-      <div className="flex gap-2 mb-2">
+      <div className="flex gap-3 mb-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search cars..."
+            placeholder="Search by name or model..."
             value={filters.search}
             onChange={(e) => {
               const newFilters = { ...filters, search: e.target.value };
               setFilters(newFilters);
               onFilterChange(newFilters);
             }}
-            className="pl-10 h-11 rounded-xl bg-background border-border"
+            className="pl-10 h-10 rounded-xl bg-background border-border/80 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-accent"
           />
         </div>
         <Button
           variant={isOpen ? "default" : "outline"}
           onClick={() => setIsOpen(!isOpen)}
-          className="h-11 px-4 rounded-xl gap-2 flex shrink-0"
+          className={cn(
+            "h-10 px-4 rounded-xl gap-2 flex shrink-0 text-xs font-semibold shadow-none",
+            isOpen
+              ? "bg-accent text-accent-foreground hover:bg-accent/90"
+              : "border-border/80 text-foreground",
+          )}
         >
-          <Filter className="w-4 h-4" />
-          <span className="hidden sm:inline">Filters</span>
+          <Filter className="w-3.5 h-3.5" />
+          <span>Filters</span>
           {activeFilterCount > 0 && (
-            <span className="ml-1 bg-foreground text-background text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+            <span className="ml-0.5 bg-foreground text-background text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
               {activeFilterCount}
             </span>
           )}
@@ -143,32 +148,39 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
         className={cn(
           "grid transition-all duration-300 ease-in-out",
           isOpen
-            ? "grid-rows-[1fr] opacity-100 mb-8"
+            ? "grid-rows-[1fr] opacity-150 mb-8"
             : "grid-rows-[0fr] opacity-0 overflow-hidden",
         )}
       >
-        <Card className="min-h-0 p-4 sm:p-6 rounded-2xl border-none shadow-md bg-card">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold">Filter Options</h3>
+        <Card className="min-h-0 p-5 sm:p-6 rounded-2xl border border-border/60 shadow-sm bg-card/60 backdrop-blur-md">
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/50">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">
+                Filter Fleet
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Narrow down vehicle specifications
+              </p>
+            </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleReset}
-              className="hidden sm:flex text-muted-foreground hover:text-foreground"
+              className="text-xs text-muted-foreground hover:text-foreground h-8 px-2.5"
             >
-              <RotateCcw className="w-4 h-4 mr-2" />
+              <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
               Reset All
             </Button>
           </div>
 
-          <div className="space-y-8">
-            {/* Direct Radix Slider Implementation */}
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <Label className="text-sm font-semibold">
-                  Price Range (per day)
+          <div className="space-y-6">
+            {/* Radix Slider */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <Label className="font-semibold text-foreground">
+                  Max Price per Day
                 </Label>
-                <span className="text-sm font-bold text-accent bg-accent/10 px-3 py-1 rounded-full">
+                <span className="font-semibold text-accent">
                   Ksh {filters.priceMin.toLocaleString()} - Ksh{" "}
                   {filters.priceMax.toLocaleString()}
                 </span>
@@ -194,19 +206,19 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
                   };
                   onFilterChange(newFilters);
                 }}
-                className="relative flex w-full touch-none select-none items-center py-4"
+                className="relative flex w-full touch-none select-none items-center py-3"
               >
-                <Slider.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-muted">
+                <Slider.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-secondary">
                   <Slider.Range className="absolute h-full bg-accent" />
                 </Slider.Track>
-                <Slider.Thumb className="block h-5 w-5 rounded-full border-2 border-accent bg-background shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50" />
-                <Slider.Thumb className="block h-5 w-5 rounded-full border-2 border-accent bg-background shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50" />
+                <Slider.Thumb className="block h-4 w-4 rounded-full border-2 border-accent bg-background shadow-xs transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" />
+                <Slider.Thumb className="block h-4 w-4 rounded-full border-2 border-accent bg-background shadow-xs transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" />
               </Slider.Root>
             </div>
 
             {/* Filter Groups */}
             {[
-              { label: "Vehicle Type", key: "carType", options: carTypes },
+              { label: "Vehicle Category", key: "carType", options: carTypes },
               {
                 label: "Transmission",
                 key: "transmission",
@@ -214,9 +226,11 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
               },
               { label: "Fuel Type", key: "fuel", options: fuels },
             ].map((group) => (
-              <div key={group.label} className="space-y-3">
-                <Label className="text-sm font-semibold">{group.label}</Label>
-                <div className="flex flex-wrap gap-2">
+              <div key={group.label} className="space-y-2">
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {group.label}
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
                   {group.options.map((option) => (
                     <FilterPill
                       key={option}
@@ -235,31 +249,32 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
                 </div>
               </div>
             ))}
+
             {/* Chauffeured Option */}
-            <div className="space-y-3">
-              <Label className="text-sm font-semibold">Chauffeured</Label>
-              <div className="flex gap-2">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Driver Service
+              </Label>
+              <div className="flex gap-1.5">
                 <FilterPill
-                  label="Yes"
+                  label="Chauffeured"
                   isSelected={filters.chauffeured === true}
                   onClick={() => {
                     const newFilters = {
                       ...filters,
-                      chauffeured:
-                        filters.chauffeured === true ? null : true,
+                      chauffeured: filters.chauffeured === true ? null : true,
                     };
                     setFilters(newFilters);
                     onFilterChange(newFilters);
                   }}
                 />
                 <FilterPill
-                  label="No"
+                  label="Self-Drive"
                   isSelected={filters.chauffeured === false}
                   onClick={() => {
                     const newFilters = {
                       ...filters,
-                      chauffeured:
-                        filters.chauffeured === false ? null : false,
+                      chauffeured: filters.chauffeured === false ? null : false,
                     };
                     setFilters(newFilters);
                     onFilterChange(newFilters);
@@ -269,21 +284,23 @@ export function CarFilters({ onFilterChange }: CarFiltersProps) {
             </div>
           </div>
 
-          {/* Footer Mobile Actions (Sticky-ish bottom UX) */}
-          <div className="mt-8 pt-5 border-t border-border flex flex-col-reverse sm:flex-row gap-3 justify-end items-center">
+          {/* Footer Actions */}
+          <div className="mt-6 pt-4 border-t border-border/50 flex justify-end gap-2">
             <Button
-              variant="ghost"
-              className="w-full sm:w-auto text-muted-foreground sm:hidden"
+              variant="outline"
+              size="sm"
+              className="text-xs h-9 rounded-lg border-border/80"
               onClick={handleReset}
             >
-              Reset Filters
+              Clear
             </Button>
             <Button
-              className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              size="sm"
+              className="text-xs h-9 rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 font-semibold px-4"
               onClick={() => setIsOpen(false)}
             >
-              <Check className="w-4 h-4 mr-2" />
-              View Results
+              <Check className="w-3.5 h-3.5 mr-1.5" />
+              Apply Filters
             </Button>
           </div>
         </Card>

@@ -2,7 +2,9 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getCarById, getAvailableCars } from "@/lib/services/cars";
 import { CarDetailsClient } from "@/components/cars/car-details-client";
+import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
+import type { Car } from "@/types";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -37,13 +39,35 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+async function getRelatedCars(
+  carId: string,
+  type: string | null,
+): Promise<Car[]> {
+  if (!type) return [];
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("cars")
+      .select("*")
+      .eq("type", type)
+      .neq("id", carId)
+      .eq("available", true)
+      .limit(3);
+
+    if (error || !data) return [];
+    return data as Car[];
+  } catch {
+    return [];
+  }
+}
+
 async function CarDetailsData({
   paramsPromise,
 }: {
   paramsPromise: Promise<{ id: string }>;
 }) {
   const { id } = await paramsPromise;
-  let car;
+  let car: Car;
 
   try {
     car = await getCarById(id);
@@ -51,16 +75,7 @@ async function CarDetailsData({
     notFound();
   }
 
-  let relatedCars: (typeof car)[] = [];
-  try {
-    const all = await getAvailableCars();
-    // Filter out the current car and fetch up to 3 cars of the same type
-    relatedCars = all
-      .filter((c) => c.type === car.type && c.id !== car.id)
-      .slice(0, 3);
-  } catch {
-    relatedCars = [];
-  }
+  const relatedCars = await getRelatedCars(car.id, car.type);
 
   return <CarDetailsClient car={car} relatedCars={relatedCars} />;
 }

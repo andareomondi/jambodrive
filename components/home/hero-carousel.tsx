@@ -41,12 +41,11 @@ export function HeroCarousel() {
 
   const goTo = (i: number) => {
     setCurrent(i);
-    resetTimer(); // clicking an indicator resets the timer
+    resetTimer();
   };
 
   return (
     <section className="relative min-h-[85vh] flex items-center overflow-hidden bg-black">
-      {/* Background slides */}
       <div className="absolute inset-0 z-0">
         {HERO_IMAGES.map((img, i) => (
           <div
@@ -59,23 +58,20 @@ export function HeroCarousel() {
               src={img.src}
               alt={img.alt}
               fill
-              priority
+              priority={i === 0} // Only prioritize the first image for optimal LCP
+              loading={i === 0 ? "eager" : "lazy"}
               className="object-cover"
               sizes="100vw"
-              quality={75}
+              quality={80}
             />
-            {/* Gradient left → right so left-side text is always readable */}
             <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/10 z-10" />
-            {/* Fade at the bottom into the next section */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10" />
           </div>
         ))}
       </div>
 
-      {/* Content */}
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 relative z-20 pt-20">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
-          {/* Left — headline */}
           <div className="space-y-8 animate-in fade-in slide-in-from-left duration-1000">
             <div>
               <span className="inline-block px-4 py-1.5 mb-4 rounded-full bg-accent/20 border border-accent/40 text-accent text-sm font-bold tracking-wide uppercase">
@@ -90,7 +86,6 @@ export function HeroCarousel() {
               </p>
             </div>
 
-            {/* Stats */}
             <div className="flex flex-wrap gap-8">
               {STATS.map((stat) => (
                 <div key={stat.label}>
@@ -103,14 +98,12 @@ export function HeroCarousel() {
             </div>
           </div>
 
-          {/* Right — booking form */}
           <div className="mb-16">
             <HeroBookingForm />
           </div>
         </div>
       </div>
 
-      {/* Slide indicators */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex gap-3">
         {HERO_IMAGES.map((_, i) => (
           <button

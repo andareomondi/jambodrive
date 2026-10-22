@@ -3,9 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { toast } from "sonner";
+import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";
 import * as Switch from "@radix-ui/react-switch";
+import NextImage from "next/image"; // ⚡ Aliased to prevent global constructor conflicts
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,9 +22,15 @@ import {
   Info,
   Loader2,
   ChevronDown,
+  Trash2,
+  ExternalLink,
   type LucideIcon,
 } from "lucide-react";
-import { uploadCarImage, uploadCarImages } from "@/lib/upload-image";
+import {
+  uploadCarImage,
+  uploadCarImages,
+  deleteCarImages,
+} from "@/lib/upload-image";
 import { adminUpsertCar } from "@/lib/actions/admin-car";
 import { cn } from "@/lib/utils";
 import type { Car, TransmissionType, FuelType } from "@/types";
@@ -161,19 +169,18 @@ export function CarModal({
 
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+
+  // Granular image states for editing mode
+  const [currentCoverUrl, setCurrentCoverUrl] = useState<string | null>(null);
+  const [currentGalleryUrls, setCurrentGalleryUrls] = useState<string[]>([]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [phase, setPhase] = useState<"idle" | "uploading" | "saving">("idle");
 
   const isEditing = mode === "edit" && !!car;
   const isDuplicating = mode === "duplicate" && !!car;
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    control,
-    formState: { errors },
-  } = useForm<CarFormData>({
+  const { register, handleSubmit, reset, control } = useForm<CarFormData>({
     defaultValues: {
       name: "",
       model: "",
@@ -191,14 +198,17 @@ export function CarModal({
     },
   });
 
-  // Populate form when editing or duplicating, reset when adding
   useEffect(() => {
     if (!open) {
       setPhase("idle");
+      setCoverFile(null);
+      setGalleryFiles([]);
       return;
     }
 
     if (car) {
+      setCurrentCoverUrl(car.image ?? null);
+      setCurrentGalleryUrls(car.images ?? []);
       reset({
         name: isDuplicating ? `${car.name} (Copy)` : car.name,
         model: car.model,
@@ -215,6 +225,8 @@ export function CarModal({
         chauffeured: car.chauffeured ?? false,
       });
     } else {
+      setCurrentCoverUrl(null);
+      setCurrentGalleryUrls([]);
       reset({
         name: "",
         model: "",
@@ -233,6 +245,23 @@ export function CarModal({
     }
   }, [car, reset, open, isDuplicating]);
 
+  // Handler to delete a single gallery image from storage & update DB record
+  const handleRemoveGalleryImage = async (urlToRemove: string) => {
+    try {
+      await deleteCarImages([urlToRemove]);
+      const updated = currentGalleryUrls.filter((u) => u !== urlToRemove);
+      setCurrentGalleryUrls(updated);
+
+      if (isEditing && car) {
+        await adminUpsertCar({ id: car.id, images: updated } as any);
+        onSuccess?.();
+      }
+      toast.success("Image removed successfully.");
+    } catch {
+      toast.error("Failed to delete image.");
+    }
+  };
+
   const onSubmit = async (data: CarFormData) => {
     abortRef.current = new AbortController();
     const { signal } = abortRef.current;
@@ -241,24 +270,19 @@ export function CarModal({
     setPhase("uploading");
 
     try {
-      // ── 1. Upload cover image ──────────────────────────────────────────
-      let coverUrl: string | null =
-        isEditing || isDuplicating ? (car?.image ?? null) : null;
+      let coverUrl = currentCoverUrl;
       if (coverFile) {
         coverUrl = await uploadCarImage(coverFile);
         if (signal.aborted) return;
       }
 
-      // ── 2. Upload gallery images in parallel ───────────────────────────
-      let galleryUrls: string[] =
-        isEditing || isDuplicating ? (car?.images ?? []) : [];
+      let galleryUrls = [...currentGalleryUrls];
       if (galleryFiles.length > 0) {
         const newUrls = await uploadCarImages(galleryFiles);
         if (signal.aborted) return;
         galleryUrls = [...galleryUrls, ...newUrls];
       }
 
-      // ── 3. Upsert via server action ────────────────────────────────────
       setPhase("saving");
 
       const payload = {
@@ -286,7 +310,6 @@ export function CarModal({
       };
 
       await adminUpsertCar(payload as any);
-
       if (signal.aborted) return;
 
       toast.success(
@@ -298,8 +321,6 @@ export function CarModal({
       );
 
       setTimeout(() => {
-        setCoverFile(null);
-        setGalleryFiles([]);
         onOpenChange(false);
         onSuccess?.();
       }, 400);
@@ -335,8 +356,8 @@ export function CarModal({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
 
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-[650px] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 flex flex-col rounded-2xl border border-border bg-card shadow-xl overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
-          {/* ── Header ─────────────────────────────────────────────────────── */}
-          <div className="p-6 bg-muted/30 border-b border-border shrink-0">
+          {/* Header */}
+          <div className="p-6 bg-muted/30 border-b border-border shrink-0 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-2xl bg-accent flex items-center justify-center shadow-lg shadow-accent/20 shrink-0">
                 {isLoading ? (
@@ -354,21 +375,32 @@ export function CarModal({
                       : "New Listing"}
                 </Dialog.Title>
                 <Dialog.Description className="text-sm text-muted-foreground">
-                  {isEditing
-                    ? `Editing ${car?.name} ${car?.model}`
-                    : isDuplicating
-                      ? `Creating a copy of ${car?.name} ${car?.model}`
-                      : "Add a premium car to your fleet"}
+                  Manage car specifications & storage assets
                 </Dialog.Description>
               </div>
-              <Dialog.Close className="ml-auto rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring">
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* ⚡ View Details link button if editing an existing car */}
+              {isEditing && car?.id && (
+                <Link
+                  href={`/cars/${car.id}`}
+                  target="_blank"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-background text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
+                  title="View Public Details Page"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-accent" />
+                  <span>View Details</span>
+                </Link>
+              )}
+              <Dialog.Close className="rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors focus:outline-none">
                 <X className="h-5 w-5" />
                 <span className="sr-only">Close</span>
               </Dialog.Close>
             </div>
           </div>
 
-          {/* ── Scrollable form body ────────────────────────────────────────── */}
+          {/* Form Body */}
           <div className="flex-1 overflow-y-auto p-6">
             <form
               id="car-form"
@@ -463,101 +495,68 @@ export function CarModal({
                   options={FUEL_LABELS}
                 />
               </div>
-              <div className="space-y-1.5 mt-4">
-                <Label className="text-xs font-semibold">
-                  Fuel Consumption
-                </Label>
-                <Input
-                  placeholder="e.g. 8.5L/100km"
-                  className="rounded-xl bg-muted/40 border-border h-11"
-                  {...register("fuel_consumption")}
-                />
-              </div>
 
-              <SectionHeader icon={ImageIcon} title="Media & Extras" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {/* Cover image */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold flex items-center justify-between">
-                    Main Photo
-                    {coverFile && (
-                      <span className="text-[10px] text-accent font-bold uppercase">
-                        Selected
-                      </span>
-                    )}
+              <SectionHeader icon={ImageIcon} title="Media & Image Manager" />
+
+              {/* Active Gallery Photos Manager */}
+              {currentGalleryUrls.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  <Label className="text-xs font-semibold text-muted-foreground uppercase">
+                    Existing Gallery Photos (Click trash to delete individual
+                    files)
                   </Label>
-                  <div className="relative group cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                      onChange={(e) =>
-                        setCoverFile(e.target.files?.[0] ?? null)
-                      }
-                    />
-                    <div
-                      className={cn(
-                        "h-24 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 transition-colors",
-                        coverFile
-                          ? "bg-accent/5 border-accent/40"
-                          : "hover:bg-muted/40",
-                      )}
-                    >
-                      <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground font-medium">
-                        {coverFile ? coverFile.name : "Click to upload cover"}
-                      </span>
-                    </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {currentGalleryUrls.map((url) => (
+                      <div
+                        key={url}
+                        className="relative aspect-square rounded-xl overflow-hidden border border-border group bg-muted"
+                      >
+                        <NextImage
+                          src={url}
+                          alt="Car gallery item"
+                          fill
+                          className="object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveGalleryImage(url)}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-destructive-foreground"
+                          title="Delete photo"
+                        >
+                          <Trash2 className="w-4 h-4 text-white" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                {/* Gallery */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold flex items-center justify-between">
-                    Gallery
-                    <span className="text-[10px] text-muted-foreground uppercase">
-                      {galleryFiles.length} file
-                      {galleryFiles.length !== 1 ? "s" : ""}
-                    </span>
+                  <Label className="text-xs font-semibold">
+                    Update Cover Photo
                   </Label>
-                  <div className="relative group cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                      onChange={(e) =>
-                        setGalleryFiles(Array.from(e.target.files ?? []))
-                      }
-                    />
-                    <div
-                      className={cn(
-                        "h-24 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 transition-colors",
-                        galleryFiles.length > 0
-                          ? "bg-accent/5 border-accent/40"
-                          : "hover:bg-muted/40",
-                      )}
-                    >
-                      <Plus className="w-5 h-5 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground font-medium">
-                        {galleryFiles.length > 0
-                          ? `${galleryFiles.length} selected`
-                          : "Add gallery photos"}
-                      </span>
-                    </div>
-                  </div>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                    className="rounded-xl bg-muted/40 border-border h-11 cursor-pointer"
+                  />
                 </div>
-              </div>
-
-              <div className="space-y-1.5 mt-4">
-                <Label className="text-xs font-semibold">
-                  Key Features (comma separated)
-                </Label>
-                <Input
-                  placeholder="Bluetooth, Sunroof, AC..."
-                  className="rounded-xl bg-muted/40 border-border h-11"
-                  {...register("features")}
-                />
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">
+                    Add Gallery Photos
+                  </Label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) =>
+                      setGalleryFiles(Array.from(e.target.files ?? []))
+                    }
+                    className="rounded-xl bg-muted/40 border-border h-11 cursor-pointer"
+                  />
+                </div>
               </div>
 
               <div className="space-y-1.5 mt-4">
@@ -565,25 +564,20 @@ export function CarModal({
                 <textarea
                   rows={3}
                   placeholder="Vehicle highlights..."
-                  className="w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  className="w-full rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                   {...register("description")}
                 />
               </div>
 
-              {/* Availability toggle */}
+              {/* Availability Switch */}
               <div className="flex items-center justify-between bg-accent/5 border border-accent/20 rounded-xl p-4 mt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center">
-                    <Info className="w-4 h-4 text-accent" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-foreground">
-                      Visibility
-                    </p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-tight">
-                      Show to customers
-                    </p>
-                  </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">
+                    Available for Rent
+                  </p>
+                  <p className="text-[10px] text-muted-foreground uppercase">
+                    Show listing to users
+                  </p>
                 </div>
                 <Controller
                   name="available"
@@ -592,28 +586,23 @@ export function CarModal({
                     <Switch.Root
                       checked={field.value}
                       onCheckedChange={field.onChange}
-                      className="relative inline-flex h-6 w-11 items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 data-[state=checked]:bg-accent data-[state=unchecked]:bg-muted"
+                      className="relative inline-flex h-6 w-11 items-center rounded-full bg-muted data-[state=checked]:bg-accent transition-colors"
                     >
-                      <Switch.Thumb className="pointer-events-none block h-4 w-4 rounded-full bg-white shadow-lg transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0.5" />
+                      <Switch.Thumb className="block h-4 w-4 rounded-full bg-white transition-transform translate-x-0.5 data-[state=checked]:translate-x-5" />
                     </Switch.Root>
                   )}
                 />
               </div>
 
-              {/* Service Mode Toggle */}
+              {/* Chauffeured Service Switch */}
               <div className="flex items-center justify-between bg-accent/5 border border-accent/20 rounded-xl p-4 mt-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center">
-                    <CarIcon className="w-4 h-4 text-accent" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-foreground">
-                      Chauffeured Service
-                    </p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-tight">
-                      Includes professional driver
-                    </p>
-                  </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">
+                    Chauffeured Service
+                  </p>
+                  <p className="text-[10px] text-muted-foreground uppercase">
+                    Includes professional driver
+                  </p>
                 </div>
                 <Controller
                   name="chauffeured"
@@ -622,9 +611,9 @@ export function CarModal({
                     <Switch.Root
                       checked={field.value}
                       onCheckedChange={field.onChange}
-                      className="relative inline-flex h-6 w-11 items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 data-[state=checked]:bg-accent data-[state=unchecked]:bg-muted"
+                      className="relative inline-flex h-6 w-11 items-center rounded-full bg-muted data-[state=checked]:bg-accent transition-colors"
                     >
-                      <Switch.Thumb className="pointer-events-none block h-4 w-4 rounded-full bg-white shadow-lg transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0.5" />
+                      <Switch.Thumb className="block h-4 w-4 rounded-full bg-white transition-transform translate-x-0.5 data-[state=checked]:translate-x-5" />
                     </Switch.Root>
                   )}
                 />
@@ -632,20 +621,7 @@ export function CarModal({
             </form>
           </div>
 
-          {/* ── Upload status ──────────────────────────────────────────────── */}
-          {isLoading && (
-            <div className="px-6 py-3 bg-muted/30 border-t border-border shrink-0">
-              <div className="flex items-center gap-3">
-                <Loader2 className="h-4 w-4 animate-spin text-accent shrink-0" />
-                <p className="text-xs text-muted-foreground font-medium">
-                  {phase === "uploading" && "Uploading media..."}
-                  {phase === "saving" && "Saving to database..."}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* ── Action bar ─────────────────────────────────────────────────── */}
+          {/* Footer Actions */}
           <div className="p-4 border-t border-border bg-background flex gap-3 shrink-0">
             <Button
               type="button"
@@ -669,11 +645,7 @@ export function CarModal({
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  {isEditing
-                    ? "Update Vehicle"
-                    : isDuplicating
-                      ? "Save Duplicate"
-                      : "Create Listing"}
+                  {isEditing ? "Update Vehicle" : "Save Listing"}
                 </>
               )}
             </Button>

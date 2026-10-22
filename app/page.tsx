@@ -3,10 +3,12 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Check, Shield, Clock, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { CarCard } from "@/components/cars/car-card";
 import { HeroCarousel } from "@/components/home/hero-carousel";
-import { getAvailableCars } from "@/lib/services/cars";
 import { LocationTestimonial } from "@/components/home/location-testimonial";
+import { createClient } from "@/lib/supabase/server";
+import type { Car } from "@/types";
 
 export const revalidate = 900;
 
@@ -20,14 +22,25 @@ export const metadata: Metadata = {
     images: ["/hero/car1.jpg"],
   },
 };
-async function getFeaturedCars() {
+
+async function getFeaturedCars(): Promise<Car[]> {
   try {
-    const cars = await getAvailableCars();
-    return cars.filter((c) => c.price > 30000).slice(0, 6);
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("cars")
+      .select("*")
+      .eq("available", true)
+      .gt("price", 30000)
+      .order("price", { ascending: false })
+      .limit(6);
+
+    if (error || !data) return [];
+    return data as Car[];
   } catch {
     return [];
   }
 }
+
 const FEATURES = [
   {
     icon: Check,
@@ -50,8 +63,47 @@ const FEATURES = [
     desc: "We bring the car to your doorstep or hotel.",
   },
 ] as const;
+
+// ⚡ Sleek Shimmer Skeleton Placeholder Grid
+function CarCardSkeletonGrid() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Card
+          key={i}
+          className="relative overflow-hidden h-[380px] flex flex-col justify-between bg-card/60 border-border/60 rounded-2xl p-4 animate-pulse"
+        >
+          {/* Image Skeleton */}
+          <div className="w-full h-52 bg-muted rounded-xl" />
+
+          {/* Details Skeleton */}
+          <div className="space-y-3 py-3">
+            <div className="flex justify-between items-center">
+              <div className="h-4 w-28 bg-muted rounded-md" />
+              <div className="h-3 w-16 bg-muted rounded-md" />
+            </div>
+            <div className="h-3 w-20 bg-muted/70 rounded-md" />
+
+            <div className="flex items-center gap-3 pt-2 border-t border-border/40">
+              <div className="h-3 w-16 bg-muted/60 rounded-md" />
+              <div className="h-3 w-16 bg-muted/60 rounded-md" />
+            </div>
+          </div>
+
+          {/* Bottom CTA Skeleton */}
+          <div className="flex items-center justify-between pt-3 border-t border-border/40">
+            <div className="h-5 w-24 bg-muted rounded-md" />
+            <div className="h-9 w-28 bg-muted rounded-xl" />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 async function FeaturedFleetGrid() {
   const cars = await getFeaturedCars();
+
   if (cars.length === 0) {
     return (
       <div className="text-center py-16 border border-dashed border-border rounded-2xl">
@@ -64,19 +116,22 @@ async function FeaturedFleetGrid() {
       </div>
     );
   }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {cars.map((car) => (
-        <CarCard key={car.id} car={car} />
+      {cars.map((car, index) => (
+        <CarCard key={car.id} car={car} index={index} />
       ))}
     </div>
   );
 }
+
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background selection:bg-accent/30">
       {/* ── Hero ── */}
       <HeroCarousel />
+
       {/* ── Why choose us ── */}
       <section className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -109,6 +164,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
       {/* ── Featured fleet ── */}
       <section className="py-24 bg-secondary/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -132,17 +188,11 @@ export default function HomePage() {
               </Link>
             </Button>
           </div>
-          {/* 4. Wrap the dynamic component in Suspense with a loading fallback */}
-          <Suspense
-            fallback={
-              <div className="text-center py-16 text-muted-foreground">
-                Loading our premium fleet...
-              </div>
-            }
-          >
+
+          <Suspense fallback={<CarCardSkeletonGrid />}>
             <FeaturedFleetGrid />
           </Suspense>
-          {/* Mobile browse button */}
+
           <div className="mt-10 flex justify-center md:hidden">
             <Button
               asChild
@@ -153,8 +203,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
       <LocationTestimonial />
-      {/* ── Floating support widget ── */}
     </div>
   );
 }

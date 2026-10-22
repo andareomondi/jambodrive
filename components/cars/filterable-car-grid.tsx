@@ -115,7 +115,6 @@ export function FilterableCarGrid({
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredCars.map((car, index) => (
-                  // ⚡ OPTIMIZATION: Pass the current index down to evaluate high-priority images
                   <CarCard key={car.id} car={car} days={days} index={index} />
                 ))}
               </div>

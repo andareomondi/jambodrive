@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,6 @@ import {
   XCircle,
   Loader2,
   Download,
-  FileText,
 } from "lucide-react";
 import {
   BookingForm,
@@ -73,11 +72,11 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
 
   const activeImage = images[selectedImage] ?? car.image;
 
-  const calcDays = (data: BookingFormData) => {
+  const calcDays = useCallback((data: BookingFormData) => {
     const ms =
       new Date(data.returnDate).getTime() - new Date(data.pickupDate).getTime();
     return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
-  };
+  }, []);
 
   const openBookingModal = (mode: BookingMode) => {
     setBookingMode(mode);
@@ -578,7 +577,6 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                     </div>
                   </div>
 
-                  {/* Minified Terms & Conditions & Car Hire Guidelines */}
                   <div className="bg-muted/30 border border-border rounded-2xl p-4 space-y-2 text-xs">
                     <h4 className="font-semibold text-foreground">
                       Car Hire Rules & Summary Agreement
@@ -602,11 +600,6 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                         within Kenya. Off-road racing is prohibited.
                       </li>
                     </ul>
-                    <p className="text-[11px] text-muted-foreground italic pt-1">
-                      By clicking confirm or initiating payment, you agree to
-                      Cosmara&apos;s binding Terms & Conditions (automatically
-                      attached in your agreement PDF).
-                    </p>
                   </div>
 
                   {bookingMode === "pay_now" ? (

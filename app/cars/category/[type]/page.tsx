@@ -4,18 +4,21 @@ import { CarCard } from "@/components/cars/car-card";
 import { EmptyState } from "@/components/common/empty-state";
 import { Car as CarIcon, Loader2 } from "lucide-react";
 import { Metadata } from "next";
+import { createClient } from "@/lib/supabase/server";
 import { Car } from "@/types";
 
 type Props = {
   params: Promise<{ type: string }>;
 };
 
+function formatDisplayTitle(type: string) {
+  if (type === "ssuv") return "Luxury SUV";
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { type } = await params;
-  const title =
-    type === "ssuv"
-      ? "Luxury SUV"
-      : type.charAt(0).toUpperCase() + type.slice(1);
+  const title = formatDisplayTitle(type);
 
   return {
     title: `${title} Fleet | Cosmara`,
@@ -23,24 +26,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-async function CategoryContent({ paramsPromise }: { paramsPromise: Promise<{ type: string }> }) {
-  const { type } = await paramsPromise;
-  
-  const displayTitle =
-    type === "ssuv"
-      ? "Luxury SUV"
-      : type.charAt(0).toUpperCase() + type.slice(1);
-
-  let cars: Car[] = [];
-  
+async function getCarsByCategory(type: string): Promise<Car[]> {
   try {
-    const allCars = await getAvailableCars();
-    cars = allCars.filter(
-      (car) => car.type?.toLowerCase() === type.toLowerCase(),
-    );
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("cars")
+      .select("*")
+      .eq("available", true)
+      .ilike("type", type);
+
+    if (error || !data) return [];
+    return data as Car[];
   } catch (error) {
     console.error("Error fetching category fleet:", error);
+    return [];
   }
+}
+
+async function CategoryContent({
+  paramsPromise,
+}: {
+  paramsPromise: Promise<{ type: string }>;
+}) {
+  const { type } = await paramsPromise;
+  const displayTitle = formatDisplayTitle(type);
+  const cars = await getCarsByCategory(type);
 
   return (
     <>
@@ -62,8 +72,9 @@ async function CategoryContent({ paramsPromise }: { paramsPromise: Promise<{ typ
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {cars.map((car) => (
-            <CarCard key={car.id} car={car} />
+          {cars.map((car, index) => (
+            // ⚡ Pass index to handle above-the-fold image prioritization in CarCard
+            <CarCard key={car.id} car={car} index={index} />
           ))}
         </div>
       )}
@@ -78,7 +89,7 @@ export default function CategoryPage({ params }: Props) {
         <Suspense
           fallback={
             <div className="flex-1 flex items-center justify-center min-h-[50vh]">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <Loader2 className="w-8 h-8 animate-spin text-accent" />
             </div>
           }
         >

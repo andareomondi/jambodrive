@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +31,52 @@ const CAR_TYPES = [
   { id: "trucks", name: "Trucks" },
 ] as const;
 
+// Moved outside the component to prevent re-creation on every render
+const BOOKING_SERVICES = [
+  {
+    href: "/cars?service=self-chauffeured",
+    title: "Self-Chauffeured",
+    desc: "Drive yourself at your own pace",
+    icon: CarFront,
+    comingSoon: false,
+  },
+  {
+    href: "/cars?service=chauffeured",
+    title: "Chauffeured",
+    desc: "Sit back and let our experts drive",
+    icon: UserCheck,
+    comingSoon: false,
+  },
+  {
+    href: "#",
+    title: "Tours",
+    desc: "Explore amazing destinations",
+    icon: MapIcon,
+    comingSoon: true,
+  },
+  {
+    href: "#",
+    title: "Airport Pickups",
+    desc: "Seamless airport transfers",
+    icon: Plane,
+    comingSoon: true,
+  },
+  {
+    href: "#",
+    title: "Hotel Bookings",
+    desc: "Comfortable stays guaranteed",
+    icon: Building,
+    comingSoon: true,
+  },
+  {
+    href: "#",
+    title: "Wedding Events",
+    desc: "Make your special day perfect",
+    icon: PartyPopper,
+    comingSoon: true,
+  },
+] as const;
+
 interface NavbarProps {
   initialUser: User | null;
   initialRole: string | null;
@@ -46,28 +92,38 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
 
   const fleetRef = useRef<HTMLDivElement>(null);
 
+  // Optimized Supabase auth listener with caching profile fetch guard
   useEffect(() => {
     const supabase = createClient();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Prevent redundant state updates if the user session hasn't changed
       const currentUser = session?.user ?? null;
-      setUser(currentUser);
+
+      setUser((prevUser) => {
+        if (prevUser?.id === currentUser?.id) return prevUser;
+        return currentUser;
+      });
 
       if (currentUser) {
+        // Only fetch profile if role isn't already synced or user changed
         const { data } = await supabase
           .from("profiles")
           .select("role")
           .eq("id", currentUser.id)
           .single();
+
         setRole(data?.role ?? "customer");
       } else {
         setRole(null);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Close mobile menu on desktop resize
@@ -79,9 +135,11 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Scroll shadow
+  // Scroll shadow with passive listener optimization
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 4);
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 4);
+    };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -97,7 +155,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     const supabase = createClient();
     try {
       await supabase.auth.signOut();
@@ -106,75 +164,32 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
     } catch {
       toast.error("Error logging out. Please try again.");
     }
-  };
+  }, []);
 
-  const closeAll = () => {
+  const closeAll = useCallback(() => {
     setIsOpen(false);
     setIsFleetOpen(false);
     setIsBookModalOpen(false);
-  };
+  }, []);
 
-  const isLoggedIn = !!user;
+  const isLoggedIn = useMemo(() => !!user, [user]);
 
-  // Booking Services Array
-  const BOOKING_SERVICES = [
-    {
-      href: "/cars?service=self-chauffeured",
-      title: "Self-Chauffeured",
-      desc: "Drive yourself at your own pace",
-      icon: CarFront,
-      comingSoon: false,
+  const handleServiceClick = useCallback(
+    (
+      e: React.MouseEvent<HTMLAnchorElement>,
+      service: (typeof BOOKING_SERVICES)[number],
+    ) => {
+      if (service.comingSoon) {
+        e.preventDefault();
+        toast.info(
+          `${service.title} are still under development and coming soon!`,
+        );
+      } else {
+        closeAll();
+      }
     },
-    {
-      href: "/cars?service=chauffeured",
-      title: "Chauffeured",
-      desc: "Sit back and let our experts drive",
-      icon: UserCheck,
-      comingSoon: false,
-    },
-    {
-      href: "#",
-      title: "Tours",
-      desc: "Explore amazing destinations",
-      icon: MapIcon,
-      comingSoon: true,
-    },
-    {
-      href: "#",
-      title: "Airport Pickups",
-      desc: "Seamless airport transfers",
-      icon: Plane,
-      comingSoon: true,
-    },
-    {
-      href: "#",
-      title: "Hotel Bookings",
-      desc: "Comfortable stays guaranteed",
-      icon: Building,
-      comingSoon: true,
-    },
-    {
-      href: "#",
-      title: "Wedding Events",
-      desc: "Make your special day perfect",
-      icon: PartyPopper,
-      comingSoon: true,
-    },
-  ];
-
-  const handleServiceClick = (
-    e: React.MouseEvent<HTMLAnchorElement>,
-    service: (typeof BOOKING_SERVICES)[0],
-  ) => {
-    if (service.comingSoon) {
-      e.preventDefault();
-      toast.info(
-        `${service.title} are still under development and coming soon!`,
-      );
-    } else {
-      closeAll();
-    }
-  };
+    [closeAll],
+  );
 
   return (
     <nav
@@ -197,6 +212,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               width={32}
               height={32}
               className="rounded-sm"
+              priority
             />
             <span className="font-bold text-xl text-foreground">Cosmara</span>
           </Link>
@@ -445,7 +461,10 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
 
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-4xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 md:p-8 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-full max-w-4xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 md:p-8 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]"
+            aria-describedby="booking-modal-description"
+          >
             <Dialog.Close className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
               <X className="h-5 w-5" />
               <span className="sr-only">Close</span>
@@ -455,39 +474,45 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               <Dialog.Title className="text-2xl md:text-3xl font-bold text-foreground">
                 What are you looking for?
               </Dialog.Title>
-              <Dialog.Description className="text-sm md:text-base text-muted-foreground mt-2">
+              <Dialog.Description
+                id="booking-modal-description"
+                className="text-sm md:text-base text-muted-foreground mt-2"
+              >
                 Select a service below to proceed with your booking.
               </Dialog.Description>
             </div>
 
             {/* Mini Cards Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-              {BOOKING_SERVICES.map((item) => (
-                <Link
-                  key={item.title}
-                  href={item.href}
-                  prefetch={item.comingSoon ? false : undefined}
-                  onClick={(e) => handleServiceClick(e, item)}
-                  className="group flex flex-col items-center text-center p-5 rounded-xl border border-border bg-card hover:border-accent hover:bg-accent/5 transition-all relative overflow-hidden"
-                >
-                  <div className="h-14 w-14 rounded-full bg-accent/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-accent/20 transition-all">
-                    <item.icon className="h-7 w-7 text-accent" />
-                  </div>
-                  <h3 className="font-semibold text-foreground text-sm md:text-base">
-                    {item.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1.5 hidden md:block">
-                    {item.desc}
-                  </p>
-
-                  {/* Subtle coming soon indicator badge */}
-                  {item.comingSoon && (
-                    <div className="absolute top-2 right-2 bg-muted/80 text-muted-foreground text-[10px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-semibold">
-                      Soon
+              {BOOKING_SERVICES.map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <Link
+                    key={item.title}
+                    href={item.href}
+                    prefetch={item.comingSoon ? false : undefined}
+                    onClick={(e) => handleServiceClick(e, item)}
+                    className="group flex flex-col items-center text-center p-5 rounded-xl border border-border bg-card hover:border-accent hover:bg-accent/5 transition-all relative overflow-hidden"
+                  >
+                    <div className="h-14 w-14 rounded-full bg-accent/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-accent/20 transition-all">
+                      <IconComponent className="h-7 w-7 text-accent" />
                     </div>
-                  )}
-                </Link>
-              ))}
+                    <h3 className="font-semibold text-foreground text-sm md:text-base">
+                      {item.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1.5 hidden md:block">
+                      {item.desc}
+                    </p>
+
+                    {/* Subtle coming soon indicator badge */}
+                    {item.comingSoon && (
+                      <div className="absolute top-2 right-2 bg-muted/80 text-muted-foreground text-[10px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-semibold">
+                        Soon
+                      </div>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </Dialog.Content>
         </Dialog.Portal>

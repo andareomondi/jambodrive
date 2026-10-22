@@ -3,30 +3,28 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef } from "react";
-import { Button } from "@/components/ui/button";
+import { useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Users, Fuel, Zap } from "lucide-react";
+import { Users, Fuel, Zap, ArrowRight, UserCheck } from "lucide-react";
 import type { Car } from "@/types";
 
 interface CarCardProps {
   car: Car;
   days?: number;
-  index?: number; // Added to intercept loading hierarchy
+  index?: number;
 }
 
 const FUEL_ICON: Record<string, React.ReactNode> = {
-  petrol: <Fuel className="w-3.5 h-3.5" />,
-  diesel: <Fuel className="w-3.5 h-3.5" />,
-  hybrid: <Zap className="w-3.5 h-3.5" />,
-  electric: <Zap className="w-3.5 h-3.5" />,
+  petrol: <Fuel className="w-4 h-4 text-muted-foreground" />,
+  diesel: <Fuel className="w-4 h-4 text-muted-foreground" />,
+  hybrid: <Zap className="w-4 h-4 text-muted-foreground" />,
+  electric: <Zap className="w-4 h-4 text-muted-foreground" />,
 };
 
 function formatType(type: string | null) {
   if (!type) return null;
   if (type === "ssuv") return "Luxury SUV";
-  if (type === "wedding") return "Wedding & Event";
+  if (type === "wedding") return "Wedding";
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
@@ -39,7 +37,7 @@ export function CarCard({ car, days, index = 3 }: CarCardProps) {
     if (!car.available) return;
     prefetchTimerRef.current = setTimeout(() => {
       router.prefetch(targetHref);
-    }, 100);
+    }, 120);
   };
 
   const handleMouseLeave = () => {
@@ -48,111 +46,145 @@ export function CarCard({ car, days, index = 3 }: CarCardProps) {
     }
   };
 
-  // ⚡ OPTIMIZATION: Only flag the top row (first 3 cars) as high-priority images above the fold
+  useEffect(() => {
+    return () => {
+      if (prefetchTimerRef.current) {
+        clearTimeout(prefetchTimerRef.current);
+      }
+    };
+  }, []);
+
   const isAboveFold = index < 3;
 
   return (
     <Link
       href={targetHref}
-      className="group block h-full"
+      className="group block h-full select-none active:scale-[0.99] transition-transform duration-150"
       prefetch={false}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <Card className="p-2 overflow-hidden h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-border">
-        {/* Image */}
-        <div className="relative h-52 bg-muted rounded-md overflow-hidden">
-          {car.image && (
-            <Image
-              src={car.image}
-              alt={car.name}
-              fill
-              priority={isAboveFold}
-              loading={isAboveFold ? "eager" : "lazy"}
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            />
-          )}
-
-          {/* Availability badge */}
-          <div className="absolute top-3 right-3 z-10">
-            {car.available ? (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent text-accent-foreground shadow-sm backdrop-blur-sm">
-                Available
-              </span>
+      <Card className="relative overflow-hidden h-full flex flex-col justify-between bg-card border-border/80 hover:border-accent/50 shadow-sm hover:shadow-xl transition-all duration-300 rounded-2xl">
+        {/* Top Image Section */}
+        <div>
+          <div className="relative h-56 w-full bg-secondary/30 overflow-hidden">
+            {car.image ? (
+              <Image
+                src={car.image}
+                alt={`${car.name} ${car.model}`}
+                fill
+                priority={isAboveFold}
+                loading={isAboveFold ? "eager" : "lazy"}
+                className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              />
             ) : (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-black/70 text-white shadow-sm backdrop-blur-sm">
-                Rented
-              </span>
+              <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                No image available
+              </div>
+            )}
+
+            {/* Gradient Overlay for Top Badges */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 opacity-70 pointer-events-none" />
+
+            {/* Top Badges */}
+            <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10 gap-2">
+              {car.type ? (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide uppercase bg-black/60 text-white backdrop-blur-md border border-white/10 shadow-sm">
+                  {formatType(car.type)}
+                </span>
+              ) : (
+                <span />
+              )}
+
+              <div>
+                {car.available ? (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-accent text-accent-foreground backdrop-blur-md shadow-sm">
+                    Available
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-destructive text-destructive-foreground backdrop-blur-md shadow-sm">
+                    Reserved
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {!car.available && (
+              <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] flex items-center justify-center z-10">
+                <span className="px-4 py-1.5 rounded-xl bg-background/90 text-foreground font-bold text-xs uppercase tracking-wider border border-border shadow-md">
+                  Currently Rented
+                </span>
+              </div>
             )}
           </div>
 
-          {/* Unavailable overlay */}
-          {!car.available && (
-            <div className="absolute inset-0 bg-foreground/40 flex items-center justify-center z-10">
-              <span className="text-background font-semibold text-sm">
-                Not Available
-              </span>
+          {/* Details Body */}
+          <div className="p-5 space-y-4">
+            <div>
+              <h3 className="font-bold text-lg text-accent tracking-tight leading-snug">
+                {car.name}
+              </h3>
+              <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                {car.model}
+              </p>
             </div>
-          )}
+
+            {/* Specs Line with Driver Indicator */}
+            <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground pt-1 ">
+              <div className="flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-accent/80" />
+                <span>{car.seats} Seats</span>
+              </div>
+              <div className="w-1 h-1 rounded-full bg-border" />
+              <div className="flex items-center gap-1.5">
+                {FUEL_ICON[car.fuel] ?? (
+                  <Fuel className="w-4 h-4 text-accent/80" />
+                )}
+                <span className="capitalize">{car.fuel}</span>
+              </div>
+              <div className="w-1 h-1 rounded-full bg-border" />
+              <span className="capitalize">{car.transmission}</span>
+
+              {/* Driver Badge Icon (appears after transmission if chauffeured is true) */}
+              {car.chauffeured && (
+                <>
+                  <div className="w-1 h-1 rounded-full bg-border" />
+                  <div
+                    className="flex items-center gap-1 text-accent font-semibold"
+                    title="Includes Driver"
+                  >
+                    <UserCheck className="w-4 h-4" />
+                    <span>Driver</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Details */}
-        <div className="p-3 space-y-3">
-          <div>
-            <h3 className="font-semibold text-base text-foreground leading-tight">
-              {car.name}
-            </h3>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-sm text-muted-foreground">{car.model}</span>
-              {car.type && (
-                <Badge variant="secondary" className="text-xs capitalize">
-                  {formatType(car.type)}
-                </Badge>
-              )}
+        {/* Pricing & Full-Width Prominent CTA */}
+        <div className="p-5 pt-0 space-y-3">
+          <div className="flex items-baseline justify-between border-t border-border/50 pt-3">
+            <span className="text-xs text-muted-foreground uppercase font-medium tracking-wider">
+              Rental Rate
+            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl font-black text-foreground">
+                Ksh{" "}
+                {days && days > 1
+                  ? (car.price * days).toLocaleString()
+                  : car.price.toLocaleString()}
+              </span>
+              <span className="text-xs text-muted-foreground font-medium">
+                {days && days > 1 ? `for ${days}d` : "/ day"}
+              </span>
             </div>
           </div>
 
-          {/* Specs row */}
-          <div className="flex gap-4 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Users className="w-3.5 h-3.5" />
-              <span>{car.seats} seats</span>
-            </div>
-            <div className="flex items-center gap-1">
-              {FUEL_ICON[car.fuel] ?? <Fuel className="w-3.5 h-3.5" />}
-              <span className="capitalize">{car.fuel}</span>
-            </div>
-          </div>
-
-          {/* Price row */}
-          <div className="flex items-end justify-between pt-1">
-            <div>
-              <p className="text-lg font-bold text-accent">
-                Ksh {car.price.toLocaleString()}
-              </p>
-              {days && days > 1 ? (
-                <p className="text-xs text-accent/70 font-medium">
-                  Ksh {(car.price * days).toLocaleString()} for {days} day
-                  {days > 1 ? "s" : ""}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">/ day</p>
-              )}
-              {car.chauffeured && (
-                <p className="text-[11px] font-semibold text-accent mt-0.5">
-                  Includes Driver
-                </p>
-              )}
-            </div>
-            <Button
-              size="sm"
-              className="bg-accent hover:bg-accent/90 text-accent-foreground"
-              disabled={!car.available}
-              tabIndex={-1}
-            >
-              View
-            </Button>
+          <div className="w-full py-3 px-4 rounded-xl bg-accent text-accent-foreground font-bold text-xs flex items-center justify-center gap-2 shadow-sm group-hover:bg-accent/90 group-hover:shadow-md transition-all">
+            <span>{car.available ? "Book Vehicle" : "View Details"}</span>
+            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
           </div>
         </div>
       </Card>
