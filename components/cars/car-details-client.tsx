@@ -5,7 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CarCard } from "@/components/cars/car-card";
+import { ImageLightbox } from "@/components/cars/image-lightbox";
+import { RelatedCars } from "@/components/cars/related-cars";
 import {
   Users,
   Zap,
@@ -24,6 +25,7 @@ import {
   XCircle,
   Loader2,
   Download,
+  Maximize2,
 } from "lucide-react";
 import {
   BookingForm,
@@ -36,7 +38,6 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface CarDetailsClientProps {
   car: Car;
-  relatedCars: Car[];
 }
 
 type BookingMode = "pay_now" | "pay_later";
@@ -45,11 +46,14 @@ type ModalStep =
 
 const MPESA_SUPPORT_NUMBER = "254758500943";
 
-export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
+export function CarDetailsClient({ car }: CarDetailsClientProps) {
   const images = car.images ?? (car.image ? [car.image] : []);
+  const imagesKey = images.join("|");
   const features = car.features ?? [];
 
   const [selectedImage, setSelectedImage] = useState(0);
+  const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [bookingMode, setBookingMode] = useState<BookingMode>("pay_now");
   const [modalStep, setModalStep] = useState<ModalStep>("form");
@@ -62,6 +66,42 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabase = createClient();
 
+  // Load the first image first, then the rest in the background.
+  // Each image is marked loaded only once it has fully downloaded.
+  useEffect(() => {
+    const list = imagesKey ? imagesKey.split("|") : [];
+    if (list.length === 0) return;
+
+    let cancelled = false;
+    const preload = (src: string) =>
+      new Promise<void>((resolve) => {
+        const img = new window.Image();
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+        img.src = src;
+      });
+
+    const markLoaded = (src: string) => {
+      if (cancelled) return;
+      setLoadedImages((prev) => ({ ...prev, [src]: true }));
+    };
+
+    (async () => {
+      await preload(list[0]);
+      markLoaded(list[0]);
+      await Promise.all(
+        list.slice(1).map(async (src) => {
+          await preload(src);
+          markLoaded(src);
+        }),
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imagesKey]);
+
   useEffect(() => {
     return () => {
       if (channelRef.current) {
@@ -71,6 +111,7 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
   }, []);
 
   const activeImage = images[selectedImage] ?? car.image;
+  const activeLoaded = !!activeImage && !!loadedImages[activeImage];
 
   const calcDays = useCallback((data: BookingFormData) => {
     const ms =
@@ -302,15 +343,33 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
         {/* Left Image View Column */}
         <div className="lg:col-span-2">
           {activeImage ? (
-            <div className="relative aspect-video w-full h-[450px] bg-muted rounded-xl overflow-hidden mb-4">
-              <Image
-                src={activeImage}
-                alt={car.name}
-                fill
-                className="object-cover"
-                priority
-                sizes="(max-width: 1024px) 100vw, 66vw"
-              />
+            <button
+              type="button"
+              onClick={() => activeLoaded && setLightboxOpen(true)}
+              aria-label="Expand image"
+              className="group relative block w-full aspect-video h-[450px] bg-muted rounded-xl overflow-hidden mb-4 cursor-zoom-in text-left"
+            >
+              {activeLoaded && (
+                <Image
+                  src={activeImage}
+                  alt={car.name}
+                  fill
+                  className="object-cover"
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 66vw"
+                />
+              )}
+
+              {!activeLoaded && (
+                <div className="absolute inset-0 z-20 animate-pulse bg-muted" />
+              )}
+
+              {activeLoaded && (
+                <span className="absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/90 text-foreground text-xs font-semibold shadow-md">
+                  <Maximize2 className="w-3.5 h-3.5" /> Expand
+                </span>
+              )}
+
               {!car.available && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
                   <span className="text-white text-xl font-semibold">
@@ -318,7 +377,7 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
                   </span>
                 </div>
               )}
-            </div>
+            </button>
           ) : (
             <div className="h-[450px] bg-muted rounded-xl mb-4 flex items-center justify-center">
               <p className="text-muted-foreground text-sm">
@@ -329,23 +388,37 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
 
           {images.length > 1 && (
             <div className="flex gap-3 overflow-x-auto py-2 scroll-smooth snap-x">
-              {images.map((image, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedImage(idx)}
-                  className={`relative h-20 w-20 shrink-0 snap-start rounded-md overflow-hidden border-2 transition-colors ${
-                    selectedImage === idx ? "border-accent" : "border-border"
-                  }`}
-                >
-                  <Image
-                    src={image}
-                    alt={`${car.name} ${idx + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="80px"
-                  />
-                </button>
-              ))}
+              {images.map((image, idx) => {
+                const loaded = !!loadedImages[image];
+
+                if (!loaded) {
+                  return (
+                    <div
+                      key={idx}
+                      aria-hidden="true"
+                      className="relative h-20 w-20 shrink-0 snap-start rounded-md overflow-hidden border-2 border-border animate-pulse bg-muted"
+                    />
+                  );
+                }
+
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedImage(idx)}
+                    className={`relative h-20 w-20 shrink-0 snap-start rounded-md overflow-hidden border-2 transition-colors ${
+                      selectedImage === idx ? "border-accent" : "border-border"
+                    }`}
+                  >
+                    <Image
+                      src={image}
+                      alt={`${car.name} ${idx + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="80px"
+                    />
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -464,17 +537,21 @@ export function CarDetailsClient({ car, relatedCars }: CarDetailsClientProps) {
         </div>
       </div>
 
-      {relatedCars.length > 0 && (
-        <div className="border-t border-border pt-16">
-          <h3 className="text-2xl font-bold text-foreground mb-8">
-            Similar Vehicles You Might Like
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {relatedCars.map((relatedCar) => (
-              <CarCard key={relatedCar.id} car={relatedCar} />
-            ))}
-          </div>
-        </div>
+      <div className="border-t border-border pt-16">
+        <h3 className="text-2xl font-bold text-foreground mb-8">
+          Similar Vehicles You Might Like
+        </h3>
+        <RelatedCars carId={car.id} type={car.type} />
+      </div>
+
+      {lightboxOpen && activeImage && (
+        <ImageLightbox
+          images={images}
+          alt={car.name}
+          index={selectedImage}
+          onIndexChange={setSelectedImage}
+          onClose={() => setLightboxOpen(false)}
+        />
       )}
 
       {isModalOpen && (

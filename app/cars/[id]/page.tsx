@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getCarById, getAvailableCars } from "@/lib/services/cars";
 import { CarDetailsClient } from "@/components/cars/car-details-client";
-import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import type { Car } from "@/types";
 
@@ -39,28 +38,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-async function getRelatedCars(
-  carId: string,
-  type: string | null,
-): Promise<Car[]> {
-  if (!type) return [];
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("cars")
-      .select("*")
-      .eq("type", type)
-      .neq("id", carId)
-      .eq("available", true)
-      .limit(3);
-
-    if (error || !data) return [];
-    return data as Car[];
-  } catch {
-    return [];
-  }
-}
-
 async function CarDetailsData({
   paramsPromise,
 }: {
@@ -75,9 +52,7 @@ async function CarDetailsData({
     notFound();
   }
 
-  const relatedCars = await getRelatedCars(car.id, car.type);
-
-  return <CarDetailsClient car={car} relatedCars={relatedCars} />;
+  return <CarDetailsClient car={car} />;
 }
 
 export default async function CarDetailsPage({ params }: Props) {

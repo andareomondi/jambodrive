@@ -64,19 +64,16 @@ const FEATURES = [
   },
 ] as const;
 
-// ⚡ Sleek Shimmer Skeleton Placeholder Grid
 function CarCardSkeletonGrid() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {Array.from({ length: 6 }).map((_, i) => (
         <Card
           key={i}
-          className="relative overflow-hidden h-[380px] flex flex-col justify-between bg-card/60 border-border/60 rounded-2xl p-4 animate-pulse"
+          className="relative overflow-hidden h-[380px] flex flex-col justify-between bg-card border-border rounded-2xl p-4 animate-pulse"
         >
-          {/* Image Skeleton */}
           <div className="w-full h-52 bg-muted rounded-xl" />
 
-          {/* Details Skeleton */}
           <div className="space-y-3 py-3">
             <div className="flex justify-between items-center">
               <div className="h-4 w-28 bg-muted rounded-md" />
@@ -84,14 +81,13 @@ function CarCardSkeletonGrid() {
             </div>
             <div className="h-3 w-20 bg-muted/70 rounded-md" />
 
-            <div className="flex items-center gap-3 pt-2 border-t border-border/40">
+            <div className="flex items-center gap-3 pt-2 border-t border-border">
               <div className="h-3 w-16 bg-muted/60 rounded-md" />
               <div className="h-3 w-16 bg-muted/60 rounded-md" />
             </div>
           </div>
 
-          {/* Bottom CTA Skeleton */}
-          <div className="flex items-center justify-between pt-3 border-t border-border/40">
+          <div className="flex items-center justify-between pt-3 border-t border-border">
             <div className="h-5 w-24 bg-muted rounded-md" />
             <div className="h-9 w-28 bg-muted rounded-xl" />
           </div>
@@ -106,7 +102,7 @@ async function FeaturedFleetGrid() {
 
   if (cars.length === 0) {
     return (
-      <div className="text-center py-16 border border-dashed border-border rounded-2xl">
+      <div className="text-center py-16 border border-dashed border-border rounded-2xl bg-card/60">
         <p className="text-muted-foreground">
           Currently updating our fleet. Check back soon!
         </p>
@@ -126,16 +122,24 @@ async function FeaturedFleetGrid() {
   );
 }
 
+function SectionEyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-block px-4 py-1.5 mb-4 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-semibold uppercase tracking-wider">
+      {children}
+    </span>
+  );
+}
+
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background selection:bg-accent/30">
-      {/* ── Hero ── */}
       <HeroCarousel />
 
       {/* ── Why choose us ── */}
       <section className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
+            <SectionEyebrow>Why Cosmara</SectionEyebrow>
             <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight text-foreground">
               The Easiest Way to Rent
             </h2>
@@ -148,7 +152,7 @@ export default function HomePage() {
             {FEATURES.map(({ icon: Icon, title, desc }) => (
               <div
                 key={title}
-                className="group p-8 rounded-3xl bg-secondary/50 border border-border hover:border-accent/40 transition-all duration-300"
+                className="group p-8 rounded-3xl bg-card border border-border hover:border-accent/50 shadow-sm hover:shadow-md transition-all duration-300"
               >
                 <div className="mb-5 w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <Icon className="w-6 h-6 text-accent" />
@@ -166,10 +170,11 @@ export default function HomePage() {
       </section>
 
       {/* ── Featured fleet ── */}
-      <section className="py-24 bg-secondary/30">
+      <section className="py-24 bg-secondary/40 border-y border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-12">
             <div>
+              <SectionEyebrow>The Fleet</SectionEyebrow>
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-3">
                 Our Featured Fleet
               </h2>

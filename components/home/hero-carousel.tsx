@@ -45,7 +45,7 @@ export function HeroCarousel() {
   };
 
   return (
-    <section className="relative min-h-[85vh] flex items-center overflow-hidden bg-black">
+    <section className="relative min-h-[85vh] flex items-center overflow-hidden bg-[hsl(80_14%_8%)]">
       <div className="absolute inset-0 z-0">
         {HERO_IMAGES.map((img, i) => (
           <div
@@ -58,14 +58,14 @@ export function HeroCarousel() {
               src={img.src}
               alt={img.alt}
               fill
-              priority={i === 0} // Only prioritize the first image for optimal LCP
+              priority={i === 0}
               loading={i === 0 ? "eager" : "lazy"}
               className="object-cover"
               sizes="100vw"
               quality={80}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/10 z-10" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[hsl(80_14%_8%/0.88)] via-[hsl(80_14%_8%/0.55)] to-[hsl(80_14%_8%/0.1)] z-10" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[hsl(80_14%_8%/0.7)] via-transparent to-transparent z-10" />
           </div>
         ))}
       </div>
@@ -74,13 +74,13 @@ export function HeroCarousel() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8 animate-in fade-in slide-in-from-left duration-1000">
             <div>
-              <span className="inline-block px-4 py-1.5 mb-4 rounded-full bg-accent/20 border border-accent/40 text-accent text-sm font-bold tracking-wide uppercase">
+              <span className="inline-block px-4 py-1.5 mb-4 rounded-full bg-accent/20 border border-accent/40 text-[hsl(42_25%_91%)] text-sm font-bold tracking-wide uppercase">
                 Premium Car Rental
               </span>
-              <h1 className="text-5xl md:text-7xl font-bold text-white leading-[1.1] tracking-tight">
+              <h1 className="text-5xl md:text-7xl font-bold text-[hsl(45_30%_97%)] leading-[1.1] tracking-tight">
                 Drive Your <span className="text-accent">Dream</span> Car Today.
               </h1>
-              <p className="mt-6 text-lg md:text-xl text-white/70 max-w-lg leading-relaxed">
+              <p className="mt-6 text-lg md:text-xl text-[hsl(45_30%_97%/0.75)] max-w-lg leading-relaxed">
                 Experience luxury and performance with our exclusive fleet.
                 Seamless booking, 24/7 support, and no hidden fees.
               </p>
@@ -90,7 +90,7 @@ export function HeroCarousel() {
               {STATS.map((stat) => (
                 <div key={stat.label}>
                   <p className="text-3xl font-bold text-accent">{stat.value}</p>
-                  <p className="text-xs text-white/50 font-medium uppercase tracking-wider mt-0.5">
+                  <p className="text-xs text-[hsl(45_30%_97%/0.55)] font-medium uppercase tracking-wider mt-0.5">
                     {stat.label}
                   </p>
                 </div>
@@ -112,7 +112,7 @@ export function HeroCarousel() {
             className={`h-1.5 rounded-full transition-all duration-300 ${
               i === current
                 ? "w-12 bg-accent"
-                : "w-3 bg-white/30 hover:bg-white/50"
+                : "w-3 bg-[hsl(45_30%_97%/0.35)] hover:bg-[hsl(45_30%_97%/0.55)]"
             }`}
             aria-label={`Go to slide ${i + 1}`}
           />
