@@ -179,7 +179,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
   const isHomePage = pathname === "/";
   const heroOverlay = isHomePage && !scrolled;
   const desktopNavLinkClass = cn(
-    "rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+    "font-display rounded-full px-3.5 py-2 text-lg font-semibold tracking-wide text-foreground/85 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
     heroOverlay && "text-white/90 hover:bg-white/10 hover:text-white",
   );
 
@@ -234,7 +234,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             />
             <span
               className={cn(
-                "text-lg font-extrabold tracking-[-0.04em] text-foreground sm:text-xl",
+                "font-display text-2xl font-semibold tracking-wide text-foreground sm:text-[1.75rem]",
                 heroOverlay && "text-white",
               )}
             >
@@ -259,7 +259,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             >
               <button
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                  "font-display flex items-center gap-1.5 rounded-full px-3.5 py-2 text-lg font-semibold tracking-wide text-foreground/85 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                   heroOverlay && "text-white/90 hover:bg-white/10 hover:text-white",
                 )}
                 onClick={() => setIsFleetOpen((v) => !v)}
@@ -281,7 +281,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                     <Link
                       key={type.id}
                       href={`/cars/category/${type.id}`}
-                      className="block rounded-xl px-3.5 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      className="font-display block rounded-xl px-3.5 py-2.5 text-lg font-medium text-foreground/85 transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                       onClick={closeAll}
                     >
                       {type.name}
@@ -401,7 +401,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 <Link
                   href="/"
                   onClick={closeAll}
-                  className="rounded-2xl px-4 py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   Home
                 </Link>
@@ -417,7 +417,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                         key={type.id}
                         href={`/cars/category/${type.id}`}
                         onClick={closeAll}
-                        className="rounded-xl px-3.5 py-3 text-sm font-semibold text-foreground/85 transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        className="font-display rounded-xl px-3.5 py-3 text-lg font-medium text-foreground/85 transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                       >
                         {type.name}
                       </Link>
@@ -429,7 +429,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                   <Link
                     href="/cars"
                     onClick={closeAll}
-                    className="rounded-2xl px-4 py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     Browse All Cars
                   </Link>
@@ -439,7 +439,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                       href="/dashboard/admin"
                       prefetch={false}
                       onClick={closeAll}
-                      className="rounded-2xl px-4 py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
                       Admin
                     </Link>
@@ -450,7 +450,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                       href="/dashboard/facilitator"
                       prefetch={false}
                       onClick={closeAll}
-                      className="rounded-2xl px-4 py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
                       Facilitator
                     </Link>
@@ -458,14 +458,14 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                   <Link
                     href="/gallery"
                     onClick={closeAll}
-                    className="rounded-2xl px-4 py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     Gallery
                   </Link>
                   <Link
                     href="/contact"
                     onClick={closeAll}
-                    className="rounded-2xl px-4 py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     Contact
                   </Link>
