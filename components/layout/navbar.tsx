@@ -9,6 +9,7 @@ import {
   Menu,
   X,
   ChevronDown,
+  ArrowUpRight,
   CarFront,
   UserCheck,
   Map as MapIcon,
@@ -129,7 +130,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
   // Close mobile menu on desktop resize
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 768) setIsOpen(false);
+      if (window.innerWidth >= 1024) setIsOpen(false);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -194,34 +195,38 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
   return (
     <nav
       className={cn(
-        "sticky top-0 z-50 bg-background/95 border-b border-border backdrop-blur-sm transition-shadow duration-200",
-        scrolled && "shadow-sm",
+        "sticky top-0 z-50 border-b backdrop-blur-xl transition-all duration-300",
+        scrolled
+          ? "border-border/80 bg-background/90 shadow-lg shadow-black/10"
+          : "border-white/10 bg-background/65 shadow-sm shadow-black/5",
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex h-[4.5rem] items-center justify-between gap-4">
           {/* Logo */}
           <Link
             href="/"
             onClick={closeAll}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0"
+            className="group flex shrink-0 items-center gap-3 rounded-full pr-3 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <Image
               src="/logo.ico"
               alt="Cosmara Logo"
-              width={32}
-              height={32}
-              className="rounded-sm"
+              width={38}
+              height={38}
+              className="rounded-full ring-1 ring-white/15"
               priority
             />
-            <span className="font-bold text-xl text-foreground">Cosmara</span>
+            <span className="text-lg font-extrabold tracking-[-0.04em] text-foreground sm:text-xl">
+              Cosmara
+            </span>
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-7">
+          <div className="hidden lg:flex items-center gap-1">
             <Link
               href="/"
-              className="text-sm text-foreground hover:text-accent transition-colors"
+              className="group relative rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               Home
             </Link>
@@ -233,7 +238,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               onMouseLeave={() => setIsFleetOpen(false)}
             >
               <button
-                className="flex items-center gap-1 text-sm text-foreground hover:text-accent transition-colors py-4"
+                className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 onClick={() => setIsFleetOpen((v) => !v)}
                 aria-expanded={isFleetOpen}
                 aria-haspopup="true"
@@ -248,12 +253,12 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               </button>
 
               {isFleetOpen && (
-                <div className="absolute top-full left-0 w-52 bg-background border border-border shadow-lg rounded-b-lg py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="absolute left-0 top-full w-56 overflow-hidden rounded-2xl border border-border/80 bg-background/95 p-1.5 shadow-2xl shadow-black/20 backdrop-blur-xl animate-in fade-in slide-in-from-top-1 duration-150">
                   {CAR_TYPES.map((type) => (
                     <Link
                       key={type.id}
                       href={`/cars/category/${type.id}`}
-                      className="block px-4 py-2.5 text-sm text-foreground hover:bg-secondary hover:text-accent transition-colors"
+                      className="block rounded-xl px-3.5 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                       onClick={closeAll}
                     >
                       {type.name}
@@ -264,7 +269,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             </div>
             <Link
               href="/cars"
-              className="text-sm text-foreground hover:text-accent transition-colors"
+              className="rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               Browse All
             </Link>
@@ -272,7 +277,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               <Link
                 href="/dashboard/admin"
                 prefetch={false}
-                className="text-sm text-foreground hover:text-accent transition-colors"
+                className="rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 Admin
               </Link>
@@ -281,40 +286,55 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               <Link
                 href="/dashboard/facilitator"
                 prefetch={false}
-                className="text-sm text-foreground hover:text-accent transition-colors"
+                className="rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 Facilitator
               </Link>
             )}
             <Link
               href="/gallery"
-              className="text-sm text-foreground hover:text-accent transition-colors"
+              className="rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               Gallery
             </Link>
             <Link
               href="/contact"
-              className="text-sm text-foreground hover:text-accent transition-colors"
+              className="rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              Contact Us
+              Contact
             </Link>
           </div>
 
           {/* Desktop auth & CTA */}
-          <div className="hidden md:flex items-center gap-2 justify-end">
+          <div className="hidden lg:flex items-center justify-end gap-2">
             {isLoggedIn ? (
               <>
-                <Button variant="outline" size="sm" asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className="rounded-full px-4 font-semibold text-foreground/80 hover:bg-white/8 hover:text-foreground"
+                >
                   <Link href="/dashboard" prefetch={false}>
                     Profile
                   </Link>
                 </Button>
-                <Button size="sm" variant="ghost" onClick={handleLogout}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleLogout}
+                  className="rounded-full px-4 font-semibold text-foreground/80 hover:bg-white/8 hover:text-foreground"
+                >
                   Log Out
                 </Button>
               </>
             ) : (
-              <Button variant="outline" size="sm" asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="rounded-full px-4 font-semibold text-foreground/80 hover:bg-white/8 hover:text-foreground"
+              >
                 <Link href="/auth/login" prefetch={false}>
                   Sign In
                 </Link>
@@ -323,134 +343,149 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             <Button
               size="sm"
               onClick={() => setIsBookModalOpen(true)}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground ml-2"
+              className="ml-1 h-10 rounded-full bg-accent px-5 font-bold text-accent-foreground shadow-lg shadow-accent/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-accent/30"
             >
               Book Now
+              <ArrowUpRight className="ml-0.5 h-4 w-4" />
             </Button>
           </div>
 
           {/* Mobile toggle */}
           <button
             onClick={() => setIsOpen((v) => !v)}
-            className="md:hidden p-2 rounded-md hover:bg-secondary transition-colors"
-            aria-label="Toggle menu"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/80 bg-background/55 text-foreground shadow-sm backdrop-blur-lg transition-all duration-200 hover:border-accent/50 hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
+            aria-label={isOpen ? "Close menu" : "Open menu"}
             aria-expanded={isOpen}
           >
-            {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
 
         {/* Mobile menu */}
         {isOpen && (
-          <div className="md:hidden border-t border-border bg-background pb-6">
-            <div className="flex flex-col pt-3 gap-0.5">
-              <Link
-                href="/"
-                onClick={closeAll}
-                className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
-              >
-                Home
-              </Link>
+          <div className="border-t border-border/70 pb-5 pt-4 lg:hidden">
+            <div className="rounded-3xl border border-border/80 bg-background/85 p-3 shadow-2xl shadow-black/15 backdrop-blur-xl">
+              <div className="flex flex-col gap-1">
+                <Link
+                  href="/"
+                  onClick={closeAll}
+                  className="rounded-2xl px-4 py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  Home
+                </Link>
 
-              {/* Fleet section */}
-              <div className="mt-2 pt-2 border-t border-border">
-                <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Our Fleet
-                </p>
-                <div className="grid grid-cols-2 gap-0.5 px-1">
-                  {CAR_TYPES.map((type) => (
+                {/* Fleet section */}
+                <div className="mt-1 border-t border-border/70 pt-3">
+                  <p className="px-4 pb-2 text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted-foreground">
+                    Our Fleet
+                  </p>
+                  <div className="grid grid-cols-2 gap-1">
+                    {CAR_TYPES.map((type) => (
+                      <Link
+                        key={type.id}
+                        href={`/cars/category/${type.id}`}
+                        onClick={closeAll}
+                        className="rounded-xl px-3.5 py-3 text-sm font-semibold text-foreground/85 transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      >
+                        {type.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-2 flex flex-col gap-1 border-t border-border/70 pt-3">
+                  <Link
+                    href="/cars"
+                    onClick={closeAll}
+                    className="rounded-2xl px-4 py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Browse All Cars
+                  </Link>
+
+                  {role === "super_admin" && (
                     <Link
-                      key={type.id}
-                      href={`/cars/category/${type.id}`}
+                      href="/dashboard/admin"
+                      prefetch={false}
                       onClick={closeAll}
-                      className="px-3 py-2.5 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
+                      className="rounded-2xl px-4 py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
-                      {type.name}
+                      Admin
                     </Link>
-                  ))}
+                  )}
+
+                  {role === "facilitator" && (
+                    <Link
+                      href="/dashboard/facilitator"
+                      prefetch={false}
+                      onClick={closeAll}
+                      className="rounded-2xl px-4 py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    >
+                      Facilitator
+                    </Link>
+                  )}
+                  <Link
+                    href="/gallery"
+                    onClick={closeAll}
+                    className="rounded-2xl px-4 py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Gallery
+                  </Link>
+                  <Link
+                    href="/contact"
+                    onClick={closeAll}
+                    className="rounded-2xl px-4 py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Contact
+                  </Link>
                 </div>
               </div>
 
-              <div className="mt-2 pt-2 border-t border-border flex flex-col gap-0.5">
-                <Link
-                  href="/cars"
-                  onClick={closeAll}
-                  className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
-                >
-                  Browse All Cars
-                </Link>
-
-                {role === "super_admin" && (
-                  <Link
-                    href="/dashboard/admin"
-                    prefetch={false}
-                    onClick={closeAll}
-                    className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
-                  >
-                    Admin
-                  </Link>
-                )}
-
-                {role === "facilitator" && (
-                  <Link
-                    href="/dashboard/facilitator"
-                    prefetch={false}
-                    onClick={closeAll}
-                    className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
-                  >
-                    Facilitator
-                  </Link>
-                )}
-                <Link
-                  href="/gallery"
-                  onClick={closeAll}
-                  className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
-                >
-                  Gallery
-                </Link>
-                <Link
-                  href="/contact"
-                  onClick={closeAll}
-                  className="px-3 py-3 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
-                >
-                  Contact Us
-                </Link>
-              </div>
-            </div>
-
-            {/* Mobile auth & CTA */}
-            <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2 px-3">
-              {isLoggedIn ? (
-                <div className="flex gap-2">
-                  <Button variant="outline" asChild className="flex-1">
-                    <Link href="/dashboard" prefetch={false} onClick={closeAll}>
-                      Profile
-                    </Link>
-                  </Button>
+              {/* Mobile auth & CTA */}
+              <div className="mt-3 flex flex-col gap-2 border-t border-border/70 px-1 pt-4">
+                {isLoggedIn ? (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      asChild
+                      className="h-11 flex-1 rounded-full font-bold"
+                    >
+                      <Link
+                        href="/dashboard"
+                        prefetch={false}
+                        onClick={closeAll}
+                      >
+                        Profile
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-11 flex-1 rounded-full font-bold"
+                      onClick={handleLogout}
+                    >
+                      Log Out
+                    </Button>
+                  </div>
+                ) : (
                   <Button
                     variant="outline"
-                    className="flex-1"
-                    onClick={handleLogout}
+                    asChild
+                    className="h-11 w-full rounded-full font-bold"
                   >
-                    Log Out
+                    <Link href="/auth/login" prefetch={false} onClick={closeAll}>
+                      Sign In
+                    </Link>
                   </Button>
-                </div>
-              ) : (
-                <Button variant="outline" asChild className="w-full">
-                  <Link href="/auth/login" prefetch={false} onClick={closeAll}>
-                    Sign In
-                  </Link>
+                )}
+                <Button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setIsBookModalOpen(true);
+                  }}
+                  className="mt-1 h-12 w-full rounded-full bg-accent font-extrabold text-accent-foreground shadow-lg shadow-accent/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/90"
+                >
+                  Book Now
                 </Button>
-              )}
-              <Button
-                onClick={() => {
-                  setIsOpen(false);
-                  setIsBookModalOpen(true);
-                }}
-                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground mt-2"
-              >
-                Book Now
-              </Button>
+              </div>
             </div>
           </div>
         )}

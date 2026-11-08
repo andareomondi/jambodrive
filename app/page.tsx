@@ -45,22 +45,22 @@ const FEATURES = [
   {
     icon: Check,
     title: "Instant Booking",
-    desc: "Real-time availability and immediate confirmation.",
+    desc: "Real-time availability and immediate confirmation without the back-and-forth.",
   },
   {
     icon: Shield,
-    title: "Premium Insurance",
-    desc: "Comprehensive coverage included with every rental.",
+    title: "Premium Protection",
+    desc: "Comprehensive coverage and expert support for total peace of mind.",
   },
   {
     icon: Clock,
     title: "Flexible Timing",
-    desc: "Daily, weekly, or monthly rates tailored to you.",
+    desc: "Daily, weekly, or monthly plans built around how you move.",
   },
   {
     icon: MapPin,
-    title: "Free Delivery",
-    desc: "We bring the car to your doorstep or hotel.",
+    title: "Doorstep Delivery",
+    desc: "We bring the car to your home, hotel, or airport terminal.",
   },
 ] as const;
 
@@ -135,32 +135,32 @@ export default function HomePage() {
     <div className="min-h-screen bg-background selection:bg-accent/30">
       <HeroCarousel />
 
-      {/* ── Why choose us ── */}
-      <section className="py-24">
+      <section className="py-20 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <div className="text-center max-w-3xl mx-auto mb-14">
             <SectionEyebrow>Why Cosmara</SectionEyebrow>
-            <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight text-foreground">
-              The Easiest Way to Rent
+            <h2 className="font-display text-4xl md:text-6xl font-medium text-foreground tracking-[-0.04em] mb-4">
+              Luxury without the friction
             </h2>
-            <p className="text-muted-foreground text-lg">
-              We've streamlined the entire process so you can focus on the road
-              ahead.
+            <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+              We’ve stripped away the stress so every reservation feels effortless,
+              personal, and premium from start to finish.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             {FEATURES.map(({ icon: Icon, title, desc }) => (
               <div
                 key={title}
-                className="group p-8 rounded-3xl bg-card border border-border hover:border-accent/50 shadow-sm hover:shadow-md transition-all duration-300"
+                className="group rounded-[28px] border border-white/10 bg-card/70 p-7 shadow-[0_24px_60px_rgba(0,0,0,0.18)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-accent/40"
               >
-                <div className="mb-5 w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <Icon className="w-6 h-6 text-accent" />
+                <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/12 ring-1 ring-inset ring-accent/20 transition-transform duration-300 group-hover:scale-105">
+                  <Icon className="h-5 w-5 text-accent" />
                 </div>
-                <h3 className="font-bold text-lg text-foreground mb-2">
+                <h3 className="mb-3 font-display text-2xl text-foreground leading-none">
                   {title}
                 </h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
+                <p className="text-sm leading-relaxed text-muted-foreground">
                   {desc}
                 </p>
               </div>
@@ -169,27 +169,26 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Featured fleet ── */}
-      <section className="py-24 bg-secondary/40 border-y border-border">
+      <section className="border-y border-border/80 bg-secondary/30 py-20 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-end justify-between mb-12">
+          <div className="mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div>
               <SectionEyebrow>The Fleet</SectionEyebrow>
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-3">
-                Our Featured Fleet
+              <h2 className="font-display text-4xl md:text-6xl font-medium tracking-[-0.04em] text-foreground mb-3">
+                Curated for every kind of drive
               </h2>
-              <p className="text-muted-foreground">
-                Hand-picked vehicles for your next journey.
+              <p className="text-base text-muted-foreground">
+                Hand-picked vehicles designed for business, family, comfort, and statement-making arrivals.
               </p>
             </div>
             <Button
               asChild
               variant="ghost"
-              className="hidden md:flex text-foreground hover:text-accent transition-colors"
+              className="hidden md:inline-flex text-foreground hover:text-accent transition-colors"
             >
               <Link href="/cars" className="group flex items-center">
                 Browse Entire Fleet
-                <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
           </div>

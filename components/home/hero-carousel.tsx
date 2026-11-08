@@ -74,23 +74,25 @@ export function HeroCarousel() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8 animate-in fade-in slide-in-from-left duration-1000">
             <div>
-              <span className="inline-block px-4 py-1.5 mb-4 rounded-full bg-accent/20 border border-accent/40 text-[hsl(42_25%_91%)] text-sm font-bold tracking-wide uppercase">
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 mb-5 rounded-full border border-white/15 bg-white/5 text-[hsl(42_25%_91%)] text-[11px] font-semibold tracking-[0.18em] uppercase backdrop-blur-sm">
+                <span className="h-2 w-2 rounded-full bg-accent" />
                 Premium Car Rental
               </span>
-              <h1 className="text-5xl md:text-7xl font-bold text-[hsl(45_30%_97%)] leading-[1.1] tracking-tight">
-                Drive Your <span className="text-accent">Dream</span> Car Today.
+              <h1 className="font-display text-5xl md:text-7xl font-medium text-[hsl(45_30%_97%)] leading-[0.95] tracking-[-0.04em]">
+                Drive your
+                <span className="block text-accent">Perfect moment.</span>
               </h1>
-              <p className="mt-6 text-lg md:text-xl text-[hsl(45_30%_97%/0.75)] max-w-lg leading-relaxed">
-                Experience luxury and performance with our exclusive fleet.
-                Seamless booking, 24/7 support, and no hidden fees.
+              <p className="mt-6 text-base md:text-lg text-[hsl(45_30%_97%/0.76)] max-w-lg leading-relaxed">
+                Elevate every journey with hand-picked luxury vehicles, effortless booking,
+                and white-glove support made for Nairobi and beyond.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-8">
               {STATS.map((stat) => (
-                <div key={stat.label}>
+                <div key={stat.label} className="min-w-[88px]">
                   <p className="text-3xl font-bold text-accent">{stat.value}</p>
-                  <p className="text-xs text-[hsl(45_30%_97%/0.55)] font-medium uppercase tracking-wider mt-0.5">
+                  <p className="text-[10px] text-[hsl(45_30%_97%/0.6)] font-medium uppercase tracking-[0.18em] mt-1.5">
                     {stat.label}
                   </p>
                 </div>

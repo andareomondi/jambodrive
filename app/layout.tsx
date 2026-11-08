@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
 import { Suspense } from "react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
@@ -12,10 +12,17 @@ import AuthProvider from "@/components/auth/auth-provider";
 
 // export const dynamic = "force-dynamic";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const manrope = Manrope({
+  variable: "--font-manrope",
   display: "swap",
   subsets: ["latin"],
+});
+
+const cormorant = Cormorant_Garamond({
+  variable: "--font-display",
+  display: "swap",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -100,7 +107,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.className} antialiased min-h-screen`}>
+      <body className={`${manrope.variable} ${cormorant.variable} font-sans antialiased min-h-screen`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <AuthProvider>
             <Suspense fallback={<NavbarSkeleton />}>
