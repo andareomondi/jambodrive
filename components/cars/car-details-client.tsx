@@ -12,6 +12,8 @@ import {
   Zap,
   Fuel,
   CheckCircle,
+  Shield,
+  Settings2,
   CreditCard,
   Clock,
   MessageCircle,
@@ -53,6 +55,7 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [bookingMode, setBookingMode] = useState<BookingMode>("pay_now");
@@ -74,10 +77,10 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
 
     let cancelled = false;
     const preload = (src: string) =>
-      new Promise<void>((resolve) => {
+      new Promise<boolean>((resolve) => {
         const img = new window.Image();
-        img.onload = () => resolve();
-        img.onerror = () => resolve();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
         img.src = src;
       });
 
@@ -87,12 +90,18 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
     };
 
     (async () => {
-      await preload(list[0]);
-      markLoaded(list[0]);
+      if (await preload(list[0])) {
+        markLoaded(list[0]);
+      } else {
+        setFailedImages((prev) => ({ ...prev, [list[0]]: true }));
+      }
       await Promise.all(
         list.slice(1).map(async (src) => {
-          await preload(src);
-          markLoaded(src);
+          if (await preload(src)) {
+            markLoaded(src);
+          } else {
+            setFailedImages((prev) => ({ ...prev, [src]: true }));
+          }
         }),
       );
     })();
@@ -110,8 +119,15 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
     };
   }, []);
 
-  const activeImage = images[selectedImage] ?? car.image;
-  const activeLoaded = !!activeImage && !!loadedImages[activeImage];
+  const sourceImage = images[selectedImage] ?? car.image;
+  const activeImage =
+    sourceImage && failedImages[sourceImage] ? "/hero/car1.jpg" : sourceImage;
+  const activeLoaded =
+    !!activeImage &&
+    (activeImage === "/hero/car1.jpg" || !!loadedImages[activeImage]);
+  const lightboxImages = images.map((image) =>
+    failedImages[image] ? "/hero/car1.jpg" : image,
+  );
 
   const calcDays = useCallback((data: BookingFormData) => {
     const ms =
@@ -328,58 +344,114 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
 
   const totalDays = formData ? calcDays(formData) : 0;
   const totalPrice = totalDays * car.price;
+  const formattedType =
+    car.type === "ssuv"
+      ? "Luxury SUV"
+      : car.type
+        ? car.type.charAt(0).toUpperCase() + car.type.slice(1)
+        : "Premium vehicle";
 
   return (
-    <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
-      <Link
-        href="/cars"
-        className="inline-flex items-center gap-1.5 text-sm text-accent hover:text-accent/80 mb-8 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Cars
-      </Link>
+    <div className="relative min-h-screen overflow-hidden bg-background pb-20">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] bg-[radial-gradient(ellipse_at_top,rgba(236,173,110,0.12),transparent_65%)]" />
+      <div className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+        <Link
+          href="/cars"
+          className="mb-7 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-4 py-2 text-xs font-semibold text-muted-foreground backdrop-blur transition-colors hover:border-accent/40 hover:text-accent"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to fleet
+        </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
-        {/* Left Image View Column */}
-        <div className="lg:col-span-2">
+        <header className="mb-8 flex flex-col gap-5 md:mb-10 md:flex-row md:items-end md:justify-between">
+          <div>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-accent">
+                {formattedType}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+                  car.available
+                    ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-500"
+                    : "border-destructive/25 bg-destructive/10 text-destructive"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    car.available ? "bg-emerald-500" : "bg-destructive"
+                  }`}
+                />
+                {car.available ? "Available to book" : "Currently reserved"}
+              </span>
+            </div>
+            <h1 className="font-display text-4xl font-medium leading-[0.95] tracking-[-0.04em] text-foreground sm:text-5xl md:text-6xl">
+              {car.name}
+              <span className="mt-1 block text-accent">{car.model}</span>
+            </h1>
+          </div>
+          <p className="max-w-sm text-sm leading-relaxed text-muted-foreground md:text-right">
+            A considered choice for the journeys that matter. Explore the details
+            and reserve your dates.
+          </p>
+        </header>
+
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(350px,0.75fr)] lg:gap-8">
+          <div className="min-w-0">
           {activeImage ? (
             <button
               type="button"
               onClick={() => activeLoaded && setLightboxOpen(true)}
               aria-label="Expand image"
-              className="group relative block w-full aspect-video h-[450px] bg-muted rounded-xl overflow-hidden mb-4 cursor-zoom-in text-left"
+              className="group relative block h-[340px] w-full cursor-zoom-in overflow-hidden rounded-[28px] border border-white/10 bg-muted text-left shadow-[0_30px_90px_rgba(0,0,0,0.22)] sm:h-[480px] lg:h-[560px]"
             >
               {activeLoaded && (
                 <Image
                   src={activeImage}
                   alt={car.name}
                   fill
-                  className="object-cover"
+                  className="object-cover transition-transform duration-700 group-hover:scale-[1.025]"
                   priority
                   sizes="(max-width: 1024px) 100vw, 66vw"
+                  onError={() => {
+                    if (sourceImage) {
+                      setFailedImages((prev) => ({
+                        ...prev,
+                        [sourceImage]: true,
+                      }));
+                    }
+                  }}
                 />
               )}
 
               {!activeLoaded && (
-                <div className="absolute inset-0 z-20 animate-pulse bg-muted" />
+                <div className="absolute inset-0 z-20 flex animate-pulse items-center justify-center bg-muted">
+                  <span className="rounded-full border border-border/70 bg-background/80 px-4 py-2 text-xs font-medium text-muted-foreground">
+                    Loading vehicle image…
+                  </span>
+                </div>
               )}
 
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10" />
+              <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-md sm:left-6 sm:top-6">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                {car.year} · {formattedType}
+              </div>
               {activeLoaded && (
-                <span className="absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/90 text-foreground text-xs font-semibold shadow-md">
-                  <Maximize2 className="w-3.5 h-3.5" /> Expand
+                <span className="absolute bottom-4 right-4 z-20 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/35 px-4 py-2.5 text-xs font-semibold text-white shadow-lg backdrop-blur-md transition-colors group-hover:bg-accent group-hover:text-accent-foreground sm:bottom-6 sm:right-6">
+                  <Maximize2 className="h-3.5 w-3.5" /> View gallery
                 </span>
               )}
 
               {!car.available && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
-                  <span className="text-white text-xl font-semibold">
-                    Not Available
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/45 backdrop-blur-[2px]">
+                  <span className="rounded-full border border-white/20 bg-black/40 px-5 py-2.5 text-sm font-bold uppercase tracking-[0.16em] text-white backdrop-blur">
+                    Currently reserved
                   </span>
                 </div>
               )}
             </button>
           ) : (
-            <div className="h-[450px] bg-muted rounded-xl mb-4 flex items-center justify-center">
+            <div className="flex h-[340px] items-center justify-center rounded-[28px] border border-border/70 bg-card sm:h-[480px] lg:h-[560px]">
               <p className="text-muted-foreground text-sm">
                 No image available
               </p>
@@ -387,16 +459,17 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
           )}
 
           {images.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto py-2 scroll-smooth snap-x">
+            <div className="mt-3 flex gap-3 overflow-x-auto py-2 scroll-smooth snap-x">
               {images.map((image, idx) => {
-                const loaded = !!loadedImages[image];
+                const failed = !!failedImages[image];
+                const loaded = failed || !!loadedImages[image];
 
                 if (!loaded) {
                   return (
                     <div
                       key={idx}
                       aria-hidden="true"
-                      className="relative h-20 w-20 shrink-0 snap-start rounded-md overflow-hidden border-2 border-border animate-pulse bg-muted"
+                      className="relative h-20 w-28 shrink-0 snap-start overflow-hidden rounded-xl border border-border animate-pulse bg-muted sm:h-24 sm:w-36"
                     />
                   );
                 }
@@ -405,16 +478,21 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
-                    className={`relative h-20 w-20 shrink-0 snap-start rounded-md overflow-hidden border-2 transition-colors ${
-                      selectedImage === idx ? "border-accent" : "border-border"
+                    className={`relative h-20 w-28 shrink-0 snap-start overflow-hidden rounded-xl border-2 transition-all sm:h-24 sm:w-36 ${
+                      selectedImage === idx
+                        ? "border-accent shadow-lg shadow-accent/15"
+                        : "border-border/70 opacity-75 hover:border-accent/50 hover:opacity-100"
                     }`}
                   >
                     <Image
-                      src={image}
+                      src={failed ? "/hero/car1.jpg" : image}
                       alt={`${car.name} ${idx + 1}`}
                       fill
                       className="object-cover"
                       sizes="80px"
+                      onError={() =>
+                        setFailedImages((prev) => ({ ...prev, [image]: true }))
+                      }
                     />
                   </button>
                 );
@@ -422,131 +500,152 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
             </div>
           )}
 
-          <div className="mt-12 space-y-8">
-            <div>
-              <h2 className="text-2xl font-bold text-foreground mb-4">
-                About This Vehicle
-              </h2>
-              <p className="text-muted-foreground leading-relaxed">
-                {car.description ?? "No description available."}
-              </p>
-            </div>
-
+          <div className="mt-8 border-t border-border/70 pt-7 sm:mt-10 sm:pt-8">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
+              About the vehicle
+            </p>
+            <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
+              {car.description ?? "No description available."}
+            </p>
             {features.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-foreground mb-4">
-                  Features
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {features.map((feature, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-2 text-sm text-foreground"
-                    >
-                      <CheckCircle className="w-4 h-4 text-accent shrink-0" />
-                      <span>{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2.5">
+                {features.map((feature, i) => (
+                  <li
+                    key={`${feature}-${i}`}
+                    className="inline-flex items-center gap-2 text-xs font-medium text-foreground/80 sm:text-sm"
+                  >
+                    <CheckCircle className="h-3.5 w-3.5 shrink-0 text-accent" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>
 
-        {/* Right Info Specs Column */}
-        <div className="lg:col-span-1">
-          <Card className="p-6 sticky top-24 border-border shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-foreground">{car.name}</h2>
-              <p className="text-sm text-muted-foreground">{car.model}</p>
-            </div>
-
-            <div className="space-y-3 mb-6 pb-6 border-b border-border text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Seats</span>
-                <span className="font-medium text-foreground flex items-center gap-1">
-                  <Users className="w-4 h-4 text-accent" /> {car.seats}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Transmission</span>
-                <span className="font-medium text-foreground capitalize">
-                  {car.transmission}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Fuel</span>
-                <span className="font-medium text-foreground flex items-center gap-1 capitalize">
-                  {car.fuel === "electric" || car.fuel === "hybrid" ? (
-                    <Zap className="w-4 h-4 text-accent" />
-                  ) : (
-                    <Fuel className="w-4 h-4 text-accent" />
-                  )}
-                  {car.fuel}
-                </span>
-              </div>
-            </div>
-
-            <div className="mb-6 pb-6 border-b border-border">
-              <p className="text-xs text-muted-foreground mb-1">
-                Price per day
+        <aside className="lg:sticky lg:top-24">
+          <Card className="overflow-hidden rounded-[28px] border-border/70 bg-card/90 p-0 shadow-[0_28px_75px_rgba(0,0,0,0.18)] backdrop-blur-xl">
+            <div className="border-b border-border/70 p-5 sm:p-7">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
+                Vehicle details
               </p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-accent">
-                  Ksh {car.price.toLocaleString()}
-                </span>
-                <span className="text-muted-foreground text-sm">/day</span>
+              <h2 className="font-display text-3xl font-medium leading-none text-foreground">
+                At a glance
+              </h2>
+              <div className="mt-5 grid grid-cols-2 gap-2.5">
+                {[
+                  { icon: Users, label: "Seats", value: String(car.seats) },
+                  {
+                    icon: Settings2,
+                    label: "Transmission",
+                    value: car.transmission,
+                  },
+                  {
+                    icon:
+                      car.fuel === "electric" || car.fuel === "hybrid"
+                        ? Zap
+                        : Fuel,
+                    label: "Fuel",
+                    value: car.fuel,
+                  },
+                  { icon: Clock, label: "Year", value: String(car.year) },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div
+                    key={label}
+                    className="rounded-2xl border border-border/60 bg-background/45 p-3.5"
+                  >
+                    <Icon className="mb-3 h-4 w-4 text-accent" />
+                    <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                      {label}
+                    </p>
+                    <p className="mt-1 truncate text-sm font-semibold capitalize text-foreground">
+                      {value}
+                    </p>
+                  </div>
+                ))}
               </div>
               {car.chauffeured && (
-                <div className="flex items-center gap-1.5 mt-2 text-sm font-medium text-accent">
-                  <UserCheck className="w-4 h-4" />
-                  <span>Price is inclusive of driver</span>
+                <div className="mt-3 flex items-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-3.5 py-3 text-xs font-semibold text-accent">
+                  <UserCheck className="h-4 w-4 shrink-0" />
+                  Chauffeur included in the daily rate
                 </div>
               )}
             </div>
 
-            <div className="space-y-3">
+            <div className="p-5 sm:p-7">
+              <div className="mb-5">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                  Daily hire from
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+                    KSh {car.price.toLocaleString("en-KE")}
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    / day
+                  </span>
+                </div>
+              </div>
+              <div className="mb-5 flex items-center gap-2 border-y border-border/70 py-3 text-xs text-muted-foreground">
+                <Shield className="h-4 w-4 shrink-0 text-accent" />
+                Flexible booking with personal support
+              </div>
+              <div className="space-y-3">
               {car.available ? (
                 <div className="flex flex-col gap-3">
                   <Button
                     onClick={() => openBookingModal("pay_now")}
-                    className="w-full bg-accent hover:bg-accent/90 text-accent-foreground flex items-center justify-center gap-2"
+                    className="h-12 w-full rounded-full bg-accent font-bold text-accent-foreground shadow-lg shadow-accent/15 transition-all hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-accent/25"
                   >
-                    <CreditCard className="w-4 h-4" /> Book & Pay Now
+                    <CreditCard className="h-4 w-4" /> Reserve this vehicle
                   </Button>
                   <Button
                     onClick={() => openBookingModal("pay_later")}
                     variant="outline"
-                    className="w-full border-accent/40 text-accent hover:bg-accent/10 flex items-center justify-center gap-2"
+                    className="h-12 w-full rounded-full border-border/80 bg-background/40 font-semibold text-foreground hover:border-accent/40 hover:bg-accent/10 hover:text-accent"
                   >
-                    <Clock className="w-4 h-4" /> Book & Pay Later
+                    <Clock className="h-4 w-4" /> Book & pay in person
                   </Button>
                 </div>
               ) : (
                 <Button
                   onClick={handleWhatsAppInquiry}
                   variant="outline"
-                  className="w-full border-accent/40 text-accent hover:bg-accent/10 gap-2"
+                  className="h-12 w-full rounded-full border-accent/40 text-accent hover:bg-accent/10"
                 >
-                  <MessageCircle className="w-4 h-4" /> Join Waitlist via
-                  WhatsApp
+                  <MessageCircle className="h-4 w-4" /> Ask about availability
                 </Button>
               )}
+              </div>
             </div>
           </Card>
+        </aside>
         </div>
-      </div>
 
-      <div className="border-t border-border pt-16">
-        <h3 className="text-2xl font-bold text-foreground mb-8">
-          Similar Vehicles You Might Like
-        </h3>
-        <RelatedCars carId={car.id} type={car.type} />
+        <section className="mt-16 border-t border-border/70 pt-10 sm:mt-20 sm:pt-14">
+          <div className="mb-8 flex items-end justify-between gap-5">
+            <div>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
+                Keep exploring
+              </p>
+              <h2 className="font-display text-3xl font-medium text-foreground sm:text-4xl">
+                Similar vehicles
+              </h2>
+            </div>
+            <Link
+              href="/cars"
+              className="hidden items-center gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-accent sm:inline-flex"
+            >
+              View full fleet <ArrowLeft className="h-4 w-4 rotate-180" />
+            </Link>
+          </div>
+          <RelatedCars carId={car.id} type={car.type} />
+        </section>
       </div>
 
       {lightboxOpen && activeImage && (
         <ImageLightbox
-          images={images}
+          images={lightboxImages}
           alt={car.name}
           index={selectedImage}
           onIndexChange={setSelectedImage}
