@@ -88,13 +88,21 @@ function usePagination<T>(items: T[], pageSize: number) {
   return { paged, page: safePage, totalPages, setPage };
 }
 
+interface PaginationProps {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  totalItems: number;
+  pageSize: number;
+}
+
 function Pagination({
   page,
   totalPages,
   onPageChange,
   totalItems,
   pageSize,
-}: any) {
+}: PaginationProps) {
   if (totalPages <= 1) return null;
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, totalItems);
@@ -400,7 +408,9 @@ export function AdminDashboardClient({
             )}
           </div>
           <Pagination
-            {...fleetPagination}
+            page={fleetPagination.page}
+            totalPages={fleetPagination.totalPages}
+            onPageChange={fleetPagination.setPage}
             totalItems={cars.length}
             pageSize={6}
           />
@@ -474,7 +484,9 @@ export function AdminDashboardClient({
             </div>
           </div>
           <Pagination
-            {...profilesPagination}
+            page={profilesPagination.page}
+            totalPages={profilesPagination.totalPages}
+            onPageChange={profilesPagination.setPage}
             totalItems={profiles.length}
             pageSize={6}
           />
