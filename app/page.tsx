@@ -137,34 +137,41 @@ export default function HomePage() {
 
       <section className="py-20 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <SectionEyebrow>Why Cosmara</SectionEyebrow>
-            <h2 className="font-display text-4xl md:text-6xl font-medium text-foreground tracking-[-0.04em] mb-4">
-              Luxury without the friction
-            </h2>
-            <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-              We’ve stripped away the stress so every reservation feels effortless,
-              personal, and premium from start to finish.
-            </p>
-          </div>
+          <div className="grid items-end gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
+            <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:text-left">
+              <SectionEyebrow>Why Cosmara</SectionEyebrow>
+              <h2 className="mb-4 font-display text-4xl font-medium tracking-[-0.04em] text-foreground md:text-6xl">
+                Luxury without the friction
+              </h2>
+              <p className="text-base leading-relaxed text-muted-foreground md:text-lg">
+                We’ve stripped away the stress so every reservation feels
+                effortless, personal, and premium from start to finish.
+              </p>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {FEATURES.map(({ icon: Icon, title, desc }) => (
-              <div
-                key={title}
-                className="group rounded-[28px] border border-white/10 bg-card/70 p-7 shadow-[0_24px_60px_rgba(0,0,0,0.18)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-accent/40"
-              >
-                <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/12 ring-1 ring-inset ring-accent/20 transition-transform duration-300 group-hover:scale-105">
-                  <Icon className="h-5 w-5 text-accent" />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {FEATURES.map(({ icon: Icon, title, desc }, index) => (
+                <div
+                  key={title}
+                  className={`group relative overflow-hidden rounded-[26px] border border-border/70 bg-card/75 p-6 shadow-[0_20px_55px_rgba(0,0,0,0.14)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:bg-card ${
+                    index % 2 === 1 ? "sm:translate-y-6" : ""
+                  }`}
+                >
+                  <span className="pointer-events-none absolute -right-2 -top-8 font-display text-8xl leading-none text-foreground/[0.035] transition-colors group-hover:text-accent/10">
+                    0{index + 1}
+                  </span>
+                  <div className="relative mb-7 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 ring-1 ring-inset ring-accent/20 transition-all duration-300 group-hover:bg-accent">
+                    <Icon className="h-5 w-5 text-accent transition-colors group-hover:text-accent-foreground" />
+                  </div>
+                  <h3 className="relative mb-2 font-display text-2xl leading-none text-foreground">
+                    {title}
+                  </h3>
+                  <p className="relative text-sm leading-relaxed text-muted-foreground">
+                    {desc}
+                  </p>
                 </div>
-                <h3 className="mb-3 font-display text-2xl text-foreground leading-none">
-                  {title}
-                </h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {desc}
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
