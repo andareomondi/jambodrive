@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ initialUser, initialRole }: NavbarProps) {
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(initialUser);
   const [role, setRole] = useState<string | null>(initialRole);
   const [isOpen, setIsOpen] = useState(false);
@@ -174,6 +176,12 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
   }, []);
 
   const isLoggedIn = useMemo(() => !!user, [user]);
+  const isHomePage = pathname === "/";
+  const heroOverlay = isHomePage && !scrolled;
+  const desktopNavLinkClass = cn(
+    "rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+    heroOverlay && "text-white/90 hover:bg-white/10 hover:text-white",
+  );
 
   const handleServiceClick = useCallback(
     (
@@ -195,10 +203,17 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
   return (
     <nav
       className={cn(
-        "sticky top-0 z-50 border-b backdrop-blur-xl transition-all duration-300",
-        scrolled
-          ? "border-border/80 bg-background/90 shadow-lg shadow-black/10"
-          : "border-white/10 bg-background/65 shadow-sm shadow-black/5",
+        "left-0 right-0 z-50 border-b backdrop-blur-xl transition-all duration-300",
+        isHomePage
+          ? scrolled
+            ? "fixed top-0 border-border/80 bg-background/85 shadow-lg shadow-black/10"
+            : "absolute top-0 border-transparent bg-transparent shadow-none backdrop-blur-none"
+          : cn(
+              "sticky top-0",
+              scrolled
+                ? "border-border/80 bg-background/90 shadow-lg shadow-black/10"
+                : "border-border/70 bg-background/85 shadow-sm shadow-black/5",
+            ),
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -217,7 +232,12 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               className="rounded-full ring-1 ring-white/15"
               priority
             />
-            <span className="text-lg font-extrabold tracking-[-0.04em] text-foreground sm:text-xl">
+            <span
+              className={cn(
+                "text-lg font-extrabold tracking-[-0.04em] text-foreground sm:text-xl",
+                heroOverlay && "text-white",
+              )}
+            >
               Cosmara
             </span>
           </Link>
@@ -226,7 +246,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
           <div className="hidden lg:flex items-center gap-1">
             <Link
               href="/"
-              className="group relative rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className={desktopNavLinkClass}
             >
               Home
             </Link>
@@ -238,7 +258,10 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               onMouseLeave={() => setIsFleetOpen(false)}
             >
               <button
-                className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                  heroOverlay && "text-white/90 hover:bg-white/10 hover:text-white",
+                )}
                 onClick={() => setIsFleetOpen((v) => !v)}
                 aria-expanded={isFleetOpen}
                 aria-haspopup="true"
@@ -269,7 +292,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             </div>
             <Link
               href="/cars"
-              className="rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className={desktopNavLinkClass}
             >
               Browse All
             </Link>
@@ -277,7 +300,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               <Link
                 href="/dashboard/admin"
                 prefetch={false}
-                className="rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className={desktopNavLinkClass}
               >
                 Admin
               </Link>
@@ -286,20 +309,20 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               <Link
                 href="/dashboard/facilitator"
                 prefetch={false}
-                className="rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className={desktopNavLinkClass}
               >
                 Facilitator
               </Link>
             )}
             <Link
               href="/gallery"
-              className="rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className={desktopNavLinkClass}
             >
               Gallery
             </Link>
             <Link
               href="/contact"
-              className="rounded-full px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className={desktopNavLinkClass}
             >
               Contact
             </Link>
@@ -313,7 +336,10 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                   variant="ghost"
                   size="sm"
                   asChild
-                  className="rounded-full px-4 font-semibold text-foreground/80 hover:bg-white/8 hover:text-foreground"
+                  className={cn(
+                    "rounded-full px-4 font-semibold text-foreground/80 hover:bg-white/8 hover:text-foreground",
+                    heroOverlay && "text-white/90 hover:bg-white/10 hover:text-white",
+                  )}
                 >
                   <Link href="/dashboard" prefetch={false}>
                     Profile
@@ -323,7 +349,10 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                   size="sm"
                   variant="ghost"
                   onClick={handleLogout}
-                  className="rounded-full px-4 font-semibold text-foreground/80 hover:bg-white/8 hover:text-foreground"
+                  className={cn(
+                    "rounded-full px-4 font-semibold text-foreground/80 hover:bg-white/8 hover:text-foreground",
+                    heroOverlay && "text-white/90 hover:bg-white/10 hover:text-white",
+                  )}
                 >
                   Log Out
                 </Button>
@@ -333,7 +362,10 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 variant="ghost"
                 size="sm"
                 asChild
-                className="rounded-full px-4 font-semibold text-foreground/80 hover:bg-white/8 hover:text-foreground"
+                className={cn(
+                  "rounded-full px-4 font-semibold text-foreground/80 hover:bg-white/8 hover:text-foreground",
+                  heroOverlay && "text-white/90 hover:bg-white/10 hover:text-white",
+                )}
               >
                 <Link href="/auth/login" prefetch={false}>
                   Sign In

@@ -45,7 +45,7 @@ export function HeroCarousel() {
   };
 
   return (
-    <section className="relative min-h-[85vh] flex items-center overflow-hidden bg-[hsl(80_14%_8%)]">
+    <section className="relative flex min-h-[100svh] w-full items-center overflow-hidden bg-[hsl(80_14%_8%)]">
       <div className="absolute inset-0 z-0">
         {HERO_IMAGES.map((img, i) => (
           <div
