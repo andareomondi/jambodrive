@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Premium Car Rentals | Drive Your Dream Car Today",
     description: "Experience luxury and performance with our exclusive fleet.",
-    images: ["/hero/car1.jpg"],
+    images: ["/hero/car1.webp"],
   },
 };
 

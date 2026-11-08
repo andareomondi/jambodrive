@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
-import Image from "next/image";
+import { AppImage } from "@/components/ui/app-image";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ImageLightboxProps {
@@ -113,7 +113,7 @@ export function ImageLightbox({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <Image
+        <AppImage
           src={images[index]}
           alt={alt}
           fill

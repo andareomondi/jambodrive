@@ -15,10 +15,46 @@ function validateFile(file: File): void {
   }
 }
 
-function buildPath(file: File): string {
-  // Sanitise filename — strip spaces and special chars
+function buildPath(file: File, folder: "cars" | "events"): string {
   const sanitised = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-  return `cars/${Date.now()}-${sanitised}`;
+  return `${folder}/${Date.now()}-${sanitised}`;
+}
+
+async function optimizeImage(file: File): Promise<File> {
+  if (
+    file.type === "image/gif" ||
+    file.size < 350 * 1024 ||
+    typeof createImageBitmap === "undefined"
+  ) {
+    return file;
+  }
+
+  const bitmap = await createImageBitmap(file);
+  try {
+    const scale = Math.min(1, 1920 / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.type === "image/webp") return file;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Could not prepare the image for upload.");
+
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/webp", 0.82),
+    );
+    if (!blob) throw new Error("Could not encode the image for upload.");
+    if (blob.size >= file.size) return file;
+
+    const name = file.name.replace(/\.[^.]+$/, "") || "image";
+    return new File([blob], `${name}.webp`, {
+      type: "image/webp",
+      lastModified: file.lastModified,
+    });
+  } finally {
+    bitmap.close();
+  }
 }
 
 // ── Single upload ──────────────────────────────────────────────────────────────
@@ -26,12 +62,16 @@ function buildPath(file: File): string {
 export async function uploadCarImage(file: File): Promise<string> {
   validateFile(file);
 
+  const optimizedFile = await optimizeImage(file);
   const supabase = createClient();
-  const path = buildPath(file);
+  const path = buildPath(optimizedFile, "cars");
 
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, file, { upsert: false });
+    .upload(path, optimizedFile, {
+      upsert: false,
+      cacheControl: "31536000",
+    });
 
   if (error) throw new Error(`Upload failed: ${error.message}`);
 
@@ -45,9 +85,14 @@ export async function uploadCarImages(files: File[]): Promise<string[]> {
   // Validate all files before touching the network
   files.forEach(validateFile);
 
-  const results = await Promise.allSettled(
-    files.map((file) => uploadCarImage(file)),
-  );
+  const results: PromiseSettledResult<string>[] = [];
+  for (let i = 0; i < files.length; i += 2) {
+    results.push(
+      ...(await Promise.allSettled(
+        files.slice(i, i + 2).map((file) => uploadCarImage(file)),
+      )),
+    );
+  }
 
   const urls: string[] = [];
   const errors: string[] = [];
@@ -76,13 +121,16 @@ export async function uploadCarImages(files: File[]): Promise<string[]> {
 export async function uploadEventImage(file: File): Promise<string> {
   validateFile(file);
 
+  const optimizedFile = await optimizeImage(file);
   const supabase = createClient();
-  const sanitised = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-  const path = `events/${Date.now()}-${sanitised}`;
+  const path = buildPath(optimizedFile, "events");
 
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, file, { upsert: false });
+    .upload(path, optimizedFile, {
+      upsert: false,
+      cacheControl: "31536000",
+    });
 
   if (error) throw new Error(`Upload failed: ${error.message}`);
 

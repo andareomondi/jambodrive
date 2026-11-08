@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import { AppImage } from "@/components/ui/app-image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EventImageModal } from "@/components/admin/event-image-modal";
@@ -91,7 +91,7 @@ export function AdminGallerySection({
               >
                 {/* Image */}
                 <div className="relative aspect-[4/3]">
-                  <Image
+                  <AppImage
                     src={event.image_url}
                     alt={event.title}
                     fill

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { AppImage } from "@/components/ui/app-image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -224,7 +224,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             onClick={closeAll}
             className="group flex shrink-0 items-center gap-3 rounded-full pr-3 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <Image
+            <AppImage
               src="/logo.ico"
               alt="Cosmara Logo"
               width={38}

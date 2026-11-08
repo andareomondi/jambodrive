@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     title: "Gallery | Cosmara Car Hire",
     description: "Fleet photos and event highlights from Cosmara.",
     type: "website",
-    images: ["/hero/car1.jpg"],
+    images: ["/hero/car1.webp"],
   },
 };
 

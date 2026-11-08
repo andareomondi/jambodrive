@@ -7,7 +7,7 @@ import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";
 import * as Switch from "@radix-ui/react-switch";
-import NextImage from "next/image"; // ⚡ Aliased to prevent global constructor conflicts
+import { AppImage } from "@/components/ui/app-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -511,7 +511,7 @@ export function CarModal({
                         key={url}
                         className="relative aspect-square rounded-xl overflow-hidden border border-border group bg-muted"
                       >
-                        <NextImage
+                        <AppImage
                           src={url}
                           alt="Car gallery item"
                           fill

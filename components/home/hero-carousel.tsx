@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import Image from "next/image";
+import { AppImage } from "@/components/ui/app-image";
 import { HeroBookingForm } from "@/components/booking/hero-booking-form";
 
 const HERO_IMAGES = [
-  { src: "/hero/car1.jpg", alt: "Premium sedan on Nairobi roads" },
-  { src: "/hero/car2.jpg", alt: "SUV at sunset in Kenya" },
-  { src: "/hero/car3.jpg", alt: "Luxury sports car" },
-  { src: "/hero/car4.jpg", alt: "Finest cars in the market" },
+  { src: "/hero/car1.webp", alt: "Premium sedan on Nairobi roads" },
+  { src: "/hero/car2.webp", alt: "SUV at sunset in Kenya" },
+  { src: "/hero/car3.webp", alt: "Luxury sports car" },
+  { src: "/hero/car4.webp", alt: "Finest cars in the market" },
 ] as const;
 
 const SLIDE_DURATION = 6000;
@@ -47,27 +47,32 @@ export function HeroCarousel() {
   return (
     <section className="relative flex min-h-[100svh] w-full items-center overflow-hidden bg-[hsl(80_14%_8%)]">
       <div className="absolute inset-0 z-0">
-        {HERO_IMAGES.map((img, i) => (
-          <div
-            key={img.src}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-              i === current ? "opacity-100 z-10" : "opacity-0 z-0"
-            }`}
-          >
-            <Image
-              src={img.src}
-              alt={img.alt}
-              fill
-              priority={i === 0}
-              loading={i === 0 ? "eager" : "lazy"}
-              className="object-cover"
-              sizes="100vw"
-              quality={80}
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[hsl(80_14%_8%/0.88)] via-[hsl(80_14%_8%/0.55)] to-[hsl(80_14%_8%/0.1)] z-10" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[hsl(80_14%_8%/0.7)] via-transparent to-transparent z-10" />
-          </div>
-        ))}
+        {HERO_IMAGES.map((img, i) => {
+          const nextIndex = (current + 1) % HERO_IMAGES.length;
+          if (i !== current && i !== nextIndex) return null;
+
+          return (
+            <div
+              key={img.src}
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                i === current ? "opacity-100 z-10" : "opacity-0 z-0"
+              }`}
+            >
+              <AppImage
+                src={img.src}
+                alt={img.alt}
+                fill
+                priority={i === 0}
+                loading={i === 0 ? "eager" : "lazy"}
+                unoptimized
+                className="object-cover"
+                sizes="100vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[hsl(80_14%_8%/0.88)] via-[hsl(80_14%_8%/0.55)] to-[hsl(80_14%_8%/0.1)] z-10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[hsl(80_14%_8%/0.7)] via-transparent to-transparent z-10" />
+            </div>
+          );
+        })}
       </div>
 
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 relative z-20 pt-20">

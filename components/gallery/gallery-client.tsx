@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useTransition } from "react";
-import Image from "next/image";
+import { AppImage } from "@/components/ui/app-image";
 import {
   X,
   ChevronLeft,
@@ -124,7 +124,7 @@ function Lightbox({
         style={{ height: "72vh" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <Image
+        <AppImage
           key={current.src}
           src={current.src}
           alt={current.alt}
@@ -211,7 +211,7 @@ function FleetMasonry({
                   className="group relative w-full aspect-square rounded-2xl overflow-hidden bg-muted focus:outline-none focus:ring-2 focus:ring-accent"
                   aria-label={`View fleet image ${globalIdx + 1}`}
                 >
-                  <Image
+                  <AppImage
                     src={src}
                     alt={`Fleet image ${globalIdx + 1}`}
                     fill
@@ -242,7 +242,7 @@ function FleetMasonry({
                 )}
                 aria-label={`View fleet image ${globalIdx + 1}`}
               >
-                <Image
+                <AppImage
                   src={src}
                   alt={`Fleet image ${globalIdx + 1}`}
                   fill
@@ -293,7 +293,7 @@ function EventsGrid({
           aria-label={`View event: ${event.title}`}
         >
           <div className="relative aspect-[16/10] w-full overflow-hidden bg-secondary/40">
-            <Image
+            <AppImage
               src={event.image_url}
               alt={event.title}
               fill

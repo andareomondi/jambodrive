@@ -1,6 +1,7 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
+import { AppImage } from "@/components/ui/app-image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -203,12 +204,14 @@ export function BookingSummaryModal({
             {/* Vehicle */}
             <Card className="p-3 md:p-4 bg-muted/40">
               <div className="flex items-center gap-3">
-                <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted shrink-0">
+                <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted shrink-0">
                   {car?.image ? (
-                    <img
+                    <AppImage
                       src={car.image}
                       alt={car.name}
-                      className="w-full h-full object-cover"
+                      fill
+                      sizes="64px"
+                      className="object-cover"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">

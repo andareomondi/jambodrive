@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { AppImage } from "@/components/ui/app-image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useEffect } from "react";
@@ -69,7 +69,7 @@ export function CarCard({ car, days, index = 3 }: CarCardProps) {
         <div>
           <div className="relative h-56 w-full bg-secondary/30 overflow-hidden">
             {car.image ? (
-              <Image
+              <AppImage
                 src={car.image}
                 alt={`${car.name} ${car.model}`}
                 fill

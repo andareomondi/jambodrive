@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import Image from "next/image";
+import { AppImage } from "@/components/ui/app-image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -51,13 +51,14 @@ const MPESA_SUPPORT_NUMBER = "254758500943";
 
 export function CarDetailsClient({ car }: CarDetailsClientProps) {
   const images = car.images ?? (car.image ? [car.image] : []);
-  const imagesKey = images.join("|");
   const features = car.features ?? [];
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
-  const [imageFallbackNotice, setImageFallbackNotice] = useState<string | null>(null);
+  const [imageFallbackNotice, setImageFallbackNotice] = useState<string | null>(
+    null,
+  );
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [bookingMode, setBookingMode] = useState<BookingMode>("pay_now");
@@ -71,55 +72,6 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabase = createClient();
 
-  // Load the first image first, then the rest in the background.
-  // Each image is marked loaded only once it has fully downloaded.
-  useEffect(() => {
-    const list = imagesKey ? imagesKey.split("|") : [];
-    if (list.length === 0) return;
-
-    let cancelled = false;
-    const preload = (src: string) =>
-      new Promise<boolean>((resolve) => {
-        const img = new window.Image();
-        img.onload = () => resolve(true);
-        img.onerror = () => resolve(false);
-        img.src = src;
-      });
-
-    const markLoaded = (src: string) => {
-      if (cancelled) return;
-      setLoadedImages((prev) => ({ ...prev, [src]: true }));
-    };
-
-    const markFailed = (src: string) => {
-      if (cancelled) return;
-      setFailedImages((prev) => ({ ...prev, [src]: true }));
-      setImageFallbackNotice(
-        "One or more vehicle images could not be loaded, so a backup image is being shown."
-      );
-    };
-
-    (async () => {
-      if (await preload(list[0])) {
-        markLoaded(list[0]);
-      } else {
-        markFailed(list[0]);
-      }
-      await Promise.all(
-        list.slice(1).map(async (src) => {
-          if (await preload(src)) {
-            markLoaded(src);
-          } else {
-            markFailed(src);
-          }
-        }),
-      );
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [imagesKey]);
 
   useEffect(() => {
     return () => {
@@ -131,12 +83,10 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
 
   const sourceImage = images[selectedImage] ?? car.image;
   const activeImage =
-    sourceImage && failedImages[sourceImage] ? "/hero/car1.jpg" : sourceImage;
-  const activeLoaded =
-    !!activeImage &&
-    (activeImage === "/hero/car1.jpg" || !!loadedImages[activeImage]);
+    sourceImage && failedImages[sourceImage] ? "/hero/car1.webp" : sourceImage;
+  const activeLoaded = !!activeImage && !!loadedImages[activeImage];
   const lightboxImages = images.map((image) =>
-    failedImages[image] ? "/hero/car1.jpg" : image,
+    failedImages[image] ? "/hero/car1.webp" : image,
   );
 
   const calcDays = useCallback((data: BookingFormData) => {
@@ -414,27 +364,29 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
               aria-label="Expand image"
               className="group relative block h-[340px] w-full cursor-zoom-in overflow-hidden rounded-[28px] border border-white/10 bg-muted text-left shadow-[0_30px_90px_rgba(0,0,0,0.22)] sm:h-[480px] lg:h-[560px]"
             >
-              {activeLoaded && (
-                <Image
-                  src={activeImage}
-                  alt={car.name}
-                  fill
-                  className="object-cover transition-transform duration-700 group-hover:scale-[1.025]"
-                  priority
-                  sizes="(max-width: 1024px) 100vw, 66vw"
-                  onError={() => {
-                    if (sourceImage) {
-                      setFailedImages((prev) => ({
-                        ...prev,
-                        [sourceImage]: true,
-                      }));
-                      setImageFallbackNotice(
-                        "This vehicle image couldn't be loaded, so the backup image is being shown."
-                      );
-                    }
-                  }}
-                />
-              )}
+              <AppImage
+                src={activeImage}
+                alt={car.name}
+                fill
+                className={`object-cover transition-transform duration-700 group-hover:scale-[1.025] ${activeLoaded ? "opacity-100" : "opacity-0"}`}
+                priority={selectedImage === 0}
+                loading={selectedImage === 0 ? "eager" : "lazy"}
+                sizes="(max-width: 1024px) 100vw, 66vw"
+                onLoad={() =>
+                  setLoadedImages((prev) => ({ ...prev, [activeImage]: true }))
+                }
+                onError={() => {
+                  if (sourceImage) {
+                    setFailedImages((prev) => ({
+                      ...prev,
+                      [sourceImage]: true,
+                    }));
+                    setImageFallbackNotice(
+                      "This vehicle image couldn't be loaded, so the backup image is being shown.",
+                    );
+                  }
+                }}
+              />
 
               {!activeLoaded && (
                 <div className="absolute inset-0 z-20 flex animate-pulse items-center justify-center bg-muted">
@@ -481,17 +433,6 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
             <div className="mt-3 flex gap-3 overflow-x-auto py-2 scroll-smooth snap-x">
               {images.map((image, idx) => {
                 const failed = !!failedImages[image];
-                const loaded = failed || !!loadedImages[image];
-
-                if (!loaded) {
-                  return (
-                    <div
-                      key={idx}
-                      aria-hidden="true"
-                      className="relative h-20 w-28 shrink-0 snap-start overflow-hidden rounded-xl border border-border animate-pulse bg-muted sm:h-24 sm:w-36"
-                    />
-                  );
-                }
 
                 return (
                   <button
@@ -503,12 +444,15 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
                         : "border-border/70 opacity-75 hover:border-accent/50 hover:opacity-100"
                     }`}
                   >
-                    <Image
-                      src={failed ? "/hero/car1.jpg" : image}
+                    <AppImage
+                      src={failed ? "/hero/car1.webp" : image}
                       alt={`${car.name} ${idx + 1}`}
                       fill
                       className="object-cover"
                       sizes="80px"
+                      onLoad={() =>
+                        setLoadedImages((prev) => ({ ...prev, [image]: true }))
+                      }
                       onError={() => {
                         setFailedImages((prev) => ({ ...prev, [image]: true }));
                         setImageFallbackNotice(

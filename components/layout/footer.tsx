@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Car, Mail, Phone, MapPin } from "lucide-react";
-import Image from "next/image";
+import { AppImage } from "@/components/ui/app-image";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 
 export function Footer() {
@@ -13,7 +13,7 @@ export function Footer() {
           {/* Company Info */}
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <Image
+              <AppImage
                 src="/logo.ico"
                 alt="Cosmara Logo"
                 width={32}

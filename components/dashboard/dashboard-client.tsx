@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { AppImage } from "@/components/ui/app-image";
 import { useState, useMemo } from "react";
 import { DepositFundsModal } from "@/components/modals/deposit-funds-modal";
 import { ManageBookingModal } from "@/components/modals/manage-booking-modal";
@@ -272,7 +272,7 @@ export function DashboardClient({
             {/* Avatar */}
             <div className="relative w-24 h-24 rounded-full ring-2 ring-border overflow-hidden shrink-0">
               {currentProfile.profile_image ? (
-                <Image
+                <AppImage
                   src={currentProfile.profile_image}
                   alt={currentProfile.full_name ?? "User avatar"}
                   fill

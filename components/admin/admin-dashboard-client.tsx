@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { AppImage } from "@/components/ui/app-image";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -351,7 +351,7 @@ export function AdminDashboardClient({
                   >
                     <div className="relative h-48 w-full bg-muted">
                       {car.image && (
-                        <Image
+                        <AppImage
                           src={car.image}
                           alt={car.name}
                           fill
@@ -423,7 +423,7 @@ export function AdminDashboardClient({
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden">
                       {u.profile_image ? (
-                        <Image
+                        <AppImage
                           src={u.profile_image}
                           alt=""
                           width={44}
