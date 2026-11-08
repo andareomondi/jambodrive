@@ -17,6 +17,7 @@ import {
   CreditCard,
   Clock,
   MessageCircle,
+  AlertTriangle,
   UserCheck,
   X,
   ArrowLeft,
@@ -56,6 +57,7 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+  const [imageFallbackNotice, setImageFallbackNotice] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [bookingMode, setBookingMode] = useState<BookingMode>("pay_now");
@@ -89,18 +91,26 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
       setLoadedImages((prev) => ({ ...prev, [src]: true }));
     };
 
+    const markFailed = (src: string) => {
+      if (cancelled) return;
+      setFailedImages((prev) => ({ ...prev, [src]: true }));
+      setImageFallbackNotice(
+        "One or more vehicle images could not be loaded, so a backup image is being shown."
+      );
+    };
+
     (async () => {
       if (await preload(list[0])) {
         markLoaded(list[0]);
       } else {
-        setFailedImages((prev) => ({ ...prev, [list[0]]: true }));
+        markFailed(list[0]);
       }
       await Promise.all(
         list.slice(1).map(async (src) => {
           if (await preload(src)) {
             markLoaded(src);
           } else {
-            setFailedImages((prev) => ({ ...prev, [src]: true }));
+            markFailed(src);
           }
         }),
       );
@@ -418,6 +428,9 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
                         ...prev,
                         [sourceImage]: true,
                       }));
+                      setImageFallbackNotice(
+                        "This vehicle image couldn't be loaded, so the backup image is being shown."
+                      );
                     }
                   }}
                 />
@@ -432,6 +445,12 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
               )}
 
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10" />
+              {imageFallbackNotice && (
+                <div className="absolute left-4 right-4 top-4 z-30 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-100 backdrop-blur-md sm:left-6 sm:right-auto sm:top-6">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {imageFallbackNotice}
+                </div>
+              )}
               <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-md sm:left-6 sm:top-6">
                 <span className="h-1.5 w-1.5 rounded-full bg-accent" />
                 {car.year} · {formattedType}
@@ -490,9 +509,12 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
                       fill
                       className="object-cover"
                       sizes="80px"
-                      onError={() =>
-                        setFailedImages((prev) => ({ ...prev, [image]: true }))
-                      }
+                      onError={() => {
+                        setFailedImages((prev) => ({ ...prev, [image]: true }));
+                        setImageFallbackNotice(
+                          "This vehicle image couldn't be loaded, so the backup image is being shown."
+                        );
+                      }}
                     />
                   </button>
                 );
