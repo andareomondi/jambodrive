@@ -23,6 +23,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { Booking } from "@/types"; // Make sure to import Booking type
+import { useMpesaStatusPolling } from "@/hooks/use-mpesa-status-polling";
 
 interface BookingFormData {
   car_id: string;
@@ -68,6 +69,8 @@ export function BookingModal({
   
   // STK Push State
   const [paymentState, setPaymentState] = useState<PaymentState>("idle");
+  const [paymentMessage, setPaymentMessage] = useState("");
+  const [paymentBookingId, setPaymentBookingId] = useState<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   const { register, handleSubmit, control, reset, watch, setValue } = useForm<BookingFormData>({
@@ -100,6 +103,8 @@ export function BookingModal({
         insurance: false,
       });
       setPaymentState("idle");
+      setPaymentMessage("");
+      setPaymentBookingId(null);
       channelRef.current?.unsubscribe();
       return;
     }
@@ -219,6 +224,7 @@ export function BookingModal({
         }
         targetBookingId = newBooking.id;
       }
+      setPaymentBookingId(targetBookingId ?? null);
 
       // 2. Listen for Daraja webhook success[cite: 3]
       const channel = supabase
@@ -234,6 +240,7 @@ export function BookingModal({
           async (payload) => {
             const updated = payload.new as Booking;
             if (updated.status === "confirmed") {
+              setPaymentMessage("");
               await supabase.from("cars").update({ available: false }).eq("id", data.car_id);
               
               setPaymentState("success");
@@ -248,6 +255,9 @@ export function BookingModal({
 
             } else if (updated.status === "failed") {
               setPaymentState("failed");
+              setPaymentMessage(
+                updated.payment_failure_reason ?? "M-Pesa could not complete the payment.",
+              );
               toast.error(updated.payment_failure_reason ?? "Payment was cancelled or failed.");
               channel.unsubscribe();
             }
@@ -270,13 +280,23 @@ export function BookingModal({
 
       const stkData = await stkResponse.json();
 
-      if (!stkResponse.ok || !stkData.success) {
+      if ((!stkResponse.ok || !stkData.success) && !stkData.paymentMayBePending) {
         channel.unsubscribe();
-        await supabase
+        const { error: failureUpdateError } = await supabase
           .from("bookings")
           .update({ status: "failed", payment_failure_reason: stkData.error })
           .eq("id", targetBookingId);
+        if (failureUpdateError) {
+          console.error("[BookingModal] Could not record rejected M-Pesa request:", failureUpdateError);
+        }
         throw new Error(stkData.error ?? "M-Pesa request failed.");
+      }
+
+      if (stkData.paymentMayBePending) {
+        setPaymentMessage(
+          stkData.error ??
+            "The payment request may have reached M-Pesa. Do not retry if approved; check the booking before sending another prompt.",
+        );
       }
 
       setPaymentState("waiting_for_pin");
@@ -285,9 +305,9 @@ export function BookingModal({
       setTimeout(() => {
         setPaymentState((current) => {
           if (current === "waiting_for_pin") {
-            channel.unsubscribe();
-            toast.error("The payment prompt timed out.");
-            return "failed";
+            setPaymentMessage(
+              "Still waiting for Safaricom. Check the phone for the prompt; if you approved it, do not retry while we verify the payment.",
+            );
           }
           return current;
         });
@@ -301,6 +321,26 @@ export function BookingModal({
       setIsLoading(false);
     }
   };
+
+  useMpesaStatusPolling(
+    "booking",
+    paymentBookingId,
+    paymentState === "waiting_for_pin",
+    async (result) => {
+      if (result.status === "confirmed") {
+        const supabase = createClient();
+        await supabase.from("cars").update({ available: false }).eq("id", watch("car_id"));
+        setPaymentState("success");
+        toast.success("M-Pesa payment confirmed.");
+        channelRef.current?.unsubscribe();
+        onSuccess();
+      } else if (result.status === "failed") {
+        setPaymentState("failed");
+        toast.error(result.reason ?? "M-Pesa could not complete the payment.");
+        channelRef.current?.unsubscribe();
+      }
+    },
+  );
 
   const selectTriggerCls =
     "flex h-11 w-full items-center justify-between rounded-xl border border-input bg-muted/40 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring";
@@ -349,6 +389,11 @@ export function BookingModal({
                      <Loader2 className="w-4 h-4 text-muted-foreground animate-spin shrink-0" />
                      <span className="text-sm text-muted-foreground">Listening for payment callback...</span>
                    </div>
+                   {paymentMessage && (
+                     <p role="status" className="text-xs text-muted-foreground">
+                       {paymentMessage}
+                     </p>
+                   )}
                  </div>
                )}
  
@@ -371,7 +416,9 @@ export function BookingModal({
                    </div>
                    <div>
                      <h2 className="text-xl font-bold text-foreground mb-2">Payment Failed</h2>
-                     <p className="text-sm text-muted-foreground">The transaction was cancelled or timed out.</p>
+                     <p role="alert" className="text-sm text-muted-foreground">
+                       {paymentMessage || "M-Pesa could not complete the payment."}
+                     </p>
                    </div>
                    <Button
                      onClick={() => setPaymentState("idle")}

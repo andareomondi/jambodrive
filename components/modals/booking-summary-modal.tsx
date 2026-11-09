@@ -139,7 +139,9 @@ export function BookingSummaryModal({
           ),
           title: "Booking Pending",
           description:
-            "Your booking request is received and is awaiting confirmation or payment processing.",
+            booking.payment_failure_reason
+              ? `Payment status needs attention: ${booking.payment_failure_reason}`
+              : "Your booking request is received and is awaiting confirmation or payment processing.",
           containerStyle: "bg-muted/40 border-border text-foreground",
         };
     }

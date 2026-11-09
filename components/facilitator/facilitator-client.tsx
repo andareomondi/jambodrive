@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import type { AirportPickup, AirportPickupStatus, Booking } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { useMpesaStatusPolling } from "@/hooks/use-mpesa-status-polling";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -170,7 +171,7 @@ function PaymentOverlay({
             <div className="bg-muted/50 rounded-xl p-4 w-full flex items-center justify-center gap-3">
               <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
               <span className="text-sm font-medium text-muted-foreground">
-                Waiting for confirmation...
+                {message || "Waiting for confirmation..."}
               </span>
             </div>
           </div>
@@ -242,6 +243,7 @@ export function FacilitatorClient({
   const channelRef = useRef<RealtimeChannel | null>(null);
   const compiledNotesRef = useRef("");
   const totalFeesRef = useRef(0);
+  const finalizedFeePaymentsRef = useRef(new Set<string>());
 
   // ── Late fee calculation (50% extra per day, exempting return day) ────────
 
@@ -474,15 +476,18 @@ ${customNotes || "None."}
             };
 
             if (updated.additional_fee_status === "confirmed") {
+              if (finalizedFeePaymentsRef.current.has(selectedBooking.id)) return;
+              finalizedFeePaymentsRef.current.add(selectedBooking.id);
               channel.unsubscribe();
               channelRef.current = null;
               try {
-                await processCarReturn(
+                const result = await processCarReturn(
                   selectedBooking.id,
                   selectedBooking.car_id!,
                   compiledNotesRef.current,
                   totalFeesRef.current,
                 );
+                if (!result.success) throw new Error(result.error);
                 setPaymentState("success");
                 setTimeout(() => {
                   setBookings((prev) =>
@@ -499,6 +504,7 @@ ${customNotes || "None."}
                 );
               }
             } else if (updated.additional_fee_status === "failed") {
+              if (finalizedFeePaymentsRef.current.has(selectedBooking.id)) return;
               channel.unsubscribe();
               channelRef.current = null;
               setPaymentState("failed");
@@ -520,10 +526,17 @@ ${customNotes || "None."}
         selectedBooking.id.slice(0, 12),
       );
 
-      if (!stkResponse.success) {
+      if (!stkResponse.success && !stkResponse.paymentMayBePending) {
         channel.unsubscribe();
         channelRef.current = null;
         throw new Error(stkResponse.error || "STK push failed.");
+      }
+
+      if (stkResponse.paymentMayBePending) {
+        setPaymentMessage(
+          stkResponse.error ??
+            "The payment request may have reached M-Pesa. Do not retry if approved; check the booking before sending another prompt.",
+        );
       }
 
       setPaymentState("waiting_for_pin");
@@ -531,12 +544,9 @@ ${customNotes || "None."}
       setTimeout(() => {
         setPaymentState((current) => {
           if (current === "waiting_for_pin") {
-            channelRef.current?.unsubscribe();
-            channelRef.current = null;
             setPaymentMessage(
-              "No response after 90 seconds. If amount was deducted, contact support.",
+              "Still waiting for M-Pesa to confirm. If the customer approved the prompt, do not send another request while we verify the payment.",
             );
-            return "failed";
           }
           return current;
         });
@@ -550,6 +560,47 @@ ${customNotes || "None."}
       );
     }
   };
+
+  useMpesaStatusPolling(
+    "facilitator",
+    selectedBooking?.id,
+    paymentState === "waiting_for_pin",
+    async (result) => {
+      if (!selectedBooking) return;
+      if (finalizedFeePaymentsRef.current.has(selectedBooking.id)) return;
+      finalizedFeePaymentsRef.current.add(selectedBooking.id);
+      channelRef.current?.unsubscribe();
+      channelRef.current = null;
+      if (result.status === "confirmed") {
+        try {
+          const returnResult = await processCarReturn(
+            selectedBooking.id,
+            selectedBooking.car_id!,
+            compiledNotesRef.current,
+            totalFeesRef.current,
+          );
+          if (!returnResult.success) throw new Error(returnResult.error);
+          setPaymentState("success");
+          setTimeout(() => {
+            setBookings((previous) =>
+              previous.filter((booking) => booking.id !== selectedBooking.id),
+            );
+            closeModal();
+          }, 2500);
+        } catch (error) {
+          setPaymentState("failed");
+          setPaymentMessage(
+            error instanceof Error
+              ? `Payment received, but the vehicle return could not be completed: ${error.message}`
+              : "Payment received, but the vehicle return could not be completed. Contact support.",
+          );
+        }
+      } else if (result.status === "failed") {
+        setPaymentState("failed");
+        setPaymentMessage(result.reason ?? "M-Pesa could not complete the payment.");
+      }
+    },
+  );
 
   // ── Render ────────────────────────────────────────────────────────────────
 

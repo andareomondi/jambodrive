@@ -44,13 +44,13 @@ async function getAccessToken(): Promise<string> {
 
 /** Formats any Kenyan phone number to 2547XXXXXXXX */
 function formatPhone(raw: string): string {
-  // Strip everything except digits
   const digits = raw.replace(/\D/g, "");
-
-  // Handle: 07..., 2547..., +2547...
-  if (digits.startsWith("254")) return digits;
-  if (digits.startsWith("0")) return `254${digits.slice(1)}`;
-  if (digits.startsWith("7") || digits.startsWith("1")) return `254${digits}`;
+  const localNumber = digits.startsWith("254")
+    ? digits.slice(3)
+    : digits.startsWith("0")
+      ? digits.slice(1)
+      : digits;
+  if (/^[17]\d{8}$/.test(localNumber)) return `254${localNumber}`;
 
   throw new Error(`Unrecognizable phone number format: ${raw}`);
 }
@@ -95,10 +95,15 @@ async function markWeddingPaymentFailed(
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone, amount, bookingId, airportPickupId, weddingEventRequestId } =
-      await req.json();
+    const body = await req.json();
+    const {
+      phone,
+      bookingId,
+      airportPickupId,
+      weddingEventRequestId,
+    } = body;
 
-    if (!phone) {
+    if (typeof phone !== "string" || !phone.trim()) {
       return NextResponse.json(
         { error: "A phone number is required." },
         { status: 400 },
@@ -109,6 +114,8 @@ export async function POST(req: NextRequest) {
     let accountReference: string;
     let transactionDesc: string;
     let weddingPaymentAttempt = 0;
+    let callbackType: "booking" | "airport" | "wedding";
+    let callbackEntityId: string;
 
     if (airportPickupId) {
       const sessionClient = await createSessionClient();
@@ -126,7 +133,7 @@ export async function POST(req: NextRequest) {
 
       const { data: pickup, error: pickupError } = await sessionClient
         .from("airport_pickups")
-        .select("id, customer_id, fare_amount, status, payment_status")
+        .select("id, customer_id, fare_amount, status, payment_status, payment_failure_reason")
         .eq("id", airportPickupId)
         .eq("customer_id", user.id)
         .single();
@@ -137,9 +144,17 @@ export async function POST(req: NextRequest) {
           { status: 404 },
         );
       }
-      if (pickup.status !== "pending_payment" || pickup.payment_status !== "pending") {
+      if (
+        pickup.status !== "pending_payment" ||
+        pickup.payment_status !== "pending" ||
+        pickup.payment_failure_reason
+      ) {
         return NextResponse.json(
-          { error: "This airport pickup is not awaiting payment." },
+          {
+            error: pickup.payment_failure_reason
+              ? "A previous payment request may still be processing. Check your M-Pesa messages or contact support before trying again."
+              : "This airport pickup is not awaiting payment.",
+          },
           { status: 409 },
         );
       }
@@ -147,6 +162,8 @@ export async function POST(req: NextRequest) {
       paymentAmount = pickup.fare_amount;
       accountReference = `Airport-${pickup.id.slice(0, 8).toUpperCase()}`;
       transactionDesc = "Airport Pickup - Cosmara";
+      callbackType = "airport";
+      callbackEntityId = pickup.id;
     } else if (weddingEventRequestId) {
       const sessionClient = await createSessionClient();
       const {
@@ -207,19 +224,88 @@ export async function POST(req: NextRequest) {
       paymentAmount = request.quote_amount;
       accountReference = `Wedding-${request.id.slice(0, 8).toUpperCase()}`;
       transactionDesc = "Wedding Transport - Cosmara";
+      callbackType = "wedding";
+      callbackEntityId = request.id;
     } else {
-      if (!bookingId || !amount || !Number.isFinite(Number(amount)) || Number(amount) < 1) {
+      if (typeof bookingId !== "string" || !bookingId) {
         return NextResponse.json(
-          { error: "phone, amount, and bookingId are required." },
+          { error: "A booking ID is required." },
           { status: 400 },
         );
       }
-      paymentAmount = Number(amount);
-      accountReference = `Booking-${String(bookingId).slice(0, 8).toUpperCase()}`;
+
+      const sessionClient = await createSessionClient();
+      const {
+        data: { user },
+        error: authError,
+      } = await sessionClient.auth.getUser();
+      if (authError || !user) {
+        return NextResponse.json(
+          { error: "Sign in to pay for this booking." },
+          { status: 401 },
+        );
+      }
+
+      const { data: booking, error: bookingError } = await sessionClient
+        .from("bookings")
+        .select("id, profile_id, status, total_price, checkout_request_id, payment_failure_reason")
+        .eq("id", bookingId)
+        .single();
+      if (bookingError || !booking) {
+        return NextResponse.json(
+          { error: "Booking could not be found." },
+          { status: 404 },
+        );
+      }
+      if (booking.profile_id !== user.id) {
+        const { data: profile, error: profileError } = await sessionClient
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+        if (profileError || profile?.role !== "super_admin") {
+          return NextResponse.json(
+            { error: "You are not authorized to collect payment for this booking." },
+            { status: 403 },
+          );
+        }
+      }
+      if (
+        booking.status !== "pending" ||
+        booking.checkout_request_id ||
+        booking.payment_failure_reason
+      ) {
+        return NextResponse.json(
+          {
+            error: booking.payment_failure_reason
+              ? "A previous payment request may still be processing. Check your M-Pesa messages or contact support before trying again."
+              : "This booking is not awaiting a new payment request.",
+          },
+          { status: 409 },
+        );
+      }
+      paymentAmount = Number(booking.total_price);
+      if (!Number.isSafeInteger(Math.ceil(paymentAmount)) || paymentAmount < 1) {
+        return NextResponse.json(
+          { error: "This booking has an invalid payment amount. Contact support." },
+          { status: 409 },
+        );
+      }
+      accountReference = `Booking-${booking.id.slice(0, 8).toUpperCase()}`;
       transactionDesc = "Car Rental Payment - Cosmara";
+      callbackType = "booking";
+      callbackEntityId = booking.id;
     }
 
-    const formattedPhone = formatPhone(String(phone));
+    let formattedPhone: string;
+    try {
+      formattedPhone = formatPhone(phone);
+    } catch {
+      return NextResponse.json(
+        { error: "Enter a valid Kenyan M-Pesa phone number." },
+        { status: 400 },
+      );
+    }
     const shortcode = process.env.MPESA_SHORTCODE!;
     const passkey = process.env.MPESA_PASSKEY!;
     const timestamp = getTimestamp();
@@ -254,11 +340,60 @@ export async function POST(req: NextRequest) {
         );
       }
       weddingPaymentAttempt = attempt;
+    } else if (airportPickupId) {
+      const { data: reservedPickup, error: reserveError } = await supabaseAdmin
+        .from("airport_pickups")
+        .update({
+          payment_failure_reason: "M-Pesa payment request is being initiated.",
+        })
+        .eq("id", airportPickupId)
+        .eq("payment_status", "pending")
+        .is("checkout_request_id", null)
+        .is("payment_failure_reason", null)
+        .select("id")
+        .maybeSingle();
+      if (reserveError || !reservedPickup) {
+        console.error("[mpesa/stkpush] Could not reserve airport payment:", reserveError);
+        return NextResponse.json(
+          { error: "Another payment request is already being processed. Check its status before trying again." },
+          { status: 409 },
+        );
+      }
+    } else {
+      const { data: reservedBooking, error: reserveError } = await supabaseAdmin
+        .from("bookings")
+        .update({
+          payment_failure_reason: "M-Pesa payment request is being initiated.",
+        })
+        .eq("id", bookingId)
+        .eq("status", "pending")
+        .is("checkout_request_id", null)
+        .is("payment_failure_reason", null)
+        .select("id")
+        .maybeSingle();
+      if (reserveError || !reservedBooking) {
+        console.error("[mpesa/stkpush] Could not reserve booking payment:", reserveError);
+        return NextResponse.json(
+          { error: "Another payment request is already being processed. Check its status before trying again." },
+          { status: 409 },
+        );
+      }
     }
 
     // ── Build callback URL ──────────────────────────────────────────────────
     // Append a secret so your callback route rejects spoofed requests.
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/mpesa/callback?key=${process.env.MPESA_CALLBACK_SECRET}`;
+    if (!process.env.NEXT_PUBLIC_APP_URL || !process.env.MPESA_CALLBACK_SECRET) {
+      throw new Error("M-Pesa callback configuration is incomplete.");
+    }
+    const callbackParams = new URLSearchParams({
+      key: process.env.MPESA_CALLBACK_SECRET,
+      type: callbackType,
+      id: callbackEntityId,
+    });
+    if (weddingPaymentAttempt > 0) {
+      callbackParams.set("attempt", String(weddingPaymentAttempt));
+    }
+    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/mpesa/callback?${callbackParams}`;
 
     // ── Fire STK Push ───────────────────────────────────────────────────────
     let stkRes: Response;
@@ -298,15 +433,35 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       const reason =
         error instanceof Error ? error.message : "Could not reach M-Pesa.";
-      if (weddingEventRequestId) {
-        await markWeddingPaymentFailed(
-          weddingEventRequestId,
-          weddingPaymentAttempt,
-          reason,
-        );
+      const trackingReason =
+        "M-Pesa did not return a confirmation that the request was rejected. The prompt may still arrive; do not retry if it does. Contact support if no prompt arrives.";
+      if (airportPickupId) {
+        const { error: updateError } = await supabaseAdmin
+          .from("airport_pickups")
+          .update({ payment_failure_reason: trackingReason })
+          .eq("id", airportPickupId)
+          .eq("payment_status", "pending");
+        if (updateError) console.error("[mpesa/stkpush] Could not record uncertain airport request:", updateError);
+      } else if (weddingEventRequestId) {
+        const { error: updateError } = await supabaseAdmin
+          .from("wedding_event_requests")
+          .update({ payment_failure_reason: trackingReason })
+          .eq("id", weddingEventRequestId)
+          .eq("payment_status", "pending");
+        if (updateError) console.error("[mpesa/stkpush] Could not record uncertain wedding request:", updateError);
+      } else {
+        const { error: updateError } = await supabaseAdmin
+          .from("bookings")
+          .update({ payment_failure_reason: trackingReason })
+          .eq("id", bookingId)
+          .eq("status", "pending");
+        if (updateError) console.error("[mpesa/stkpush] Could not record uncertain booking request:", updateError);
       }
       return NextResponse.json(
-        { error: `M-Pesa request failed: ${reason}` },
+        {
+          error: `${trackingReason} (${reason})`,
+          paymentMayBePending: true,
+        },
         { status: 502 },
       );
     }
@@ -336,9 +491,51 @@ export async function POST(req: NextRequest) {
           weddingPaymentAttempt,
           stkData.errorMessage ?? "M-Pesa request was rejected.",
         );
+      } else {
+        const { error: bookingUpdateError } = await supabaseAdmin
+          .from("bookings")
+          .update({
+            status: "failed",
+            payment_failure_reason:
+              stkData.errorMessage ?? "M-Pesa request was rejected.",
+          })
+          .eq("id", bookingId)
+          .eq("status", "pending");
+        if (bookingUpdateError) {
+          console.error("[mpesa/stkpush] Could not record rejected booking payment:", bookingUpdateError);
+        }
       }
       return NextResponse.json(
         { error: stkData.errorMessage ?? "M-Pesa request was rejected." },
+        { status: 502 },
+      );
+    }
+
+    if (!stkData.CheckoutRequestID) {
+      const reason =
+        "M-Pesa accepted the prompt but did not return a tracking reference. Do not retry if you approved it; check your M-Pesa messages or contact support.";
+      const statusUpdate = airportPickupId
+        ? await supabaseAdmin
+            .from("airport_pickups")
+            .update({ payment_failure_reason: reason })
+            .eq("id", airportPickupId)
+            .eq("payment_status", "pending")
+        : weddingEventRequestId
+          ? await supabaseAdmin
+              .from("wedding_event_requests")
+              .update({ payment_failure_reason: reason })
+              .eq("id", weddingEventRequestId)
+              .eq("payment_status", "pending")
+          : await supabaseAdmin
+              .from("bookings")
+              .update({ payment_failure_reason: reason })
+              .eq("id", bookingId)
+              .eq("status", "pending");
+      if (statusUpdate.error) {
+        console.error("[mpesa/stkpush] Could not record missing payment reference:", statusUpdate.error);
+      }
+      return NextResponse.json(
+        { error: reason, paymentMayBePending: true },
         { status: 502 },
       );
     }
@@ -349,8 +546,12 @@ export async function POST(req: NextRequest) {
     const { error: dbError } = airportPickupId
       ? await supabaseAdmin
           .from("airport_pickups")
-          .update({ checkout_request_id: stkData.CheckoutRequestID })
+          .update({
+            checkout_request_id: stkData.CheckoutRequestID,
+            payment_failure_reason: null,
+          })
           .eq("id", airportPickupId)
+          .eq("payment_status", "pending")
       : weddingEventRequestId
         ? await supabaseAdmin
             .from("wedding_event_requests")
@@ -362,20 +563,46 @@ export async function POST(req: NextRequest) {
             .eq("payment_status", "pending")
         : await supabaseAdmin
           .from("bookings")
-          .update({ checkout_request_id: stkData.CheckoutRequestID })
-          .eq("id", bookingId);
+          .update({
+            checkout_request_id: stkData.CheckoutRequestID,
+            payment_failure_reason: null,
+          })
+          .eq("id", bookingId)
+          .eq("status", "pending");
 
     if (dbError) {
       console.error(
         `Failed to persist CheckoutRequestID for ${airportPickupId ? "airport pickup" : weddingEventRequestId ? "wedding quote" : "booking"}:`,
         dbError,
       );
-      if (weddingEventRequestId) {
-        return NextResponse.json(
-          { error: "Could not safely track this payment request. Please try again." },
-          { status: 500 },
-        );
+      const reason =
+        "M-Pesa accepted the prompt, but the payment tracking details could not be saved. Do not retry if you approved it; check your M-Pesa messages or contact support.";
+      if (airportPickupId) {
+        const { error: statusError } = await supabaseAdmin
+          .from("airport_pickups")
+          .update({ payment_failure_reason: reason })
+          .eq("id", airportPickupId)
+          .eq("payment_status", "pending");
+        if (statusError) console.error("[mpesa/stkpush] Could not record tracking warning:", statusError);
+      } else if (weddingEventRequestId) {
+        const { error: statusError } = await supabaseAdmin
+          .from("wedding_event_requests")
+          .update({ payment_failure_reason: reason })
+          .eq("id", weddingEventRequestId)
+          .eq("payment_status", "pending");
+        if (statusError) console.error("[mpesa/stkpush] Could not record tracking warning:", statusError);
+      } else {
+        const { error: statusError } = await supabaseAdmin
+          .from("bookings")
+          .update({ payment_failure_reason: reason })
+          .eq("id", bookingId)
+          .eq("status", "pending");
+        if (statusError) console.error("[mpesa/stkpush] Could not record tracking warning:", statusError);
       }
+      return NextResponse.json(
+        { error: reason, paymentMayBePending: true },
+        { status: 502 },
+      );
     }
 
     return NextResponse.json({

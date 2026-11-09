@@ -71,15 +71,6 @@ export async function createAirportPickupRequest(
 
   if (authError || !user) throw new Error("Please sign in to request a pickup.");
 
-  const { data: customerProfile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  if (profileError || customerProfile?.role !== "customer") {
-    throw new Error("Airport pickup requests are available to customer accounts.");
-  }
-
   const flightNumber = input.flightNumber
     .trim()
     .toUpperCase()

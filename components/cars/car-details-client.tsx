@@ -38,6 +38,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import type { Car, RentalSearch } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { useMpesaStatusPolling } from "@/hooks/use-mpesa-status-polling";
 
 interface CarDetailsClientProps {
   car: Car;
@@ -72,6 +73,25 @@ export function CarDetailsClient({ car, rentalSearch }: CarDetailsClientProps) {
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabase = createClient();
+
+  useMpesaStatusPolling(
+    "booking",
+    createdBookingId,
+    modalStep === "waiting_pin",
+    async (result) => {
+      if (result.status === "confirmed") {
+        await supabase.from("cars").update({ available: false }).eq("id", car.id);
+        setReceiptNumber(result.receiptNumber ?? null);
+        setModalStep("success");
+        toast.success("Payment confirmed! Vehicle reserved.");
+        channelRef.current?.unsubscribe();
+      } else if (result.status === "failed") {
+        setPaymentMessage(result.reason ?? "M-Pesa could not complete the payment.");
+        setModalStep("failed");
+        channelRef.current?.unsubscribe();
+      }
+    },
+  );
 
 
   useEffect(() => {
@@ -259,25 +279,32 @@ export function CarDetailsClient({ car, rentalSearch }: CarDetailsClientProps) {
 
         const stkData = await stkResponse.json();
 
-        if (!stkResponse.ok || !stkData.success) {
+        if ((!stkResponse.ok || !stkData.success) && !stkData.paymentMayBePending) {
           channel.unsubscribe();
-          await supabase
+          const { error: failureUpdateError } = await supabase
             .from("bookings")
             .update({ status: "failed", payment_failure_reason: stkData.error })
             .eq("id", newBooking.id);
+          if (failureUpdateError) {
+            console.error("[CarDetails] Could not record rejected M-Pesa request:", failureUpdateError);
+          }
           throw new Error(stkData.error ?? "M-Pesa STK request failed.");
         }
 
+        if (stkData.paymentMayBePending) {
+          setPaymentMessage(
+            stkData.error ??
+              "The payment request may have reached M-Pesa. Do not retry if you approved it; we are checking its status.",
+          );
+        }
         setModalStep("waiting_pin");
 
         setTimeout(() => {
           setModalStep((curr) => {
             if (curr === "waiting_pin") {
-              channel.unsubscribe();
               setPaymentMessage(
-                "Payment request timed out. Please check your statements.",
+                "Still waiting for M-Pesa to confirm. Check your messages; if you approved the prompt, do not retry while we verify the payment.",
               );
-              return "failed";
             }
             return curr;
           });
@@ -829,6 +856,11 @@ export function CarDetailsClient({ car, rentalSearch }: CarDetailsClientProps) {
                       Enter M-Pesa PIN on phone{" "}
                       <strong>{formData?.phone}</strong> to authorize charge.
                     </p>
+                    {paymentMessage && (
+                      <p role="status" className="mt-2 text-xs text-muted-foreground">
+                        {paymentMessage}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

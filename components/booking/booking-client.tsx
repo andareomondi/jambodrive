@@ -22,6 +22,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import type { Car } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { useMpesaStatusPolling } from "@/hooks/use-mpesa-status-polling";
 
 type PaymentState =
   | "idle"
@@ -43,9 +44,31 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
   const [paymentState, setPaymentState] = useState<PaymentState>("idle");
   const [paymentMessage, setPaymentMessage] = useState("");
   const [paymentResult, setPaymentResult] = useState<PaymentResult>({});
+  const [paymentBookingId, setPaymentBookingId] = useState<string | null>(null);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabase = createClient();
+
+  useMpesaStatusPolling(
+    "booking",
+    paymentBookingId,
+    paymentState === "waiting_for_pin",
+    (result) => {
+      if (result.status === "confirmed") {
+        setPaymentResult({
+          receiptNumber: result.receiptNumber ?? undefined,
+          amount: result.amount ?? undefined,
+        });
+        setPaymentState("success");
+        toast.success("Payment confirmed! Your car is booked.");
+        channelRef.current?.unsubscribe();
+      } else if (result.status === "failed") {
+        setPaymentMessage(result.reason ?? "M-Pesa could not complete the payment.");
+        setPaymentState("failed");
+        channelRef.current?.unsubscribe();
+      }
+    },
+  );
 
   useEffect(() => {
     return () => {
@@ -77,6 +100,7 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
       }
 
       setBookingData(data);
+      setPaymentBookingId(null);
       setPaymentState("processing");
       setPaymentMessage("");
 
@@ -109,6 +133,7 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
       if (bookingError || !newBooking) {
         throw new Error(bookingError?.message ?? "Failed to create booking.");
       }
+      setPaymentBookingId(newBooking.id);
 
       const channel = supabase
         .channel(`booking_status_${newBooking.id}`)
@@ -214,15 +239,24 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
 
       const stkData = await stkResponse.json();
 
-      if (!stkResponse.ok || !stkData.success) {
+      if ((!stkResponse.ok || !stkData.success) && !stkData.paymentMayBePending) {
         channel.unsubscribe();
-        await supabase
+        const { error: failureUpdateError } = await supabase
           .from("bookings")
           .update({ status: "failed", payment_failure_reason: stkData.error })
           .eq("id", newBooking.id);
+        if (failureUpdateError) {
+          console.error("[BookingPage] Could not record rejected M-Pesa request:", failureUpdateError);
+        }
         throw new Error(stkData.error ?? "M-Pesa request failed.");
       }
 
+      if (stkData.paymentMayBePending) {
+        setPaymentMessage(
+          stkData.error ??
+            "The payment request may have reached M-Pesa. Do not retry if you approved the prompt; we are checking its status.",
+        );
+      }
       setPaymentState((current) =>
         current === "success" || current === "failed"
           ? current
@@ -232,11 +266,9 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
       setTimeout(() => {
         setPaymentState((current) => {
           if (current === "waiting_for_pin") {
-            channel.unsubscribe();
             setPaymentMessage(
-              "The payment is taking too long. Check your M-Pesa messages — if deducted, contact support.",
+              "Still waiting for M-Pesa to confirm. Check your messages; if you approved the prompt, do not retry while we verify the payment.",
             );
-            return "failed";
           }
           return current;
         });
@@ -384,7 +416,7 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
               <div className="bg-muted rounded-xl px-4 py-3 w-full flex items-center justify-center gap-3">
                 <Loader2 className="w-4 h-4 text-muted-foreground animate-spin shrink-0" />
                 <span className="text-sm text-muted-foreground">
-                  Waiting for your confirmation...
+                  {paymentMessage || "Waiting for your confirmation..."}
                 </span>
               </div>
 

@@ -137,7 +137,7 @@ export async function initiateFacilitatorCharge(
   phone: string,
   amount: number,
   reference: string,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; paymentMayBePending?: boolean }> {
   const supabase = await requireFacilitatorAccess();
 
   if (!bookingId || !Number.isSafeInteger(amount) || amount < 1) {
@@ -163,8 +163,13 @@ export async function initiateFacilitatorCharge(
     };
   }
 
-  const normalizedPhone = phone.replace(/\D/g, "");
-  if (!/^(?:254|0|7|1)\d{8,9}$/.test(normalizedPhone)) {
+  const digits = phone.replace(/\D/g, "");
+  const localNumber = digits.startsWith("254")
+    ? digits.slice(3)
+    : digits.startsWith("0")
+      ? digits.slice(1)
+      : digits;
+  if (!/^[17]\d{8}$/.test(localNumber)) {
     return { success: false, error: "Enter a valid customer phone number." };
   }
 
@@ -175,15 +180,49 @@ export async function initiateFacilitatorCharge(
   const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
 
   // Normalise to 254XXXXXXXXX
-  let formattedPhone = normalizedPhone;
-  if (formattedPhone.startsWith("0"))
-    formattedPhone = `254${formattedPhone.slice(1)}`;
-  else if (formattedPhone.startsWith("7") || formattedPhone.startsWith("1"))
-    formattedPhone = `254${formattedPhone}`;
+  const formattedPhone = `254${localNumber}`;
 
-  const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/mpesa/callback?key=${process.env.MPESA_CALLBACK_SECRET}`;
+  if (!process.env.NEXT_PUBLIC_APP_URL || !process.env.MPESA_CALLBACK_SECRET) {
+    return { success: false, error: "M-Pesa callback configuration is incomplete." };
+  }
 
-  const res = await fetch(`${getMpesaBaseUrl()}/mpesa/stkpush/v1/processrequest`, {
+  const { data: reservedBooking, error: reserveError } = await supabase
+    .from("bookings")
+    .update({
+      additional_fee_status: "pending",
+      additional_fee_amount: amount,
+      additional_fee_reason: null,
+      facilitator_checkout_id: null,
+    })
+    .eq("id", bookingId)
+    .eq("status", "confirmed")
+    .or("additional_fee_status.is.null,additional_fee_status.neq.pending")
+    .select("id")
+    .maybeSingle();
+
+  if (reserveError || !reservedBooking) {
+    console.error("[initiateFacilitatorCharge] Could not reserve fee payment:", reserveError);
+    return {
+      success: false,
+      error: "Another payment is already pending for this booking. Refresh and check its status.",
+    };
+  }
+
+  const callbackParams = new URLSearchParams({
+    key: process.env.MPESA_CALLBACK_SECRET,
+    type: "facilitator",
+    id: bookingId,
+  });
+  const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/mpesa/callback?${callbackParams}`;
+
+  let res: Response;
+  let data: {
+    ResponseCode?: string;
+    errorMessage?: string;
+    CheckoutRequestID?: string;
+  };
+  try {
+    res = await fetch(`${getMpesaBaseUrl()}/mpesa/stkpush/v1/processrequest`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -204,10 +243,48 @@ export async function initiateFacilitatorCharge(
     }),
   });
 
-  const data = await res.json();
+    data = await res.json();
+  } catch (error) {
+    const reason =
+      error instanceof Error ? error.message : "Could not reach M-Pesa.";
+    const { error: updateError } = await supabase
+      .from("bookings")
+      .update({
+        additional_fee_reason:
+          "M-Pesa did not confirm whether the request was accepted. Do not retry if the prompt arrives; contact support if it does not.",
+      })
+      .eq("id", bookingId)
+      .eq("additional_fee_status", "pending");
+    if (updateError) {
+      console.error("[initiateFacilitatorCharge] Could not record request failure:", updateError);
+      return {
+        success: false,
+        paymentMayBePending: true,
+        error: "M-Pesa did not confirm whether the request was accepted. Check the booking before retrying.",
+      };
+    }
+    return {
+      success: false,
+      paymentMayBePending: true,
+      error: `M-Pesa did not confirm whether the request was accepted (${reason}). Do not retry if the prompt arrives; contact support if it does not.`,
+    };
+  }
 
   if (!res.ok || data.ResponseCode !== "0") {
-    return { success: false, error: data.errorMessage || "STK Push failed" };
+    const reason = data.errorMessage || "M-Pesa rejected the payment request.";
+    const { error: updateError } = await supabase
+      .from("bookings")
+      .update({
+        additional_fee_status: "failed",
+        additional_fee_reason: reason,
+      })
+      .eq("id", bookingId)
+      .eq("additional_fee_status", "pending");
+    if (updateError) {
+      console.error("[initiateFacilitatorCharge] Could not record rejected request:", updateError);
+      return { success: false, error: "M-Pesa rejected the request and its status could not be saved. Contact support." };
+    }
+    return { success: false, error: reason };
   }
 
   // Store CheckoutRequestID so the callback handler can route to this booking
@@ -215,18 +292,42 @@ export async function initiateFacilitatorCharge(
     .from("bookings")
     .update({
       facilitator_checkout_id: data.CheckoutRequestID,
-      additional_fee_status: "pending",
     })
     .eq("id", bookingId)
     .eq("status", "confirmed")
+    .eq("additional_fee_status", "pending")
     .select("id")
     .maybeSingle();
 
-  if (dbError || !updatedBooking) {
+  if (dbError) {
     console.error("[initiateFacilitatorCharge] DB update failed:", dbError);
     return {
       success: false,
+      paymentMayBePending: true,
       error: "M-Pesa prompt was sent, but its status could not be saved. Check the booking before retrying.",
+    };
+  }
+  if (!updatedBooking) {
+    const { data: settledBooking, error: statusError } = await supabase
+      .from("bookings")
+      .select("additional_fee_status")
+      .eq("id", bookingId)
+      .single();
+    if (statusError) {
+      console.error("[initiateFacilitatorCharge] Could not verify early callback:", statusError);
+      return {
+        success: false,
+        paymentMayBePending: true,
+        error: "The payment prompt was sent. Check the booking status before retrying.",
+      };
+    }
+    if (["confirmed", "failed"].includes(settledBooking.additional_fee_status ?? "")) {
+      return { success: true };
+    }
+    return {
+      success: false,
+      paymentMayBePending: true,
+      error: "The payment prompt was sent, but its status could not be saved. Check the booking before retrying.",
     };
   }
 

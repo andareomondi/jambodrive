@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { createAirportPickupRequest } from "@/lib/actions/airport-pickups";
+import { MpesaPaymentDialog } from "@/components/booking/mpesa-payment-dialog";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { AirportPickup, AirportPickupRate } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { useMpesaStatusPolling } from "@/hooks/use-mpesa-status-polling";
 
 const SUPPORT_NUMBER = "254758500943";
 
@@ -44,10 +46,29 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
     "idle" | "processing" | "waiting" | "paid" | "failed"
   >("idle");
   const [paymentMessage, setPaymentMessage] = useState("");
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const paymentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const supabase = createClient();
   const selectedRate = rates.find((rate) => rate.id === rateId);
+
+  useMpesaStatusPolling(
+    "airport",
+    pickup?.id,
+    paymentState === "waiting",
+    (result) => {
+      if (result.status === "paid") {
+        setPaymentState("paid");
+        setPaymentMessage("Payment confirmed. Your request has been sent to our team.");
+        toast.success("Payment confirmed. Airport pickup requested.");
+        channelRef.current?.unsubscribe();
+      } else if (result.status === "failed") {
+        setPaymentState("failed");
+        setPaymentMessage(result.reason ?? "M-Pesa could not complete the payment.");
+        channelRef.current?.unsubscribe();
+      }
+    },
+  );
 
   useEffect(
     () => () => {
@@ -71,6 +92,7 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
 
     setPaymentState("processing");
     setPaymentMessage("");
+    setPaymentDialogOpen(true);
     try {
       const request = await createAirportPickupRequest({
         rateId: selectedRate.id,
@@ -114,26 +136,7 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
           },
         );
       channelRef.current = channel;
-
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(
-          () => reject(new Error("Could not establish a live payment connection.")),
-          10_000,
-        );
-        channel.subscribe((status) => {
-          if (status === "SUBSCRIBED") {
-            clearTimeout(timeout);
-            resolve();
-          } else if (
-            status === "CHANNEL_ERROR" ||
-            status === "TIMED_OUT" ||
-            status === "CLOSED"
-          ) {
-            clearTimeout(timeout);
-            reject(new Error("Could not establish a live payment connection."));
-          }
-        });
-      });
+      channel.subscribe();
 
       setPaymentState("waiting");
       setPaymentMessage("Check your phone and enter your M-Pesa PIN.");
@@ -147,22 +150,22 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
       });
       const result = await response.json();
 
-      if (!response.ok || !result.success) {
+      if ((!response.ok || !result.success) && !result.paymentMayBePending) {
         channel.unsubscribe();
         throw new Error(result.error ?? "Could not start the M-Pesa payment.");
       }
 
+      if (result.paymentMayBePending) {
+        setPaymentMessage(
+          result.error ??
+            "The payment request may have reached M-Pesa. Do not retry if you approved it; we are checking its status.",
+        );
+      }
+
       paymentTimeoutRef.current = setTimeout(() => {
-        setPaymentState((current) => {
-          if (current === "waiting") {
-            setPaymentMessage(
-              "Payment confirmation is taking longer than expected. Check your M-Pesa messages before retrying.",
-            );
-            channel.unsubscribe();
-            return "failed";
-          }
-          return current;
-        });
+        setPaymentMessage(
+          "Payment confirmation is taking longer than expected. Check your M-Pesa messages; do not retry if you approved the prompt. Contact support if it remains pending.",
+        );
       }, 90_000);
     } catch (error: unknown) {
       channelRef.current?.unsubscribe();
@@ -191,6 +194,22 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
   }
 
   return (
+    <>
+    <MpesaPaymentDialog
+      open={paymentDialogOpen}
+      state={
+        paymentState === "processing" || paymentState === "waiting"
+          ? paymentState
+          : paymentState === "paid"
+            ? "success"
+            : "failed"
+      }
+      phone={contactPhone}
+      amount={selectedRate?.fare_amount}
+      description="airport pickup"
+      message={paymentMessage}
+      onClose={() => setPaymentDialogOpen(false)}
+    />
     <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_0.72fr]">
       <div>
         <p className="mb-3 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-accent">
@@ -457,5 +476,6 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
         </Card>
       </aside>
     </div>
+    </>
   );
 }
