@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AppImage } from "@/components/ui/app-image";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { DepositFundsModal } from "@/components/modals/deposit-funds-modal";
 import { ManageBookingModal } from "@/components/modals/manage-booking-modal";
 import { BookingSummaryModal } from "@/components/modals/booking-summary-modal";
@@ -20,15 +20,22 @@ import {
   ChevronRight,
   Clock,
   User,
+  Plane,
+  Phone,
+  Users,
 } from "lucide-react";
-import type { Booking, Profile } from "@/types";
+import { createClient } from "@/lib/supabase/client";
+import type { AirportPickup, AirportPickupStatus, Booking, Profile } from "@/types";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface DashboardClientProps {
   profile: Profile;
   bookings: Booking[];
+  airportPickups: AirportPickup[];
 }
+
+const SUPPORT_NUMBER = "254758500943";
 
 const STATUS_STYLES: Record<string, string> = {
   confirmed: "bg-primary text-primary-foreground",
@@ -37,6 +44,50 @@ const STATUS_STYLES: Record<string, string> = {
   cancelled: "bg-destructive/10 text-destructive border border-destructive/20",
   failed:
     "bg-destructive/20 text-destructive-foreground border border-destructive/30", // Added
+};
+
+const BOOKING_STATUS_LABELS: Record<string, string> = {
+  confirmed: "Confirmed",
+  pending: "Awaiting payment",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  failed: "Payment failed",
+};
+
+const AIRPORT_STATUS_LABELS: Record<AirportPickupStatus, string> = {
+  pending_payment: "Awaiting payment",
+  payment_failed: "Payment failed",
+  requested: "Paid · awaiting confirmation",
+  accepted: "Accepted",
+  in_progress: "In progress",
+  completed: "Completed",
+  rejected: "Needs follow-up",
+  cancelled: "Cancelled",
+};
+
+const AIRPORT_STATUS_DESCRIPTIONS: Record<AirportPickupStatus, string> = {
+  pending_payment:
+    "Payment confirmation is still pending. Check your M-Pesa messages or contact support before submitting again.",
+  payment_failed:
+    "Payment did not complete. If money was deducted, contact support before trying again.",
+  requested: "Payment is confirmed. Our team will review and confirm the transfer.",
+  accepted: "Our team accepted the request and is arranging your transfer.",
+  in_progress: "Your airport transfer is underway.",
+  completed: "This transfer has been completed.",
+  rejected:
+    "Our team could not accept this request. Contact support to discuss next steps.",
+  cancelled: "This transfer was cancelled. Contact support if you need help.",
+};
+
+const AIRPORT_STATUS_STYLES: Record<AirportPickupStatus, string> = {
+  pending_payment: "bg-muted text-muted-foreground border border-border",
+  payment_failed: "bg-destructive/10 text-destructive border border-destructive/20",
+  requested: "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
+  accepted: "bg-primary text-primary-foreground",
+  in_progress: "bg-sky-500/10 text-sky-800 dark:text-sky-300 border border-sky-500/20",
+  completed: "bg-accent text-accent-foreground",
+  rejected: "bg-destructive/10 text-destructive border border-destructive/20",
+  cancelled: "bg-muted text-muted-foreground border border-border",
 };
 
 function formatDateRange(pickup: string, returnDate: string) {
@@ -91,8 +142,8 @@ function ActiveBookingCard({
               Ref: {booking.id.split("-")[0]}
             </p>
           </div>
-          <Badge className={`capitalize text-xs ${STATUS_STYLES[status]}`}>
-            {status}
+          <Badge className={`text-xs ${STATUS_STYLES[status]}`} aria-label={`Booking status: ${BOOKING_STATUS_LABELS[status] ?? status}`}>
+            {BOOKING_STATUS_LABELS[status] ?? status}
           </Badge>
         </div>
 
@@ -122,6 +173,11 @@ function ActiveBookingCard({
               Ksh {booking.total_price.toLocaleString()}
             </span>
           </div>
+          <p className="text-xs leading-5 text-muted-foreground" role="status">
+            {status === "pending"
+              ? "We are waiting for M-Pesa payment confirmation. Your booking is not confirmed yet."
+              : "Your rental is confirmed. Use Manage to review or cancel the booking."}
+          </p>
         </div>
       </div>
 
@@ -160,8 +216,8 @@ function PastBookingRow({
             <h3 className="font-semibold text-foreground">
               {booking.cars?.name ?? "Vehicle"}
             </h3>
-            <Badge className={`capitalize text-xs ${STATUS_STYLES[status]}`}>
-              {status}
+            <Badge className={`text-xs ${STATUS_STYLES[status]}`} aria-label={`Booking status: ${BOOKING_STATUS_LABELS[status] ?? status}`}>
+              {BOOKING_STATUS_LABELS[status] ?? status}
             </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -177,14 +233,32 @@ function PastBookingRow({
           </div>
         </div>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="w-full sm:w-auto text-accent hover:text-accent hover:bg-accent/10 rounded-lg group-hover:translate-x-0.5 transition-transform"
-        onClick={onView}
-      >
-        View Details <ChevronRight className="w-4 h-4 ml-1" />
-      </Button>
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+        {status === "failed" && (
+          <p className="text-xs text-muted-foreground">
+            If money was deducted, contact support before booking again.
+          </p>
+        )}
+        <div className="flex w-full gap-2 sm:w-auto">
+          {status === "failed" && (
+            <a
+              href={`tel:+${SUPPORT_NUMBER}`}
+              className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold text-accent hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-none"
+            >
+              <Phone className="h-4 w-4" />
+              Support
+            </a>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-1 rounded-lg text-accent hover:bg-accent/10 hover:text-accent group-hover:translate-x-0.5 transition-transform sm:w-auto sm:flex-none"
+            onClick={onView}
+          >
+            View Details <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -194,8 +268,10 @@ function PastBookingRow({
 export function DashboardClient({
   profile,
   bookings: initialBookings,
+  airportPickups: initialAirportPickups,
 }: DashboardClientProps) {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
+  const [airportPickups, setAirportPickups] = useState<AirportPickup[]>(initialAirportPickups);
   const [currentProfile, setCurrentProfile] = useState<Profile>(profile);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
@@ -204,6 +280,60 @@ export function DashboardClient({
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
 
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`customer_dashboard_${profile.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "bookings",
+          filter: `profile_id=eq.${profile.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as Booking;
+          setBookings((current) =>
+            current.map((booking) =>
+              booking.id === updated.id ? { ...booking, ...updated } : booking,
+            ),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "airport_pickups",
+          filter: `customer_id=eq.${profile.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            setAirportPickups((current) =>
+              current.filter((pickup) => pickup.id !== payload.old.id),
+            );
+            return;
+          }
+          const updated = payload.new as AirportPickup;
+          setAirportPickups((current) => {
+            const exists = current.some((pickup) => pickup.id === updated.id);
+            return exists
+              ? current.map((pickup) =>
+                  pickup.id === updated.id ? { ...pickup, ...updated } : pickup,
+                )
+              : [updated, ...current];
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void channel.unsubscribe();
+    };
+  }, [profile.id]);
+
   // Memoised — only recalculates when bookings changes
   const { activeBookings, pastBookings } = useMemo(
     () => ({
@@ -211,9 +341,11 @@ export function DashboardClient({
         (b) => b.status === "confirmed" || b.status === "pending",
       ),
       pastBookings: bookings.filter(
-        (b) => b.status === "completed" || b.status === "cancelled",
+        b =>
+          b.status === "completed" ||
+          b.status === "cancelled" ||
+          b.status === "failed",
       ),
-      failedBookingCount: bookings.filter((b) => b.status === "failed").length,
     }),
     [bookings],
   );
@@ -348,6 +480,104 @@ export function DashboardClient({
                 className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-full px-6"
               >
                 <Link href="/cars">Browse Available Cars</Link>
+              </Button>
+            </Card>
+          )}
+        </section>
+
+        <section>
+          <SectionHeading label="Airport pickups" accent />
+          {airportPickups.length > 0 ? (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {airportPickups.map((pickup) => (
+                <Card
+                  key={pickup.id}
+                  className="space-y-4 rounded-2xl border-border p-5 shadow-sm sm:p-6"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Airport transfer
+                      </p>
+                      <h3 className="mt-1 flex items-center gap-2 font-semibold text-foreground">
+                        <span className="truncate">{pickup.airport_name}</span>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{pickup.destination}</span>
+                      </h3>
+                    </div>
+                    <Badge
+                      className={`shrink-0 text-xs ${AIRPORT_STATUS_STYLES[pickup.status]}`}
+                      aria-label={`Airport pickup status: ${AIRPORT_STATUS_LABELS[pickup.status]}`}
+                    >
+                      {AIRPORT_STATUS_LABELS[pickup.status]}
+                    </Badge>
+                  </div>
+                  <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                    <span className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 shrink-0 text-accent" />
+                      {new Date(pickup.arrival_at).toLocaleString("en-KE", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <Plane className="h-4 w-4 shrink-0 text-accent" />
+                      Flight {pickup.flight_number}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <Users className="h-4 w-4 shrink-0 text-accent" />
+                      {pickup.passenger_count} passengers
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <Banknote className="h-4 w-4 shrink-0 text-accent" />
+                      KSh {pickup.fare_amount.toLocaleString("en-KE")}
+                      {pickup.payment_status === "paid" ? " · paid" : ""}
+                    </span>
+                  </div>
+                  <p className="text-sm leading-5 text-muted-foreground" role="status">
+                    {AIRPORT_STATUS_DESCRIPTIONS[pickup.status]}
+                  </p>
+                  {(pickup.status === "pending_payment" ||
+                    pickup.status === "payment_failed" ||
+                    pickup.status === "rejected" ||
+                    pickup.status === "cancelled") && (
+                    <div className="flex flex-wrap gap-3">
+                      {(pickup.status === "payment_failed" ||
+                        pickup.status === "rejected") && (
+                        <Button
+                          asChild
+                          variant="outline"
+                          className="min-h-10 rounded-lg"
+                        >
+                          <Link href="/airport-pickup">Request another pickup</Link>
+                        </Button>
+                      )}
+                      <a
+                        href={`tel:+${SUPPORT_NUMBER}`}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-lg text-sm font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <Phone className="h-4 w-4" />
+                        Contact support
+                      </a>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Reference: {pickup.id.slice(0, 8).toUpperCase()}
+                  </p>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="p-8 text-center border-dashed rounded-2xl">
+              <Plane className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+              <p className="font-semibold text-foreground">
+                No airport pickups yet
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Your transfer requests and live status updates will appear here.
+              </p>
+              <Button asChild className="mt-4 rounded-xl">
+                <Link href="/airport-pickup">Book an airport pickup</Link>
               </Button>
             </Card>
           )}

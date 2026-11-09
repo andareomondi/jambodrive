@@ -36,12 +36,12 @@ export default function TestDriveClientPage({ car }: TestDriveClientPageProps) {
   };
 
   const handleBooking = async (data: BookingFormData) => {
-    const today = new Date();
-    const pickup = new Date(data.pickupDate);
-    const returnD = new Date(data.returnDate);
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-    if (pickup < today) throw new Error("Pickup date cannot be in the past.");
-    if (returnD <= pickup)
+    if (data.pickupDate < today)
+      throw new Error("Pickup date cannot be in the past.");
+    if (data.returnDate <= data.pickupDate)
       throw new Error("Return date must be after pickup date.");
     if (!car!.available)
       throw new Error("Sorry, this car is no longer available.");
@@ -133,12 +133,15 @@ export default function TestDriveClientPage({ car }: TestDriveClientPageProps) {
               <Eye className="w-8 h-8 text-accent" /> Physical Viewing Request
             </h1>
             <p className="text-muted-foreground">
-              Reserve this vehicle's availability tentatively to inspect it in
+              Reserve this vehicle&apos;s availability tentatively to inspect it in
               person before making payment.
             </p>
           </div>
           <BookingForm
             carName={car.name}
+            dailyRate={car.price}
+            showPriceEstimate={false}
+            loadingLabel="Submitting viewing request…"
             onSubmit={handleBooking}
             isLoading={isSubmitting}
           />

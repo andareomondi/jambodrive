@@ -219,7 +219,11 @@ export function CarDetailsClient({ car, rentalSearch }: CarDetailsClientProps) {
               filter: `id=eq.${newBooking.id}`,
             },
             async (payload) => {
-              const updated = payload.new as any;
+              const updated = payload.new as {
+                status?: string;
+                mpesa_receipt_number?: string | null;
+                payment_failure_reason?: string | null;
+              };
               if (updated.status === "confirmed") {
                 await supabase
                   .from("cars")
@@ -647,6 +651,7 @@ export function CarDetailsClient({ car, rentalSearch }: CarDetailsClientProps) {
               {modalStep === "form" && (
                 <BookingForm
                   carName={car.name}
+                  dailyRate={car.price}
                   onSubmit={handleFormSubmit}
                   isLoading={false}
                   initialValues={{

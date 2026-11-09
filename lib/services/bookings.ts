@@ -4,6 +4,7 @@ import type {
   BookingInsert,
   BookingStatusUpdate,
   BookingPaymentUpdate,
+  AirportPickup,
 } from "@/types";
 
 const BOOKING_WITH_RELATIONS = `
@@ -32,6 +33,20 @@ export async function getUserBookings(profileId: string): Promise<Booking[]> {
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`getUserBookings: ${error.message}`);
+  return data;
+}
+
+export async function getUserAirportPickups(
+  customerId: string,
+): Promise<AirportPickup[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("airport_pickups")
+    .select("*")
+    .eq("customer_id", customerId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(`getUserAirportPickups: ${error.message}`);
   return data;
 }
 

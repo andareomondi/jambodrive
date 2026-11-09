@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, CheckCircle, Plane, Smartphone, XCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  Plane,
+  Smartphone,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { createAirportPickupRequest } from "@/lib/actions/airport-pickups";
 import { createClient } from "@/lib/supabase/client";
@@ -12,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { AirportPickup, AirportPickupRate } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+
+const SUPPORT_NUMBER = "254758500943";
 
 interface AirportPickupClientProps {
   rates: AirportPickupRate[];
@@ -103,8 +112,7 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
               channel.unsubscribe();
             }
           },
-        )
-        .subscribe();
+        );
       channelRef.current = channel;
 
       await new Promise<void>((resolve, reject) => {
@@ -207,7 +215,11 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
         </p>
 
         <Card className="mt-7 p-5 sm:p-7">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-5"
+            aria-busy={paymentState === "processing" || paymentState === "waiting"}
+          >
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="airport">Airport</Label>
@@ -251,6 +263,9 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
                 <Input
                   id="arrivalAt"
                   type="datetime-local"
+                  min={new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
+                    .toISOString()
+                    .slice(0, 16)}
                   value={arrivalAt}
                   onChange={(event) => setArrivalAt(event.target.value)}
                   required
@@ -325,13 +340,25 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
             <Button
               type="submit"
               className="w-full rounded-xl"
-              disabled={!selectedRate || paymentState === "processing" || paymentState === "waiting"}
+              disabled={
+                !selectedRate ||
+                paymentState === "processing" ||
+                paymentState === "waiting" ||
+                paymentState === "paid"
+              }
+              aria-busy={paymentState === "processing" || paymentState === "waiting"}
             >
-              <Smartphone className="mr-2 h-4 w-4" />
+              {paymentState === "processing" || paymentState === "waiting" ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Smartphone className="mr-2 h-4 w-4" aria-hidden="true" />
+              )}
               {paymentState === "processing"
                 ? "Preparing secure payment…"
                 : paymentState === "waiting"
                   ? "Waiting for M-Pesa"
+                  : paymentState === "paid"
+                    ? "Pickup requested"
                   : "Request pickup & pay"}
             </Button>
             {paymentState === "failed" && (
@@ -373,7 +400,8 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
           </div>
           <p className="mt-4 text-xs leading-5 text-muted-foreground">
             The fare is set by the airport route and confirmed by our server
-            before the M-Pesa prompt is sent.
+            before the M-Pesa prompt is sent. Review the route and fare above
+            before authorizing payment.
           </p>
           {paymentState !== "idle" && paymentMessage && (
             <div
@@ -384,7 +412,8 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
                     ? "border-destructive/30 bg-destructive/10 text-destructive"
                     : "border-accent/30 bg-accent/10 text-foreground"
               }`}
-              role="status"
+              role={paymentState === "failed" ? "alert" : "status"}
+              aria-live={paymentState === "failed" ? "assertive" : "polite"}
             >
               {paymentState === "paid" ? (
                 <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -402,8 +431,27 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
             </p>
           )}
           {paymentState === "paid" && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Request reference: {pickup?.id.slice(0, 8).toUpperCase()}
+            <div className="mt-3 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Request reference: {pickup?.id.slice(0, 8).toUpperCase()} ·
+                Status: requested
+              </p>
+              <Button asChild variant="outline" className="w-full rounded-xl">
+                <Link href="/dashboard">Track this pickup</Link>
+              </Button>
+            </div>
+          )}
+          {paymentState === "failed" && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              If money was deducted, check your M-Pesa messages before retrying.
+              Need help?{" "}
+              <a
+                href={`tel:+${SUPPORT_NUMBER}`}
+                className="font-semibold text-accent underline-offset-4 hover:underline"
+              >
+                Call support
+              </a>
+              .
             </p>
           )}
         </Card>

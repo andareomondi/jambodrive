@@ -2,7 +2,10 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileById } from "@/lib/services/profile";
-import { getUserBookings } from "@/lib/services/bookings";
+import {
+  getUserAirportPickups,
+  getUserBookings,
+} from "@/lib/services/bookings";
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import type { Metadata } from "next";
@@ -28,15 +31,20 @@ async function DashboardContent() {
     redirect("/auth/login");
   }
 
-  const [profile, bookings] = await Promise.all([
+  const [profile, bookings, airportPickups] = await Promise.all([
     getProfileById(user.id),
     getUserBookings(user.id),
+    getUserAirportPickups(user.id),
   ]);
 
   return (
     <>
       <AuthGuard />
-      <DashboardClient profile={profile} bookings={bookings} />
+      <DashboardClient
+        profile={profile}
+        bookings={bookings}
+        airportPickups={airportPickups}
+      />
     </>
   );
 }

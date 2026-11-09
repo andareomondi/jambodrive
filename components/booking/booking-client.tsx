@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import * as Dialog from "@radix-ui/react-dialog";
 import {
   BookingForm,
   BookingFormData,
@@ -59,10 +60,9 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
   };
 
   const handleBooking = async (data: BookingFormData) => {
-    const today = new Date();
-    const pickup = new Date(data.pickupDate);
-    const returnD = new Date(data.returnDate);
-    if (pickup < today) {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    if (data.pickupDate < today) {
       throw new Error("Pickup date cannot be in the past.");
     }
 
@@ -83,7 +83,7 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
       const days = calcDays(data);
       const total = days * car!.price;
 
-      if (returnD <= pickup) {
+      if (data.returnDate <= data.pickupDate) {
         throw new Error("Return date must be after pickup date.");
       }
       if (!car!.available) {
@@ -121,7 +121,12 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
             filter: `id=eq.${newBooking.id}`,
           },
           async (payload) => {
-            const updated = payload.new as any;
+            const updated = payload.new as {
+              status?: string;
+              mpesa_receipt_number?: string | null;
+              paid_amount?: number | null;
+              payment_failure_reason?: string | null;
+            };
             if (updated.status === "confirmed") {
               try {
                 // Mark the vehicle as unavailable/booked in the database
@@ -134,8 +139,8 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
               }
 
               setPaymentResult({
-                receiptNumber: updated.mpesa_receipt_number,
-                amount: updated.paid_amount,
+                receiptNumber: updated.mpesa_receipt_number ?? undefined,
+                amount: updated.paid_amount ?? undefined,
               });
               setPaymentState("success");
               toast.success("Payment confirmed! Your car is booked.");
@@ -149,10 +154,53 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
               channel.unsubscribe();
             }
           },
-        )
-        .subscribe();
+        );
 
       channelRef.current = channel;
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(
+            () =>
+              reject(
+                new Error("Could not establish a live booking status connection."),
+              ),
+            10_000,
+          );
+          channel.subscribe((status) => {
+            if (status === "SUBSCRIBED") {
+              clearTimeout(timeout);
+              resolve();
+            } else if (
+              status === "CHANNEL_ERROR" ||
+              status === "TIMED_OUT" ||
+              status === "CLOSED"
+            ) {
+              clearTimeout(timeout);
+              reject(
+                new Error("Could not establish a live booking status connection."),
+              );
+            }
+          });
+        });
+      } catch (connectionError) {
+        const { error: updateError } = await supabase
+          .from("bookings")
+          .update({
+            status: "failed",
+            payment_failure_reason: "Could not establish a live status connection.",
+          })
+          .eq("id", newBooking.id);
+        if (updateError) {
+          console.error(
+            "[BookingPage] failed to mark booking after realtime connection error:",
+            updateError,
+          );
+        }
+        channel.unsubscribe();
+        channelRef.current = null;
+        throw connectionError;
+      }
 
       const stkResponse = await fetch("/api/mpesa/stkpush", {
         method: "POST",
@@ -175,7 +223,11 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
         throw new Error(stkData.error ?? "M-Pesa request failed.");
       }
 
-      setPaymentState("waiting_for_pin");
+      setPaymentState((current) =>
+        current === "success" || current === "failed"
+          ? current
+          : "waiting_for_pin",
+      );
 
       setTimeout(() => {
         setPaymentState((current) => {
@@ -279,18 +331,24 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
     if (paymentState === "idle") return null;
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-sm mx-auto overflow-hidden">
+      <Dialog.Root open>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
+          <Dialog.Content
+            onEscapeKeyDown={(event) => event.preventDefault()}
+            onPointerDownOutside={(event) => event.preventDefault()}
+            className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl"
+        >
           {paymentState === "processing" && (
             <div className="p-8 flex flex-col items-center text-center gap-4">
               <Loader2 className="w-12 h-12 text-primary animate-spin" />
               <div>
-                <h2 className="text-xl font-bold text-foreground mb-1">
+                <Dialog.Title className="text-xl font-bold text-foreground mb-1">
                   Connecting to M-Pesa
-                </h2>
-                <p className="text-sm text-muted-foreground">
+                </Dialog.Title>
+                <Dialog.Description role="status" aria-live="polite" className="text-sm text-muted-foreground">
                   Securing your booking and reaching Safaricom...
-                </p>
+                </Dialog.Description>
               </div>
             </div>
           )}
@@ -307,10 +365,10 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
               </div>
 
               <div>
-                <h2 className="text-xl font-bold text-foreground mb-2">
+                <Dialog.Title className="text-xl font-bold text-foreground mb-2">
                   Check Your Phone
-                </h2>
-                <p className="text-sm text-muted-foreground">
+                </Dialog.Title>
+                <Dialog.Description role="status" aria-live="polite" className="text-sm text-muted-foreground">
                   An M-Pesa prompt has been sent to{" "}
                   <span className="font-medium text-foreground">
                     {bookingData?.phone}
@@ -320,7 +378,7 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
                     Ksh {totalAmount.toLocaleString()}
                   </span>
                   .
-                </p>
+                </Dialog.Description>
               </div>
 
               <div className="bg-muted rounded-xl px-4 py-3 w-full flex items-center justify-center gap-3">
@@ -348,13 +406,13 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
                 <XCircle className="w-8 h-8 text-destructive" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-foreground mb-2">
+                <Dialog.Title className="text-xl font-bold text-foreground mb-2">
                   Payment Failed
-                </h2>
-                <p className="text-sm text-muted-foreground">
+                </Dialog.Title>
+                <Dialog.Description role="alert" className="text-sm text-muted-foreground">
                   {paymentMessage ||
                     "You cancelled the prompt or the request timed out."}
-                </p>
+                </Dialog.Description>
               </div>
 
               <div className="flex flex-col gap-3 w-full">
@@ -376,8 +434,9 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
               </div>
             </div>
           )}
-        </div>
-      </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     );
   };
 
@@ -392,6 +451,7 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
           <div className="lg:col-span-8">
             <BookingForm
               carName={car.name}
+              dailyRate={car.price}
               onSubmit={handleBooking}
               isLoading={isProcessingPayment}
             />
@@ -413,9 +473,10 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground border-t border-border pt-4">
-                Payment is processed securely via M-Pesa. You will receive an
-                STK push prompt on your registered Safaricom number.
+              <p className="text-xs leading-5 text-muted-foreground border-t border-border pt-4">
+                The rental estimate is based on your selected dates and daily
+                rate. Confirm the amount before paying. M-Pesa will send a
+                secure prompt to the phone number you provide.
               </p>
             </div>
           </div>
