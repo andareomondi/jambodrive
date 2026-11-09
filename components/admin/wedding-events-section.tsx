@@ -522,6 +522,10 @@ export function WeddingEventsSection({
           pagedRequests.map((request) => {
             const selectedNotes = notes[request.id] ?? request.admin_notes ?? "";
             const expanded = expandedRequestId === request.id;
+            const isLocked =
+              request.status === "cancelled" ||
+              request.status === "spam" ||
+              request.payment_status === "failed";
             const selectedCars = request.sample_car_ids
               .map((id) => carsById.get(id))
               .filter((car): car is Car => Boolean(car));
@@ -676,7 +680,7 @@ export function WeddingEventsSection({
                     </div>
 
                   <div className="grid h-fit w-full gap-3">
-                    {request.status === "new" && (
+                    {!isLocked && request.status === "new" && (
                       <>
                         <Button
                           type="button"
@@ -709,7 +713,7 @@ export function WeddingEventsSection({
                         </div>
                       </>
                     )}
-                    {request.status === "contacted" && (
+                    {!isLocked && request.status === "contacted" && (
                       <Button
                         type="button"
                         onClick={() => {
@@ -755,7 +759,8 @@ export function WeddingEventsSection({
                               : ""}
                           </p>
                         )}
-                        {request.payment_status !== "paid" &&
+                        {!isLocked &&
+                          request.payment_status !== "paid" &&
                           request.payment_status !== "pending" &&
                           Number(request.paid_amount ?? 0) === 0 && (
                           <Button
@@ -771,7 +776,7 @@ export function WeddingEventsSection({
                             Request M-Pesa payment
                           </Button>
                         )}
-                        {request.payment_status !== "paid" && request.payment_status !== "pending" && (
+                        {!isLocked && request.payment_status !== "paid" && request.payment_status !== "pending" && (
                           <Button
                             type="button"
                             variant="outline"
@@ -811,12 +816,12 @@ export function WeddingEventsSection({
                         </Button>
                       </>
                     )}
-                    {(request.status === "cancelled" || request.status === "spam") && (
+                    {isLocked && (
                       <p className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">
-                        This enquiry is closed and locked. No further actions are available.
+                        This enquiry has a failed or closed status and is read-only. No further changes are available.
                       </p>
                     )}
-                    {request.status !== "cancelled" && request.status !== "spam" && (
+                    {!isLocked && (
                       <>
                         <label className="space-y-1.5">
                           <span className="text-xs font-medium text-muted-foreground">

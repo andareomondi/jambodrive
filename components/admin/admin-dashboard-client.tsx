@@ -35,7 +35,6 @@ import {
   Mail,
   Eye,
   ClipboardCheck,
-  RotateCcw,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -661,6 +660,7 @@ export function AdminDashboardClient({
                 const expanded = expandedBookingId === booking.id;
                 const updating = updatingBookingId === booking.id;
                 const status = booking.status ?? "pending";
+                const isLocked = status === "failed" || status === "cancelled";
                 return (
                   <article
                     key={booking.id}
@@ -699,6 +699,8 @@ export function AdminDashboardClient({
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                        {!isLocked && (
+                          <>
                         <label className="sr-only" htmlFor={`booking-status-${booking.id}`}>
                           Update status for booking {booking.id.slice(0, 8)}
                         </label>
@@ -792,17 +794,7 @@ export function AdminDashboardClient({
                             </Button>
                           </>
                         )}
-                        {(status === "failed" || status === "cancelled") && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled
-                            className="rounded-lg opacity-50 cursor-not-allowed"
-                          >
-                            <RotateCcw className="mr-1 h-4 w-4" />
-                            Locked
-                          </Button>
+                          </>
                         )}
                         <Button
                           type="button"

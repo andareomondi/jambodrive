@@ -325,13 +325,17 @@ export function AirportPickupsSection() {
             pagedPickups.map((pickup) => {
               const profile = pickup.profiles;
               const expanded = expandedPickupId === pickup.id;
+              const isLocked =
+                pickup.status === "payment_failed" ||
+                pickup.status === "cancelled";
               const actions: {
                 status: AirportPickupStatus;
                 label: string;
                 icon: typeof Check;
                 variant?: "outline";
-              }[] =
-                pickup.status === "requested"
+              }[] = isLocked
+                ? []
+                : pickup.status === "requested"
                   ? [
                       { status: "accepted", label: "Accept", icon: Check },
                       {
