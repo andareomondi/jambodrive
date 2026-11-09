@@ -8,6 +8,13 @@ export const metadata: Metadata = {
   title: "JKIA Airport Pickup & Transfers in Nairobi",
   description:
     "Book a Nairobi airport pickup from JKIA or another configured airport. Choose your destination, confirm the fare upfront and pay securely with M-Pesa.",
+  keywords: [
+    "JKIA airport pickup",
+    "Nairobi airport transfer",
+    "airport pickup Nairobi",
+    "airport transfer Kenya",
+    "book airport pickup Nairobi",
+  ],
   robots: { index: true, follow: true },
   alternates: {
     canonical: "/airport-pickup",

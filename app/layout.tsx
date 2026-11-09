@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     template: "%s | Cosmara Car Hire",
   },
   description:
-    "Affordable car hire in Nairobi and across Kenya. Compare economy cars, SUVs and premium vehicles, view daily rates, and book online. JKIA airport pickups available.",
+    "Book affordable car hire in Nairobi, request a wedding transport quote, or arrange a Nairobi airport pickup with an upfront fare. Explore available vehicles and pay securely with M-Pesa.",
   keywords: [
     "car hire Nairobi",
     "car rental Kenya",
@@ -45,10 +45,15 @@ export const metadata: Metadata = {
     "economy car hire Nairobi",
     "safari car hire Kenya",
     "wedding car hire Nairobi",
+    "wedding transport Kenya",
+    "wedding transport quote Nairobi",
+    "wedding cars Nairobi",
     "Cosmara car hire",
     "airport pickup Nairobi",
+    "airport pickup Kenya",
     "JKIA airport transfer",
     "airport transfer Nairobi",
+    "Nairobi airport transfer booking",
     "JKIA car hire",
     "premium car hire Nairobi",
     "car rental Nairobi",
@@ -59,7 +64,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Affordable Car Hire in Nairobi & Kenya | Cosmara",
     description:
-      "Find the right car for your budget and journey. Book car hire in Nairobi, Kenya, or arrange a convenient airport pickup with Cosmara.",
+      "Find a car for your journey, request tailored wedding transport in Nairobi, or book an airport pickup with an upfront fare and secure M-Pesa payment.",
     url: "https://cosmara.co.ke",
     siteName: "Cosmara",
     locale: "en_KE",
@@ -69,7 +74,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Affordable Car Hire in Nairobi & Kenya | Cosmara",
     description:
-      "Explore economy, SUV and premium car rentals, plus airport pickups in Nairobi, Kenya.",
+      "Explore car hire, Nairobi airport pickups and tailored wedding transport enquiries with Cosmara.",
     images: ["/hero/car1.webp"],
   },
   robots: {
@@ -129,7 +134,7 @@ export default function RootLayout({
               logo: "https://cosmara.co.ke/logo.ico",
               image: "https://cosmara.co.ke/hero/car1.webp",
               description:
-                "Car hire and airport pickup services in Nairobi and across Kenya, with economy, SUV and premium vehicle options.",
+                "Car hire, Nairobi airport pickups and wedding transport planning in Nairobi and across Kenya, with economy, SUV and premium vehicle options.",
               telephone: "+254758500943",
               email: "cosmaragroup@gmail.com",
               address: {
@@ -172,6 +177,15 @@ export default function RootLayout({
                       "@type": "Service",
                       name: "Airport pickup and transfer in Nairobi",
                       areaServed: "Nairobi, Kenya",
+                    },
+                  },
+                  {
+                    "@type": "Offer",
+                    itemOffered: {
+                      "@type": "Service",
+                      name: "Wedding transport planning and vehicle quotes",
+                      areaServed: "Nairobi, Kenya",
+                      url: "https://cosmara.co.ke/wedding-events",
                     },
                   },
                 ],

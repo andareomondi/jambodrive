@@ -15,11 +15,11 @@ export const revalidate = 900;
 export const metadata: Metadata = {
   title: "Affordable Car Hire in Nairobi, Kenya",
   description:
-    "Affordable car hire in Nairobi and across Kenya. Compare economy cars, SUVs and premium vehicles, view daily rates, and book online. Airport pickup available.",
+    "Book affordable car hire in Nairobi, arrange an airport pickup with an upfront fare, or request tailored wedding transport for your event.",
   openGraph: {
     title: "Affordable Car Hire in Nairobi, Kenya | Cosmara",
     description:
-      "Explore economy, SUV and premium car rentals in Nairobi, Kenya, with convenient booking and airport pickup options.",
+      "Explore car hire, convenient Nairobi airport pickups and tailored wedding transport planning from Cosmara.",
     images: ["/hero/car1.webp"],
     url: "https://cosmara.co.ke/",
     type: "website",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Affordable Car Hire in Nairobi, Kenya | Cosmara",
     description:
-      "Compare economy, SUV and premium vehicle rentals in Nairobi. Airport pickup available.",
+      "Compare rental cars, arrange a Nairobi airport pickup or plan wedding transport with Cosmara.",
     images: ["/hero/car1.webp"],
   },
   alternates: {

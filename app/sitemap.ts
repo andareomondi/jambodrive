@@ -34,7 +34,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority:
       route === ""
         ? 1
-        : route === "/cars" || route === "/airport-pickup"
+        : route === "/cars" ||
+            route === "/airport-pickup" ||
+            route === "/wedding-events"
           ? 0.9
           : 0.7,
   }));
