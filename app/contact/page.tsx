@@ -5,13 +5,17 @@ import { Mail, Phone, MapPin } from "lucide-react";
 import ContactForm from "@/components/contact/contact-form";
 
 export const metadata: Metadata = {
-  title: "Contact Us | Cosmara Car Rental",
+  title: "Contact Cosmara Car Hire in Nairobi",
   description:
-    "Get in touch with the Cosmara support team. Reach out via phone, email, or our office location in Nairobi, Kenya for any car rental inquiries.",
+    "Contact Cosmara about affordable car hire, premium vehicle rentals or airport pickups in Nairobi, Kenya. Call +254 758 500943 or email cosmaragroup@gmail.com.",
+  alternates: {
+    canonical: "/contact",
+  },
   openGraph: {
-    title: "Contact Us | Cosmara",
+    title: "Contact Cosmara | Car Rental & Airport Pickup",
     description:
-      "Have questions about Cosmara? Contact our support team today.",
+      "Talk to Cosmara about car hire and airport transfer services in Nairobi, Kenya.",
+    url: "https://cosmara.co.ke/contact",
   },
 };
 

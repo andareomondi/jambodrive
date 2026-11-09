@@ -13,13 +13,26 @@ import type { Car } from "@/types";
 export const revalidate = 900;
 
 export const metadata: Metadata = {
-  title: "Premium Car Rentals | Drive Your Dream Car Today",
+  title: "Affordable Car Hire in Nairobi, Kenya",
   description:
-    "Experience luxury and performance with our exclusive fleet. Seamless booking, 24/7 support, and no hidden fees.",
+    "Affordable car hire in Nairobi and across Kenya. Compare economy cars, SUVs and premium vehicles, view daily rates, and book online. Airport pickup available.",
   openGraph: {
-    title: "Premium Car Rentals | Drive Your Dream Car Today",
-    description: "Experience luxury and performance with our exclusive fleet.",
+    title: "Affordable Car Hire in Nairobi, Kenya | Cosmara",
+    description:
+      "Explore economy, SUV and premium car rentals in Nairobi, Kenya, with convenient booking and airport pickup options.",
     images: ["/hero/car1.webp"],
+    url: "https://cosmara.co.ke/",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Affordable Car Hire in Nairobi, Kenya | Cosmara",
+    description:
+      "Compare economy, SUV and premium vehicle rentals in Nairobi. Airport pickup available.",
+    images: ["/hero/car1.webp"],
+  },
+  alternates: {
+    canonical: "/",
   },
 };
 
@@ -30,8 +43,7 @@ async function getFeaturedCars(): Promise<Car[]> {
       .from("cars")
       .select("*")
       .eq("available", true)
-      .gt("price", 30000)
-      .order("price", { ascending: false })
+      .order("price", { ascending: true })
       .limit(6);
 
     if (error || !data) return [];

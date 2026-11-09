@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { getAvailableCars } from "@/lib/services/cars";
 import { CarCard } from "@/components/cars/car-card";
 import { EmptyState } from "@/components/common/empty-state";
 import { Car as CarIcon, Loader2 } from "lucide-react";
@@ -12,17 +11,38 @@ type Props = {
 };
 
 function formatDisplayTitle(type: string) {
-  if (type === "ssuv") return "Luxury SUV";
-  return type.charAt(0).toUpperCase() + type.slice(1);
+  const labels: Record<string, string> = {
+    compact: "Compact",
+    economy: "Economy",
+    executive: "Executive",
+    suv: "SUV",
+    ssuv: "Luxury SUV",
+    vans: "Van",
+    trucks: "Truck",
+  };
+  return labels[type] ?? "Car";
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { type } = await params;
   const title = formatDisplayTitle(type);
+  const canonical = `/cars/category/${encodeURIComponent(type)}`;
 
   return {
-    title: `${title} Fleet | Cosmara`,
-    description: `Discover and book our curated selection of premium ${title} vehicles.`,
+    title: `Affordable ${title} Hire in Nairobi`,
+    description: `Compare available ${title.toLowerCase()} cars for hire in Nairobi, Kenya. View vehicle details and daily rates, then book online with Cosmara.`,
+    alternates: { canonical },
+    openGraph: {
+      title: `${title} Car Hire in Nairobi | Cosmara`,
+      description: `Browse available ${title.toLowerCase()} rentals in Nairobi, Kenya, with clear vehicle details and daily rates.`,
+      url: `https://cosmara.co.ke${canonical}`,
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title: `${title} Car Hire in Nairobi | Cosmara`,
+      description: `Browse ${title.toLowerCase()} rentals in Nairobi, Kenya.`,
+    },
   };
 }
 

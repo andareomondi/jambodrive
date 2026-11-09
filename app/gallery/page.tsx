@@ -6,12 +6,17 @@ import { GalleryClient } from "@/components/gallery/gallery-client";
 export const revalidate = 900; // Enable ISR for fast edge delivery
 
 export const metadata: Metadata = {
-  title: "Gallery | Cosmara Car Hire",
+  title: "Car Hire Fleet Photos in Nairobi, Kenya",
   description:
-    "Browse our premium fleet and see highlights from Cosmara events across Kenya.",
+    "View Cosmara rental cars in Nairobi, Kenya, including premium vehicles and event transport. Explore fleet photos before you book.",
+  alternates: {
+    canonical: "/gallery",
+  },
   openGraph: {
-    title: "Gallery | Cosmara Car Hire",
-    description: "Fleet photos and event highlights from Cosmara.",
+    title: "Cosmara Car Rental Fleet Gallery | Nairobi, Kenya",
+    description:
+      "See photos of Cosmara's car hire fleet and event transport in Nairobi and across Kenya.",
+    url: "https://cosmara.co.ke/gallery",
     type: "website",
     images: ["/hero/car1.webp"],
   },

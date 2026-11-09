@@ -2,13 +2,17 @@ import { Metadata } from "next";
 import { ChevronDown } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Frequently Asked Questions | Cosmara Car Rental",
+  title: "Car Hire & Airport Pickup FAQs in Kenya",
   description:
-    "Find answers to common questions about renting a car with Cosmara. Learn about booking requirements, insurance, cancellations, and rental extensions.",
+    "Answers about car hire in Nairobi and Kenya, rental requirements, payments, cancellations, vehicle options and Cosmara airport pickup bookings.",
+  alternates: {
+    canonical: "/faq",
+  },
   openGraph: {
-    title: "Frequently Asked Questions | Cosmara",
+    title: "Car Rental FAQs | Cosmara Kenya",
     description:
-      "Find answers to common questions about renting a car with Cosmara.",
+      "Learn how to book a rental car or airport pickup with Cosmara in Nairobi, Kenya.",
+    url: "https://cosmara.co.ke/faq",
   },
 };
 
@@ -76,8 +80,8 @@ export default function FAQPage() {
               Frequently Asked Questions
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl text-balance">
-              Find answers to common questions about renting with Cosmara. Can't
-              find what you looking for? Contact our support team.
+              Find answers to common questions about renting with Cosmara. Can&apos;t
+              find what you&apos;re looking for? Contact our support team.
             </p>
           </div>
         </section>

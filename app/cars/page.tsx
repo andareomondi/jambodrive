@@ -8,9 +8,25 @@ import { Car } from "@/types";
 export const revalidate = 900; // Keep ISR enabled for fast edge delivery
 
 export const metadata: Metadata = {
-  title: "Browse Our Fleet | Cosmara",
+  title: "Affordable Car Hire Fleet in Nairobi",
   description:
-    "Choose from our premium vehicles for your next journey. Flexible rentals, pristine cars.",
+    "Browse cars for hire in Nairobi, Kenya. Compare available economy, compact, executive, SUV and premium vehicles, check daily rates and book online.",
+  alternates: {
+    canonical: "/cars",
+  },
+  openGraph: {
+    title: "Cars for Hire in Nairobi | Cosmara",
+    description:
+      "Compare available rental cars and daily rates in Nairobi, Kenya, from economy vehicles to SUVs and premium cars.",
+    url: "https://cosmara.co.ke/cars",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Cars for Hire in Nairobi | Cosmara",
+    description:
+      "Compare available rental cars and rates in Nairobi, Kenya.",
+  },
 };
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;

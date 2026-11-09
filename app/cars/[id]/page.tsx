@@ -27,11 +27,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   try {
     const car = await getCarById(id);
+    const description =
+      car.description?.replace(/\s+/g, " ").trim().slice(0, 155) ||
+      `Explore the ${car.year} ${car.name} ${car.model} for hire in Nairobi, Kenya. Check availability, daily rate and vehicle details with Cosmara.`;
+    const image = car.image ?? car.images?.[0] ?? "/hero/car1.webp";
     return {
-      title: `${car.name} — ${car.model} | Cosmara`,
-      description:
-        car.description?.slice(0, 155) ??
-        `Premium vehicle hire in Nairobi for the ${car.name}.`,
+      title: `${car.name} ${car.model} for Hire in Nairobi`,
+      description,
+      alternates: {
+        canonical: `/cars/${encodeURIComponent(id)}`,
+      },
+      openGraph: {
+        title: `${car.name} ${car.model} Car Hire | Cosmara Nairobi`,
+        description,
+        url: `https://cosmara.co.ke/cars/${encodeURIComponent(id)}`,
+        type: "website",
+        images: [image],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: `${car.name} ${car.model} for Hire in Nairobi`,
+        description,
+        images: [image],
+      },
     };
   } catch {
     return { title: "Car Not Found" };
@@ -52,7 +70,49 @@ async function CarDetailsData({
     notFound();
   }
 
-  return <CarDetailsClient car={car} />;
+  const image = car.image ?? car.images?.[0] ?? "/hero/car1.webp";
+  const vehicleData = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: `${car.name} ${car.model}`,
+    image: image.startsWith("http")
+      ? image
+      : `https://cosmara.co.ke/${image.replace(/^\/+/, "")}`,
+    description:
+      car.description ??
+      `${car.name} ${car.model} available for hire in Nairobi, Kenya.`,
+    serviceType: "Daily car rental",
+    areaServed: [
+      { "@type": "City", name: "Nairobi" },
+      { "@type": "Country", name: "Kenya" },
+    ],
+    provider: { "@id": "https://cosmara.co.ke/#business" },
+    offers: {
+      "@type": "Offer",
+      url: `https://cosmara.co.ke/cars/${encodeURIComponent(car.id)}`,
+      price: car.price,
+      priceCurrency: "KES",
+      description: "Daily vehicle rental rate; confirm dates and availability when booking.",
+      priceSpecification: {
+        "@type": "UnitPriceSpecification",
+        price: car.price,
+        priceCurrency: "KES",
+        unitText: "DAY",
+      },
+    },
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(vehicleData).replace(/</g, "\\u003c"),
+        }}
+      />
+      <CarDetailsClient car={car} />
+    </>
+  );
 }
 
 export default async function CarDetailsPage({ params }: Props) {

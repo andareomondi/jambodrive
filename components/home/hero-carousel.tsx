@@ -81,15 +81,16 @@ export function HeroCarousel() {
             <div>
               <span className="inline-flex items-center gap-2 px-4 py-1.5 mb-5 rounded-full border border-white/15 bg-white/5 text-[hsl(42_25%_91%)] text-[11px] font-semibold tracking-[0.18em] uppercase backdrop-blur-sm">
                 <span className="h-2 w-2 rounded-full bg-accent" />
-                Premium Car Rental
+                Car Hire in Nairobi & Kenya
               </span>
               <h1 className="font-display text-5xl md:text-7xl font-medium text-[hsl(45_30%_97%)] leading-[0.95] tracking-[-0.04em]">
-                Drive your
-                <span className="block text-accent">Perfect moment.</span>
+                Car hire in
+                <span className="block text-accent">Nairobi & Kenya.</span>
               </h1>
               <p className="mt-6 text-base md:text-lg text-[hsl(45_30%_97%/0.76)] max-w-lg leading-relaxed">
-                Elevate every journey with hand-picked luxury vehicles, effortless booking,
-                and white-glove support made for Nairobi and beyond.
+                Choose a car to suit your plans and budget, from practical daily
+                rentals to premium SUVs. Book online for Nairobi and travel
+                across Kenya, or arrange an airport pickup.
               </p>
             </div>
 
