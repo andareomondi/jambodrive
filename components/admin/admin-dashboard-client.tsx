@@ -10,6 +10,7 @@ import { CarModal } from "@/components/admin/car-modal";
 import { BookingModal } from "@/components/admin/booking-modal";
 import { DeleteCarModal } from "@/components/admin/delete-car-modal";
 import { AdminGallerySection } from "@/components/admin/admin-gallery-section";
+import { AirportPickupsSection } from "@/components/admin/airport-pickups-section";
 import type { GalleryEvent } from "@/lib/services/gallery";
 import {
   Users,
@@ -492,6 +493,7 @@ export function AdminDashboardClient({
           />
         </Card>
 
+        <AirportPickupsSection />
         <AdminGallerySection initialEvents={initialGalleryEvents} />
       </main>
 

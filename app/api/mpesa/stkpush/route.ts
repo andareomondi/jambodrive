@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createClient as createSessionClient } from "@/lib/supabase/server";
 
 // ─── Supabase Admin Client (bypasses RLS) ──────────────────────────────────
 // Uses the SERVICE ROLE key — never expose this on the client side.
@@ -72,14 +73,66 @@ function getTimestamp(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone, amount, bookingId } = await req.json();
+    const { phone, amount, bookingId, airportPickupId } = await req.json();
 
-    // ── Validation ──────────────────────────────────────────────────────────
-    if (!phone || !amount || !bookingId) {
+    if (!phone) {
       return NextResponse.json(
-        { error: "phone, amount, and bookingId are required." },
+        { error: "A phone number is required." },
         { status: 400 },
       );
+    }
+
+    let paymentAmount: number;
+    let accountReference: string;
+    let transactionDesc: string;
+
+    if (airportPickupId) {
+      const sessionClient = await createSessionClient();
+      const {
+        data: { user },
+        error: authError,
+      } = await sessionClient.auth.getUser();
+
+      if (authError || !user) {
+        return NextResponse.json(
+          { error: "Sign in to pay for an airport pickup." },
+          { status: 401 },
+        );
+      }
+
+      const { data: pickup, error: pickupError } = await sessionClient
+        .from("airport_pickups")
+        .select("id, customer_id, fare_amount, status, payment_status")
+        .eq("id", airportPickupId)
+        .eq("customer_id", user.id)
+        .single();
+
+      if (pickupError || !pickup) {
+        return NextResponse.json(
+          { error: "Airport pickup request could not be found." },
+          { status: 404 },
+        );
+      }
+      if (pickup.status !== "pending_payment" || pickup.payment_status !== "pending") {
+        return NextResponse.json(
+          { error: "This airport pickup is not awaiting payment." },
+          { status: 409 },
+        );
+      }
+
+      paymentAmount = pickup.fare_amount;
+      accountReference = `Airport-${pickup.id.slice(0, 8).toUpperCase()}`;
+      transactionDesc = "Airport Pickup - Cosmara";
+    } else {
+      if (!bookingId || !amount || !Number.isFinite(Number(amount)) || Number(amount) < 1) {
+        return NextResponse.json(
+          { error: "phone, amount, and bookingId are required." },
+          { status: 400 },
+        );
+      }
+      paymentAmount = Number(amount);
+      accountReference = `Booking-${String(bookingId).slice(0, 8).toUpperCase()}`;
+      transactionDesc = "Car Rental Payment - Cosmara";
     }
 
     const formattedPhone = formatPhone(String(phone));
@@ -114,14 +167,14 @@ export async function POST(req: NextRequest) {
           Timestamp: timestamp,
           // Use "CustomerBuyGoodsOnline" if you have a Till number instead of Paybill
           TransactionType: "CustomerPayBillOnline",
-          Amount: Math.ceil(amount), // M-Pesa only accepts integers
+          Amount: Math.ceil(paymentAmount), // M-Pesa only accepts integers
           PartyA: formattedPhone,
           PartyB: shortcode,
           PhoneNumber: formattedPhone,
           CallBackURL: callbackUrl,
           // AccountReference is visible to the customer on the STK prompt
-          AccountReference: `Booking-${bookingId.slice(0, 8).toUpperCase()}`,
-          TransactionDesc: "Car Rental Payment - Cosmara",
+          AccountReference: accountReference,
+          TransactionDesc: transactionDesc,
         }),
       },
     );
@@ -130,6 +183,24 @@ export async function POST(req: NextRequest) {
 
     if (!stkRes.ok || stkData.ResponseCode !== "0") {
       console.error("STK Push rejected by Daraja:", stkData);
+      if (airportPickupId) {
+        const { error: pickupUpdateError } = await supabaseAdmin
+          .from("airport_pickups")
+          .update({
+            status: "payment_failed",
+            payment_status: "failed",
+            payment_failure_reason:
+              stkData.errorMessage ?? "M-Pesa request was rejected.",
+          })
+          .eq("id", airportPickupId)
+          .eq("payment_status", "pending");
+        if (pickupUpdateError) {
+          console.error(
+            "Failed to mark airport pickup payment rejected:",
+            pickupUpdateError,
+          );
+        }
+      }
       return NextResponse.json(
         { error: stkData.errorMessage ?? "M-Pesa request was rejected." },
         { status: 502 },
@@ -139,13 +210,21 @@ export async function POST(req: NextRequest) {
     // ── Persist CheckoutRequestID so the callback can find this booking ─────
     // This requires a `checkout_request_id` column on your bookings table.
     // See the setup guide for the SQL migration.
-    const { error: dbError } = await supabaseAdmin
-      .from("bookings")
-      .update({ checkout_request_id: stkData.CheckoutRequestID })
-      .eq("id", bookingId);
+    const { error: dbError } = airportPickupId
+      ? await supabaseAdmin
+          .from("airport_pickups")
+          .update({ checkout_request_id: stkData.CheckoutRequestID })
+          .eq("id", airportPickupId)
+      : await supabaseAdmin
+          .from("bookings")
+          .update({ checkout_request_id: stkData.CheckoutRequestID })
+          .eq("id", bookingId);
 
     if (dbError) {
-      console.error("Failed to persist CheckoutRequestID:", dbError);
+      console.error(
+        `Failed to persist CheckoutRequestID for ${airportPickupId ? "airport pickup" : "booking"}:`,
+        dbError,
+      );
       // Don't fail the request — the callback can still work via polling fallback
     }
 

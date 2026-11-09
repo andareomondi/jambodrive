@@ -57,11 +57,11 @@ const BOOKING_SERVICES = [
     comingSoon: true,
   },
   {
-    href: "#",
+    href: "/airport-pickup",
     title: "Airport Pickups",
     desc: "Seamless airport transfers",
     icon: Plane,
-    comingSoon: true,
+    comingSoon: false,
   },
   {
     href: "#",

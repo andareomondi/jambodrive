@@ -121,3 +121,60 @@ export interface SupportRequest {
 }
 
 export type SupportRequestInsert = Omit<SupportRequest, "id" | "created_at">;
+
+export type AirportPickupStatus =
+  | "pending_payment"
+  | "payment_failed"
+  | "requested"
+  | "accepted"
+  | "in_progress"
+  | "completed"
+  | "rejected"
+  | "cancelled";
+
+export type AirportPickupPaymentStatus =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "refunded";
+
+export interface AirportPickupRate {
+  id: string;
+  airport_code: string;
+  airport_name: string;
+  destination: string;
+  fare_amount: number;
+  currency: "KES";
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AirportPickup {
+  id: string;
+  customer_id: string;
+  rate_id: string;
+  airport_code: string;
+  airport_name: string;
+  destination: string;
+  fare_amount: number;
+  currency: "KES";
+  arrival_at: string;
+  flight_number: string;
+  passenger_count: number;
+  luggage_count: number;
+  contact_phone: string;
+  customer_notes: string | null;
+  status: AirportPickupStatus;
+  payment_status: AirportPickupPaymentStatus;
+  checkout_request_id: string | null;
+  mpesa_receipt_number: string | null;
+  mpesa_transaction_date: string | null;
+  mpesa_phone: string | null;
+  paid_amount: number | null;
+  payment_failure_reason: string | null;
+  admin_notes: string | null;
+  created_at: string;
+  updated_at: string;
+  profiles?: Pick<Profile, "full_name" | "email">;
+}

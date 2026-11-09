@@ -91,11 +91,85 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
   }
 
+  const { data: airportPickup } = await supabaseAdmin
+    .from("airport_pickups")
+    .select("id")
+    .eq("checkout_request_id", CheckoutRequestID)
+    .maybeSingle();
+
+  if (airportPickup) {
+    await handleAirportPickupPayment(
+      airportPickup.id,
+      ResultCode,
+      ResultDesc,
+      CallbackMetadata,
+    );
+    return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
+  }
+
   console.error(
     "[mpesa/callback] No booking found for CheckoutRequestID:",
     CheckoutRequestID,
   );
   return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
+}
+
+async function handleAirportPickupPayment(
+  pickupId: string,
+  resultCode: number,
+  resultDesc: string,
+  metadata?: { Item: CallbackItem[] },
+) {
+  if (resultCode === 0 && metadata) {
+    const items = metadata.Item;
+    const { error } = await supabaseAdmin
+      .from("airport_pickups")
+      .update({
+        status: "requested",
+        payment_status: "paid",
+        mpesa_receipt_number: String(
+          findItem(items, "MpesaReceiptNumber") ?? "",
+        ),
+        mpesa_transaction_date: String(
+          findItem(items, "TransactionDate") ?? "",
+        ),
+        mpesa_phone: String(findItem(items, "PhoneNumber") ?? ""),
+        paid_amount: Number(findItem(items, "Amount") ?? 0),
+      })
+      .eq("id", pickupId)
+      .eq("payment_status", "pending");
+
+    if (error) {
+      console.error(
+        "[mpesa/callback] Failed to confirm airport pickup:",
+        error,
+      );
+    } else {
+      console.log(`[mpesa/callback] Airport pickup ${pickupId} paid.`);
+    }
+    return;
+  }
+
+  const { error } = await supabaseAdmin
+    .from("airport_pickups")
+    .update({
+      status: "payment_failed",
+      payment_status: "failed",
+      payment_failure_reason: resultDesc,
+    })
+    .eq("id", pickupId)
+    .eq("payment_status", "pending");
+
+  if (error) {
+    console.error(
+      "[mpesa/callback] Failed to mark airport pickup payment failed:",
+      error,
+    );
+  } else {
+    console.log(
+      `[mpesa/callback] Airport pickup ${pickupId} failed: ${resultDesc}`,
+    );
+  }
 }
 
 // ── Path A: Initial booking payment ──────────────────────────────────────────
