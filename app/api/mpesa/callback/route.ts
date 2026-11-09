@@ -107,11 +107,82 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
   }
 
+  const { data: weddingRequest } = await supabaseAdmin
+    .from("wedding_event_requests")
+    .select("id, quote_amount")
+    .eq("checkout_request_id", CheckoutRequestID)
+    .maybeSingle();
+
+  if (weddingRequest) {
+    await handleWeddingQuotePayment(
+      weddingRequest.id,
+      weddingRequest.quote_amount,
+      ResultCode,
+      ResultDesc,
+      CallbackMetadata,
+    );
+    return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
+  }
+
   console.error(
     "[mpesa/callback] No booking found for CheckoutRequestID:",
     CheckoutRequestID,
   );
   return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
+}
+
+async function handleWeddingQuotePayment(
+  requestId: string,
+  quoteAmount: number | null,
+  resultCode: number,
+  resultDesc: string,
+  metadata?: { Item: CallbackItem[] },
+) {
+  if (resultCode === 0 && metadata && quoteAmount !== null) {
+    const items = metadata.Item;
+    const paidAmount = Number(findItem(items, "Amount") ?? 0);
+    const exactPayment = paidAmount === quoteAmount;
+    const { error } = await supabaseAdmin
+      .from("wedding_event_requests")
+      .update({
+        status: exactPayment ? "confirmed" : "quoted",
+        payment_status: exactPayment ? "paid" : "failed",
+        mpesa_receipt_number: String(findItem(items, "MpesaReceiptNumber") ?? ""),
+        mpesa_transaction_date: String(findItem(items, "TransactionDate") ?? ""),
+        mpesa_phone: String(findItem(items, "PhoneNumber") ?? ""),
+        paid_amount: paidAmount,
+        payment_failure_reason: exactPayment
+          ? null
+          : `Payment amount did not match the quote of KSh ${quoteAmount.toLocaleString("en-KE")}.`,
+      })
+      .eq("id", requestId)
+      .eq("status", "quoted")
+      .eq("payment_status", "pending");
+
+    if (error) {
+      console.error("[mpesa/callback] Failed to record wedding quote payment:", error);
+    } else {
+      console.log(
+        `[mpesa/callback] Wedding request ${requestId} payment ${exactPayment ? "confirmed" : "requires review"}.`,
+      );
+    }
+    return;
+  }
+
+  const { error } = await supabaseAdmin
+    .from("wedding_event_requests")
+    .update({
+      payment_status: "failed",
+      payment_failure_reason: resultDesc,
+    })
+    .eq("id", requestId)
+    .eq("status", "quoted")
+    .eq("payment_status", "pending");
+  if (error) {
+    console.error("[mpesa/callback] Failed to mark wedding quote payment failed:", error);
+  } else {
+    console.log(`[mpesa/callback] Wedding request ${requestId} payment failed: ${resultDesc}`);
+  }
 }
 
 async function handleAirportPickupPayment(

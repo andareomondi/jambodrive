@@ -29,7 +29,7 @@ async function requireSuperAdmin() {
 
 export async function adminUpdateBookingStatus(
   id: string,
-  status: BookingStatus
+  status: BookingStatus,
 ): Promise<{ booking: Booking; carId: string | null }> {
   if (
     !id ||
@@ -41,6 +41,33 @@ export async function adminUpdateBookingStatus(
   }
 
   const supabase = await requireSuperAdmin();
+
+  const { data: current, error: currentError } = await supabase
+    .from("bookings")
+    .select("status")
+    .eq("id", id)
+    .single();
+
+  if (currentError || !current) {
+    throw new Error(currentError?.message ?? "Booking not found.");
+  }
+
+  const terminalStatuses: BookingStatus[] = ["cancelled", "failed"];
+  if (terminalStatuses.includes(current.status as BookingStatus)) {
+    throw new Error("This booking is already locked in a terminal state.");
+  }
+
+  const allowedTransitions: Record<BookingStatus, BookingStatus[]> = {
+    pending: ["confirmed", "cancelled", "failed"],
+    confirmed: ["completed", "cancelled", "failed"],
+    completed: [],
+    cancelled: [],
+    failed: [],
+  };
+
+  if (!allowedTransitions[(current.status ?? "pending") as BookingStatus]?.includes(status)) {
+    throw new Error("This status change is not allowed. Please move forward only.");
+  }
 
   const { data, error } = await supabase
     .from("bookings")

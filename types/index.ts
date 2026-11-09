@@ -191,7 +191,15 @@ export type WeddingEventRequestStatus =
   | "contacted"
   | "quoted"
   | "confirmed"
-  | "declined";
+  | "cancelled"
+  | "spam";
+
+export type WeddingEventPaymentStatus =
+  | "unpaid"
+  | "pending"
+  | "partial"
+  | "paid"
+  | "failed";
 
 export interface WeddingEventRequest {
   id: string;
@@ -210,6 +218,16 @@ export interface WeddingEventRequest {
   notes: string | null;
   status: WeddingEventRequestStatus;
   admin_notes: string | null;
+  quote_amount: number | null;
+  quote_notes: string | null;
+  contact_method: "email" | "whatsapp" | "call" | null;
+  payment_status: WeddingEventPaymentStatus;
+  checkout_request_id: string | null;
+  mpesa_receipt_number: string | null;
+  mpesa_transaction_date: string | null;
+  mpesa_phone: string | null;
+  paid_amount: number | null;
+  payment_failure_reason: string | null;
   created_at: string;
   updated_at: string;
 }

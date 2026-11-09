@@ -160,6 +160,8 @@ export function BookingModal({
     }
   }, [selectedCarId, pickupDate, returnDate, availableCars, setValue]);
 
+  const isReadOnlyBooking = Boolean(booking);
+
   const onSubmit = async (data: BookingFormData) => {
     setIsLoading(true);
     setPaymentState("processing");
@@ -230,7 +232,7 @@ export function BookingModal({
             filter: `id=eq.${targetBookingId}`,
           },
           async (payload) => {
-            const updated = payload.new as any;
+            const updated = payload.new as Booking;
             if (updated.status === "confirmed") {
               await supabase.from("cars").update({ available: false }).eq("id", data.car_id);
               
@@ -340,7 +342,7 @@ export function BookingModal({
                    <div>
                      <h2 className="text-xl font-bold text-foreground mb-2">Awaiting PIN</h2>
                      <p className="text-sm text-muted-foreground">
-                       Prompt sent to the customer's phone. Waiting for them to enter their M-Pesa PIN.
+                       Prompt sent to the customer&apos;s phone. Waiting for them to enter their M-Pesa PIN.
                      </p>
                    </div>
                    <div className="bg-muted rounded-xl px-4 py-3 w-full flex items-center justify-center gap-3">
@@ -386,9 +388,21 @@ export function BookingModal({
               <div className="flex items-center gap-2 mb-6">
                 <Calendar className="w-5 h-5 text-accent" />
                 <Dialog.Title className="text-lg font-semibold text-foreground">
-                  {booking ? "Process Pending Booking" : "Create M-Pesa Booking"}
+                  {booking ? "Receive Payment for Booking" : "Create M-Pesa Booking"}
                 </Dialog.Title>
               </div>
+
+              {booking && (
+                <div className="mb-4 rounded-xl border border-accent/20 bg-accent/5 p-3 text-sm text-foreground">
+                  <p className="font-semibold">Booking summary</p>
+                  <p className="mt-1 text-muted-foreground">
+                    {booking.cars?.name ?? "Vehicle"} · KSh {booking.total_price.toLocaleString("en-KE")}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {booking.profiles?.full_name ?? "Customer"} · {booking.pickup_location} → {booking.return_location}
+                  </p>
+                </div>
+              )}
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 {/* ... Form inputs remain unchanged ... */}
@@ -405,8 +419,9 @@ export function BookingModal({
                       <Select.Root
                         onValueChange={field.onChange}
                         value={field.value}
+                        disabled={isReadOnlyBooking}
                       >
-                        <Select.Trigger className={selectTriggerCls}>
+                        <Select.Trigger className={selectTriggerCls} disabled={isReadOnlyBooking}>
                           <Select.Value placeholder="Choose an available car" />
                           <Select.Icon>
                             <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -447,8 +462,9 @@ export function BookingModal({
                       <Select.Root
                         onValueChange={field.onChange}
                         value={field.value ?? "none"}
+                        disabled={isReadOnlyBooking}
                       >
-                        <Select.Trigger className={selectTriggerCls}>
+                        <Select.Trigger className={selectTriggerCls} disabled={isReadOnlyBooking}>
                           <Select.Value placeholder="Walk-in or select customer" />
                           <Select.Icon>
                             <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -495,7 +511,8 @@ export function BookingModal({
                       <Input
                         type="date"
                         {...register(name, { required: true })}
-                        className="rounded-xl bg-muted/40 border-border h-11"
+                        readOnly={isReadOnlyBooking}
+                        className="rounded-xl bg-muted/40 border-border h-11 disabled:cursor-not-allowed disabled:opacity-80"
                       />
                     </div>
                   ))}
@@ -511,7 +528,8 @@ export function BookingModal({
                       <Label className="text-xs font-bold uppercase">{label}</Label>
                       <Input
                         {...register(name)}
-                        className="rounded-xl bg-muted/40 border-border h-11"
+                        readOnly={isReadOnlyBooking}
+                        className="rounded-xl bg-muted/40 border-border h-11 disabled:cursor-not-allowed disabled:opacity-80"
                       />
                     </div>
                   ))}
@@ -549,7 +567,8 @@ export function BookingModal({
                         type="tel"
                         placeholder="07XX XXX XXX"
                         {...register("mpesa_phone", { required: true })}
-                        className="pl-9 rounded-xl bg-muted/40 border-border h-11 focus:ring-2 focus:ring-[#25D366]/50"
+                        readOnly={isReadOnlyBooking}
+                        className="pl-9 rounded-xl bg-muted/40 border-border h-11 focus:ring-2 focus:ring-[#25D366]/50 disabled:cursor-not-allowed disabled:opacity-80"
                       />
                     </div>
                   </div>
@@ -573,7 +592,7 @@ export function BookingModal({
                     className="flex-[2] bg-[#25D366] hover:bg-[#128C7E] text-white rounded-xl h-11 font-bold transition-colors"
                   >
                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Smartphone className="w-4 h-4 mr-2" />}
-                    Confirm & Send STK Push
+                    {isReadOnlyBooking ? "Send payment request" : "Confirm & Send STK Push"}
                   </Button>
                 </div>
               </form>

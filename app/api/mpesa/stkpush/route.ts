@@ -73,7 +73,8 @@ function getTimestamp(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone, amount, bookingId, airportPickupId } = await req.json();
+    const { phone, amount, bookingId, airportPickupId, weddingEventRequestId } =
+      await req.json();
 
     if (!phone) {
       return NextResponse.json(
@@ -123,6 +124,60 @@ export async function POST(req: NextRequest) {
       paymentAmount = pickup.fare_amount;
       accountReference = `Airport-${pickup.id.slice(0, 8).toUpperCase()}`;
       transactionDesc = "Airport Pickup - Cosmara";
+    } else if (weddingEventRequestId) {
+      const sessionClient = await createSessionClient();
+      const {
+        data: { user },
+        error: authError,
+      } = await sessionClient.auth.getUser();
+      if (authError || !user) {
+        return NextResponse.json(
+          { error: "Sign in to pay for a wedding transport quote." },
+          { status: 401 },
+        );
+      }
+
+      const { data: request, error: requestError } = await sessionClient
+        .from("wedding_event_requests")
+        .select("id, customer_id, status, quote_amount, payment_status, paid_amount")
+        .eq("id", weddingEventRequestId)
+        .single();
+      if (requestError || !request) {
+        return NextResponse.json(
+          { error: "Wedding quote could not be found." },
+          { status: 404 },
+        );
+      }
+
+      if (request.customer_id !== user.id) {
+        const { data: profile, error: profileError } = await sessionClient
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+        if (profileError || profile?.role !== "super_admin") {
+          return NextResponse.json(
+            { error: "You are not authorized to collect payment for this quote." },
+            { status: 403 },
+          );
+        }
+      }
+      if (
+        request.status !== "quoted" ||
+        request.payment_status === "paid" ||
+        request.payment_status === "pending" ||
+        Number(request.paid_amount ?? 0) > 0 ||
+        !request.quote_amount
+      ) {
+        return NextResponse.json(
+          { error: "This wedding quote is not awaiting payment." },
+          { status: 409 },
+        );
+      }
+
+      paymentAmount = request.quote_amount;
+      accountReference = `Wedding-${request.id.slice(0, 8).toUpperCase()}`;
+      transactionDesc = "Wedding Transport - Cosmara";
     } else {
       if (!bookingId || !amount || !Number.isFinite(Number(amount)) || Number(amount) < 1) {
         return NextResponse.json(
@@ -147,6 +202,32 @@ export async function POST(req: NextRequest) {
 
     // ── Get Bearer token ────────────────────────────────────────────────────
     const token = await getAccessToken();
+
+    if (weddingEventRequestId) {
+      const { data: reserved, error: reserveError } = await supabaseAdmin
+        .from("wedding_event_requests")
+        .update({
+          payment_status: "pending",
+          mpesa_phone: formattedPhone,
+          payment_failure_reason: null,
+        })
+        .eq("id", weddingEventRequestId)
+        .eq("status", "quoted")
+        .in("payment_status", ["unpaid", "failed"])
+        .is("paid_amount", null)
+        .select("id")
+        .maybeSingle();
+
+      if (reserveError || !reserved) {
+        return NextResponse.json(
+          {
+            error:
+              "This quote is no longer available for payment. Refresh and check its current status.",
+          },
+          { status: 409 },
+        );
+      }
+    }
 
     // ── Build callback URL ──────────────────────────────────────────────────
     // Append a secret so your callback route rejects spoofed requests.
@@ -200,6 +281,19 @@ export async function POST(req: NextRequest) {
             pickupUpdateError,
           );
         }
+      } else if (weddingEventRequestId) {
+        const { error: weddingUpdateError } = await supabaseAdmin
+          .from("wedding_event_requests")
+          .update({
+            payment_status: "failed",
+            payment_failure_reason:
+              stkData.errorMessage ?? "M-Pesa request was rejected.",
+          })
+          .eq("id", weddingEventRequestId)
+          .eq("status", "quoted");
+        if (weddingUpdateError) {
+          console.error("Failed to mark wedding quote payment rejected:", weddingUpdateError);
+        }
       }
       return NextResponse.json(
         { error: stkData.errorMessage ?? "M-Pesa request was rejected." },
@@ -215,17 +309,33 @@ export async function POST(req: NextRequest) {
           .from("airport_pickups")
           .update({ checkout_request_id: stkData.CheckoutRequestID })
           .eq("id", airportPickupId)
-      : await supabaseAdmin
+      : weddingEventRequestId
+        ? await supabaseAdmin
+            .from("wedding_event_requests")
+            .update({
+              checkout_request_id: stkData.CheckoutRequestID,
+              mpesa_phone: formatPhone(String(phone)),
+              payment_status: "pending",
+              payment_failure_reason: null,
+            })
+            .eq("id", weddingEventRequestId)
+            .eq("status", "quoted")
+        : await supabaseAdmin
           .from("bookings")
           .update({ checkout_request_id: stkData.CheckoutRequestID })
           .eq("id", bookingId);
 
     if (dbError) {
       console.error(
-        `Failed to persist CheckoutRequestID for ${airportPickupId ? "airport pickup" : "booking"}:`,
+        `Failed to persist CheckoutRequestID for ${airportPickupId ? "airport pickup" : weddingEventRequestId ? "wedding quote" : "booking"}:`,
         dbError,
       );
-      // Don't fail the request — the callback can still work via polling fallback
+      if (weddingEventRequestId) {
+        return NextResponse.json(
+          { error: "Could not safely track this payment request. Please try again." },
+          { status: 500 },
+        );
+      }
     }
 
     return NextResponse.json({

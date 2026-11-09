@@ -1,8 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, Plane, Plus, RefreshCw, Save, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  Mail,
+  Phone,
+  Plane,
+  Plus,
+  RefreshCw,
+  Save,
+  Search,
+  X,
+} from "lucide-react";
 import {
   getAdminAirportPickupData,
   saveAirportPickupRate,
@@ -38,6 +51,8 @@ const STATUS_LABELS: Record<AirportPickupStatus, string> = {
   cancelled: "Cancelled",
 };
 
+const PICKUP_PAGE_SIZE = 8;
+
 function formatCurrency(amount: number) {
   return `KSh ${amount.toLocaleString("en-KE")}`;
 }
@@ -48,8 +63,43 @@ export function AirportPickupsSection() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatingPickup, setUpdatingPickup] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [expandedPickupId, setExpandedPickupId] = useState<string | null>(null);
+  const [pickupPage, setPickupPage] = useState(1);
   const [editingRateId, setEditingRateId] = useState<string | null>(null);
   const [rateForm, setRateForm] = useState(EMPTY_RATE);
+
+  const filteredPickups = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return pickups.filter((pickup) => {
+      const matchesSearch =
+        !query ||
+        [
+          pickup.id,
+          pickup.airport_name,
+          pickup.destination,
+          pickup.flight_number,
+          pickup.contact_phone,
+          pickup.profiles?.full_name,
+          pickup.profiles?.email,
+        ].some((value) => value?.toLowerCase().includes(query));
+      return matchesSearch && (!statusFilter || pickup.status === statusFilter);
+    });
+  }, [pickups, searchQuery, statusFilter]);
+  const pickupTotalPages = Math.max(
+    1,
+    Math.ceil(filteredPickups.length / PICKUP_PAGE_SIZE),
+  );
+  const safePickupPage = Math.min(pickupPage, pickupTotalPages);
+  const pagedPickups = filteredPickups.slice(
+    (safePickupPage - 1) * PICKUP_PAGE_SIZE,
+    safePickupPage * PICKUP_PAGE_SIZE,
+  );
+
+  useEffect(() => {
+    setPickupPage(1);
+  }, [searchQuery, statusFilter]);
 
   const refresh = useCallback(async () => {
     try {
@@ -203,7 +253,9 @@ export function AirportPickupsSection() {
               Airport Pickup Requests
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Paid requests arrive here live. Update their status as they are handled.
+              {pickups.length} request{pickups.length === 1 ? "" : "s"} ·{" "}
+              {pickups.filter((pickup) => pickup.status === "requested").length}{" "}
+              awaiting acceptance
             </p>
             <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
               Rejecting a paid request does not automatically refund M-Pesa; arrange any refund separately.
@@ -220,18 +272,59 @@ export function AirportPickupsSection() {
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
+        <div className="grid gap-3 border-b border-border p-4 sm:grid-cols-[minmax(220px,1fr)_220px] sm:p-6">
+          <label className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search customer, route, flight, or reference"
+              aria-label="Search airport pickup requests"
+              className="pl-9"
+            />
+          </label>
+          <label className="relative">
+            <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              aria-label="Filter airport pickup requests by status"
+              className="h-10 w-full appearance-none rounded-md border border-input bg-background pl-9 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">All statuses ({pickups.length})</option>
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label} (
+                  {pickups.filter((pickup) => pickup.status === value).length})
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          </label>
+        </div>
         <div className="space-y-4 p-4 sm:p-6">
           {loading ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
               Loading airport pickup requests…
             </p>
-          ) : pickups.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No airport pickup requests yet.
-            </p>
+          ) : pagedPickups.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border px-5 py-12 text-center">
+              <Plane className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+              <h3 className="font-semibold text-foreground">
+                {pickups.length === 0
+                  ? "No airport pickup requests yet"
+                  : "No requests match this search"}
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {pickups.length === 0
+                  ? "New paid requests will appear here."
+                  : "Try another search term or choose a different status."}
+              </p>
+            </div>
           ) : (
-            pickups.map((pickup) => {
+            pagedPickups.map((pickup) => {
               const profile = pickup.profiles;
+              const expanded = expandedPickupId === pickup.id;
               const actions: {
                 status: AirportPickupStatus;
                 label: string;
@@ -275,51 +368,33 @@ export function AirportPickupsSection() {
               return (
                 <article
                   key={pickup.id}
-                  className="rounded-2xl border border-border bg-muted/20 p-4 sm:p-5"
+                  className="overflow-hidden rounded-2xl border border-border bg-card"
                 >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
+                  <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-bold text-foreground">
-                          {pickup.airport_name} to {pickup.destination}
+                          {pickup.airport_name} → {pickup.destination}
                         </h3>
                         <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent">
                           {STATUS_LABELS[pickup.status]}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {profile?.full_name ?? "Customer"} · {profile?.email ?? "—"}
+                      <p className="mt-1 truncate text-sm text-muted-foreground">
+                        {profile?.full_name ?? "Customer"} ·{" "}
+                        {pickup.flight_number} · {pickup.contact_phone}
                       </p>
-                      <div className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-                        <p>
-                          <span className="text-muted-foreground">Arrival:</span>{" "}
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span>
                           {new Date(pickup.arrival_at).toLocaleString("en-KE")}
-                        </p>
-                        <p>
-                          <span className="text-muted-foreground">Flight:</span>{" "}
-                          {pickup.flight_number}
-                        </p>
-                        <p>
-                          <span className="text-muted-foreground">Phone:</span>{" "}
-                          {pickup.contact_phone}
-                        </p>
-                        <p>
-                          <span className="text-muted-foreground">Passengers / bags:</span>{" "}
-                          {pickup.passenger_count} / {pickup.luggage_count}
-                        </p>
-                        <p>
-                          <span className="text-muted-foreground">Fare:</span>{" "}
-                          {formatCurrency(pickup.fare_amount)} ·{" "}
-                          {pickup.mpesa_receipt_number ?? "M-Pesa paid"}
-                        </p>
+                        </span>
+                        <span>Ref: {pickup.id.slice(0, 8).toUpperCase()}</span>
+                        <span className="font-semibold text-foreground">
+                          {formatCurrency(pickup.fare_amount)}
+                        </span>
                       </div>
-                      {pickup.customer_notes && (
-                        <p className="rounded-lg bg-background/70 p-3 text-sm text-muted-foreground">
-                          {pickup.customer_notes}
-                        </p>
-                      )}
                     </div>
-                    <div className="flex shrink-0 flex-wrap gap-2">
+                    <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
                       {actions.map(({ status, label, icon: Icon, variant }) => (
                         <Button
                           key={status}
@@ -333,13 +408,163 @@ export function AirportPickupsSection() {
                           {label}
                         </Button>
                       ))}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        aria-expanded={expanded}
+                        aria-controls={`pickup-details-${pickup.id}`}
+                        onClick={() =>
+                          setExpandedPickupId(expanded ? null : pickup.id)
+                        }
+                      >
+                        {expanded ? (
+                          <>
+                            <ChevronUp className="mr-1.5 h-4 w-4" />
+                            Hide details
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="mr-1.5 h-4 w-4" />
+                            Details
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
+                  {updatingPickup === pickup.id && (
+                    <p role="status" className="px-5 pb-3 text-xs text-muted-foreground">
+                      Updating request status…
+                    </p>
+                  )}
+                  {expanded && (
+                    <div
+                      id={`pickup-details-${pickup.id}`}
+                      className="grid gap-4 border-t border-border bg-muted/20 p-4 text-sm sm:grid-cols-2 lg:grid-cols-3 sm:p-5"
+                    >
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Customer
+                        </h4>
+                        <p className="font-medium text-foreground">
+                          {profile?.full_name ?? "Unknown customer"}
+                        </p>
+                        {profile?.email && (
+                          <a
+                            href={`mailto:${profile.email}`}
+                            className="flex items-center gap-2 break-all text-xs text-accent hover:underline"
+                          >
+                            <Mail className="h-3.5 w-3.5 shrink-0" />
+                            {profile.email}
+                          </a>
+                        )}
+                        <a
+                          href={`tel:${pickup.contact_phone}`}
+                          className="flex items-center gap-2 text-xs text-accent hover:underline"
+                        >
+                          <Phone className="h-3.5 w-3.5 shrink-0" />
+                          {pickup.contact_phone}
+                        </a>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Arrival details
+                        </h4>
+                        <p>Flight: <span className="font-medium">{pickup.flight_number}</span></p>
+                        <p>
+                          Arrival:{" "}
+                          <span className="font-medium">
+                            {new Date(pickup.arrival_at).toLocaleString("en-KE")}
+                          </span>
+                        </p>
+                        <p>
+                          Passengers / bags:{" "}
+                          <span className="font-medium">
+                            {pickup.passenger_count} / {pickup.luggage_count}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Payment
+                        </h4>
+                        <p>
+                          Fare: <span className="font-medium">{formatCurrency(pickup.fare_amount)}</span>
+                        </p>
+                        <p>
+                          Payment:{" "}
+                          <span className="font-medium capitalize">
+                            {pickup.payment_status.replace("_", " ")}
+                          </span>
+                        </p>
+                        {pickup.mpesa_receipt_number && (
+                          <p>
+                            M-Pesa receipt:{" "}
+                            <span className="font-mono font-medium">
+                              {pickup.mpesa_receipt_number}
+                            </span>
+                          </p>
+                        )}
+                        {pickup.payment_failure_reason && (
+                          <p className="text-destructive">
+                            {pickup.payment_failure_reason}
+                          </p>
+                        )}
+                      </div>
+                      {pickup.customer_notes && (
+                        <div className="sm:col-span-2 lg:col-span-3">
+                          <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Customer notes
+                          </h4>
+                          <p className="whitespace-pre-wrap rounded-lg bg-background/70 p-3 text-sm text-foreground">
+                            {pickup.customer_notes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </article>
               );
             })
           )}
         </div>
+        {filteredPickups.length > 0 && (
+          <div className="flex flex-col gap-3 border-t border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <p className="text-xs text-muted-foreground">
+              Showing{" "}
+              <span className="font-medium text-foreground">
+                {(safePickupPage - 1) * PICKUP_PAGE_SIZE + 1}–
+                {Math.min(safePickupPage * PICKUP_PAGE_SIZE, filteredPickups.length)}
+              </span>{" "}
+              of <span className="font-medium text-foreground">{filteredPickups.length}</span>
+            </p>
+            {pickupTotalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={safePickupPage === 1}
+                  onClick={() => setPickupPage(safePickupPage - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Page {safePickupPage} of {pickupTotalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={safePickupPage === pickupTotalPages}
+                  onClick={() => setPickupPage(safePickupPage + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </Card>
 
       <Card className="overflow-hidden border-border shadow-sm">

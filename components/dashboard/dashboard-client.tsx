@@ -10,6 +10,7 @@ import { EditProfileModal } from "@/components/modals/edit-profile-modal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Calendar,
   MapPin,
@@ -24,8 +25,12 @@ import {
   Phone,
   Users,
   Heart,
+  Loader2,
+  Download,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+import { downloadWeddingAgreement } from "@/lib/reports/generate-wedding-agreement";
 import type {
   AirportPickup,
   AirportPickupStatus,
@@ -105,7 +110,8 @@ const WEDDING_STATUS_LABELS: Record<WeddingEventRequestStatus, string> = {
   contacted: "Contacted",
   quoted: "Quote in progress",
   confirmed: "Confirmed",
-  declined: "Contact support",
+  cancelled: "Cancelled",
+  spam: "Closed",
 };
 
 const WEDDING_STATUS_STYLES: Record<WeddingEventRequestStatus, string> = {
@@ -113,7 +119,8 @@ const WEDDING_STATUS_STYLES: Record<WeddingEventRequestStatus, string> = {
   contacted: "bg-sky-500/10 text-sky-800 dark:text-sky-300 border border-sky-500/20",
   quoted: "bg-violet-500/10 text-violet-800 dark:text-violet-300 border border-violet-500/20",
   confirmed: "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20",
-  declined: "bg-destructive/10 text-destructive border border-destructive/20",
+  cancelled: "bg-muted text-muted-foreground border border-border",
+  spam: "bg-destructive/10 text-destructive border border-destructive/20",
 };
 
 const WEDDING_STATUS_DESCRIPTIONS: Record<WeddingEventRequestStatus, string> = {
@@ -121,7 +128,8 @@ const WEDDING_STATUS_DESCRIPTIONS: Record<WeddingEventRequestStatus, string> = {
   contacted: "Our team has reached out and is following up on your event details.",
   quoted: "We’re preparing or have shared a tailored transport proposal with you.",
   confirmed: "Your wedding transport plans have been confirmed with our team.",
-  declined: "We couldn’t accommodate this enquiry as submitted. Contact us to discuss options.",
+  cancelled: "This enquiry was cancelled. Contact our team if you have questions.",
+  spam: "This enquiry has been closed.",
 };
 
 function formatDateRange(pickup: string, returnDate: string) {
@@ -312,6 +320,9 @@ export function DashboardClient({
     useState<WeddingEventRequest[]>(initialWeddingEventRequests);
   const [currentProfile, setCurrentProfile] = useState<Profile>(profile);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [weddingPaymentPhones, setWeddingPaymentPhones] = useState<Record<string, string>>({});
+  const [weddingPaymentLoadingId, setWeddingPaymentLoadingId] = useState<string | null>(null);
+  const [weddingAgreementLoadingId, setWeddingAgreementLoadingId] = useState<string | null>(null);
 
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [manageModalOpen, setManageModalOpen] = useState(false);
@@ -435,6 +446,49 @@ export function DashboardClient({
         ...p,
         total_bookings: Math.max(0, (p.total_bookings ?? 1) - 1),
       }));
+    }
+  };
+
+  const requestWeddingPayment = async (request: WeddingEventRequest) => {
+    const phone = weddingPaymentPhones[request.id]?.trim();
+    if (!phone) {
+      toast.error("Enter the M-Pesa phone number to receive the payment prompt.");
+      return;
+    }
+    setWeddingPaymentLoadingId(request.id);
+    try {
+      const response = await fetch("/api/mpesa/stkpush", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, weddingEventRequestId: request.id }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error ?? "Could not initiate M-Pesa payment.");
+      }
+      setWeddingEventRequests((current) =>
+        current.map((item) =>
+          item.id === request.id
+            ? { ...item, payment_status: "pending", mpesa_phone: phone }
+            : item,
+        ),
+      );
+      toast.success("M-Pesa prompt sent. Your enquiry will confirm after payment is verified.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not initiate payment.");
+    } finally {
+      setWeddingPaymentLoadingId(null);
+    }
+  };
+
+  const downloadAgreement = async (request: WeddingEventRequest) => {
+    setWeddingAgreementLoadingId(request.id);
+    try {
+      await downloadWeddingAgreement(request);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not download agreement.");
+    } finally {
+      setWeddingAgreementLoadingId(null);
     }
   };
 
@@ -730,7 +784,86 @@ export function DashboardClient({
                   >
                     {WEDDING_STATUS_DESCRIPTIONS[request.status]}
                   </p>
-                  {request.status === "declined" && (
+                  {request.status === "quoted" && (
+                    <div className="space-y-3 rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-medium text-foreground">
+                          Quote amount
+                        </span>
+                        <span className="font-bold text-foreground">
+                          KSh {(request.quote_amount ?? 0).toLocaleString("en-KE")}
+                        </span>
+                      </div>
+                      {request.quote_notes && (
+                        <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                          {request.quote_notes}
+                        </p>
+                      )}
+                      {request.payment_status === "pending" ? (
+                        <p className="text-sm text-muted-foreground" role="status">
+                          Payment prompt sent{request.mpesa_phone ? ` to ${request.mpesa_phone}` : ""}. We&apos;ll confirm this enquiry after Safaricom verifies payment.
+                        </p>
+                      ) : request.payment_status === "paid" ? (
+                        <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                          Payment received and verified.
+                        </p>
+                      ) : Number(request.paid_amount ?? 0) > 0 ? (
+                        <p className="text-sm text-destructive" role="alert">
+                          We received KSh {request.paid_amount?.toLocaleString("en-KE")} but it did not match the quote. Please contact our team before making another payment.
+                        </p>
+                      ) : (
+                        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                          <Input
+                            type="tel"
+                            value={weddingPaymentPhones[request.id] ?? request.mpesa_phone ?? currentProfile.phone ?? ""}
+                            onChange={(event) =>
+                              setWeddingPaymentPhones((current) => ({
+                                ...current,
+                                [request.id]: event.target.value,
+                              }))
+                            }
+                            placeholder="M-Pesa number, e.g. 07XX XXX XXX"
+                            aria-label="M-Pesa payment phone number"
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => void requestWeddingPayment(request)}
+                            disabled={weddingPaymentLoadingId === request.id}
+                            className="rounded-xl"
+                          >
+                            {weddingPaymentLoadingId === request.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Banknote className="mr-2 h-4 w-4" />
+                            )}
+                            Pay quote
+                          </Button>
+                        </div>
+                      )}
+                      {request.payment_failure_reason && (
+                        <p className="text-xs text-destructive">
+                          {request.payment_failure_reason}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {request.status === "confirmed" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void downloadAgreement(request)}
+                      disabled={weddingAgreementLoadingId === request.id}
+                      className="w-full rounded-xl"
+                    >
+                      {weddingAgreementLoadingId === request.id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                      )}
+                      Download wedding agreement PDF
+                    </Button>
+                  )}
+                  {(request.status === "cancelled" || request.status === "spam") && (
                     <a
                       href={`tel:+${SUPPORT_NUMBER}`}
                       className="inline-flex min-h-10 items-center gap-2 rounded-lg text-sm font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

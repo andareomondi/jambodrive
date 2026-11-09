@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback, useEffect } from "react";
+import Link from "next/link";
 import { AppImage } from "@/components/ui/app-image";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { DeleteCarModal } from "@/components/admin/delete-car-modal";
 import { AdminGallerySection } from "@/components/admin/admin-gallery-section";
 import { AirportPickupsSection } from "@/components/admin/airport-pickups-section";
 import { WeddingEventsSection } from "@/components/admin/wedding-events-section";
+import { BookingModal } from "@/components/admin/booking-modal";
 import type { GalleryEvent } from "@/lib/services/gallery";
 import {
   Users,
@@ -32,6 +34,9 @@ import {
   Phone,
   Mail,
   Eye,
+  ClipboardCheck,
+  RotateCcw,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -211,6 +216,8 @@ export function AdminDashboardClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<Booking | null>(null);
 
   const totalRevenue = useMemo(
     () =>
@@ -273,7 +280,32 @@ export function AdminDashboardClient({
 
   const handleBookingStatusChange = useCallback(
     async (booking: Booking, status: BookingStatus) => {
-      if (booking.status === status) return;
+      const currentStatus = booking.status ?? "pending";
+      if (currentStatus === "cancelled" || currentStatus === "failed") {
+        toast.info("This booking is already in a terminal state and cannot be changed.");
+        return;
+      }
+      if (status === currentStatus) return;
+      if (currentStatus === "completed") {
+        toast.info("Completed bookings are locked and cannot be changed back.");
+        return;
+      }
+      if (
+        currentStatus === "confirmed" &&
+        ["pending", "completed", "confirmed"].includes(status)
+      ) {
+        toast.info("Confirmed bookings cannot be moved back to an earlier status.");
+        return;
+      }
+      if (
+        currentStatus === "pending" &&
+        status === "confirmed"
+      ) {
+        setSelectedBookingForPayment(booking);
+        setBookingModalOpen(true);
+        return;
+      }
+
       setUpdatingBookingId(booking.id);
       try {
         const result = await adminUpdateBookingStatus(booking.id, status);
@@ -558,8 +590,8 @@ export function AdminDashboardClient({
                 Review rental requests, payment outcomes, and update booking status.
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_180px] lg:w-[470px]">
-              <div className="relative">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:w-[560px]">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={searchQuery}
@@ -569,7 +601,7 @@ export function AdminDashboardClient({
                   className="pl-9"
                 />
               </div>
-              <label className="relative">
+              <label className="relative w-full sm:w-[180px]">
                 <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <select
                   value={statusFilter}
@@ -595,6 +627,17 @@ export function AdminDashboardClient({
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               </label>
+              <Button
+                type="button"
+                onClick={() => {
+                  setSelectedBookingForPayment(null);
+                  setBookingModalOpen(true);
+                }}
+                className="rounded-xl"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create booking
+              </Button>
             </div>
           </div>
 
@@ -677,6 +720,90 @@ export function AdminDashboardClient({
                           <option value="cancelled">Cancelled</option>
                           <option value="failed">Failed</option>
                         </select>
+                        {status === "pending" && (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="default"
+                              disabled={updating}
+                              onClick={() => {
+                                setSelectedBookingForPayment(booking);
+                                setBookingModalOpen(true);
+                              }}
+                              className="rounded-lg"
+                            >
+                              <Banknote className="mr-1 h-4 w-4" />
+                              Receive payment
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={updating}
+                              onClick={() =>
+                                void handleBookingStatusChange(
+                                  booking,
+                                  "cancelled",
+                                )
+                              }
+                              className="rounded-lg text-destructive hover:bg-destructive/10"
+                            >
+                              <X className="mr-1 h-4 w-4" />
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                        {status === "confirmed" && (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const phone =
+                                  booking.profiles?.phone ?? booking.mpesa_phone;
+                                if (!phone) {
+                                  toast.error(
+                                    "No phone number is available for this booking.",
+                                  );
+                                  return;
+                                }
+                                openWhatsApp(
+                                  phone,
+                                  `Hello, your Cosmara booking is confirmed.\n\nVehicle: ${booking.cars?.name ?? "Vehicle"}\nPickup: ${new Date(booking.pickup_date).toLocaleDateString("en-KE")}\nLocation: ${booking.pickup_location}\nTotal: KES ${booking.total_price.toLocaleString("en-KE")}\n\nPlease contact us if you have any questions.`,
+                                );
+                              }}
+                              className="rounded-lg"
+                            >
+                              <MessageCircle className="mr-1 h-4 w-4 text-green-600" />
+                              Notify
+                            </Button>
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="outline"
+                              className="rounded-lg"
+                            >
+                              <Link href="/dashboard/facilitator">
+                                <ClipboardCheck className="mr-1 h-4 w-4" />
+                                Return
+                              </Link>
+                            </Button>
+                          </>
+                        )}
+                        {(status === "failed" || status === "cancelled") && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled
+                            className="rounded-lg opacity-50 cursor-not-allowed"
+                          >
+                            <RotateCcw className="mr-1 h-4 w-4" />
+                            Locked
+                          </Button>
+                        )}
                         <Button
                           type="button"
                           variant="outline"
@@ -878,6 +1005,12 @@ export function AdminDashboardClient({
           ...(carToDelete?.image ? [carToDelete.image] : []),
           ...(carToDelete?.images ?? []),
         ]}
+      />
+      <BookingModal
+        open={bookingModalOpen}
+        onOpenChange={setBookingModalOpen}
+        booking={selectedBookingForPayment}
+        onSuccess={refreshBookings}
       />
       <CarModal
         open={carModalOpen}

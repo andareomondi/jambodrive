@@ -32,14 +32,6 @@ const WEDDING_CAR_TYPES = [
   "Other",
 ];
 
-const WEDDING_REQUEST_STATUSES: WeddingEventRequestStatus[] = [
-  "new",
-  "contacted",
-  "quoted",
-  "confirmed",
-  "declined",
-];
-
 async function requireWeddingEventAdmin() {
   const supabase = await createClient();
   const {
@@ -209,30 +201,138 @@ export async function getAdminWeddingEventRequests(): Promise<WeddingEventReques
   return data as WeddingEventRequest[];
 }
 
-export async function updateWeddingEventRequestStatus(
+export async function markWeddingEventContacted(
   id: string,
-  status: WeddingEventRequestStatus,
+  method: "email" | "whatsapp" | "call",
   adminNotes: string,
 ): Promise<WeddingEventRequest> {
   const supabase = await requireWeddingEventAdmin();
   const notes = adminNotes.trim();
 
-  if (!id || !WEDDING_REQUEST_STATUSES.includes(status)) {
-    throw new Error("Choose a valid enquiry status.");
+  if (!id || !["email", "whatsapp", "call"].includes(method)) {
+    throw new Error("Choose a valid contact method.");
   }
-  if (notes.length > 2000) {
-    throw new Error("Admin notes must be 2,000 characters or fewer.");
+  if (notes.length > 2000) throw new Error("Admin notes must be 2,000 characters or fewer.");
+
+  const { data, error } = await supabase
+    .from("wedding_event_requests")
+    .update({
+      status: "contacted",
+      admin_notes: notes || null,
+      contact_method: method,
+    })
+    .eq("id", id)
+    .eq("status", "new")
+    .select()
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "This enquiry is no longer awaiting contact.");
   }
+  return data as WeddingEventRequest;
+}
+
+export async function saveWeddingEventQuote(
+  id: string,
+  amount: number,
+  quoteNotes: string,
+  adminNotes: string,
+): Promise<WeddingEventRequest> {
+  const supabase = await requireWeddingEventAdmin();
+  const quote = Number(amount);
+  const message = quoteNotes.trim();
+  const notes = adminNotes.trim();
+  if (!id || !Number.isSafeInteger(quote) || quote < 1) {
+    throw new Error("Enter a valid quote amount in whole Kenyan shillings.");
+  }
+  if (message.length > 2000 || notes.length > 2000) {
+    throw new Error("Quote and admin notes must be 2,000 characters or fewer.");
+  }
+
+  const { data: current, error: currentError } = await supabase
+    .from("wedding_event_requests")
+    .select("status, payment_status")
+    .eq("id", id)
+    .single();
+  if (currentError || !current) {
+    throw new Error(currentError?.message ?? "Wedding enquiry not found.");
+  }
+  if (
+    current.status !== "contacted" &&
+    !(current.status === "quoted" && !["pending", "paid"].includes(current.payment_status))
+  ) {
+    throw new Error("Only contacted enquiries or unpaid quotes can be quoted.");
+  }
+
+  const update = {
+      status: "quoted",
+      quote_amount: quote,
+      quote_notes: message || null,
+      admin_notes: notes || null,
+      payment_status: "unpaid",
+      payment_failure_reason: null,
+      checkout_request_id: null,
+    };
+  let updateQuery = supabase
+    .from("wedding_event_requests")
+    .update(update)
+    .eq("id", id)
+    .eq("status", current.status);
+  if (current.status === "quoted") {
+    updateQuery = updateQuery.eq("payment_status", current.payment_status);
+  }
+  const { data, error } = await updateQuery.select().single();
+  if (error || !data) {
+    throw new Error(error?.message ?? "Quote changed concurrently; refresh and try again.");
+  }
+  return data as WeddingEventRequest;
+}
+
+export async function cancelWeddingEventEnquiry(
+  id: string,
+  status: Extract<WeddingEventRequestStatus, "cancelled" | "spam">,
+  adminNotes: string,
+): Promise<WeddingEventRequest> {
+  const supabase = await requireWeddingEventAdmin();
+  const notes = adminNotes.trim();
+  if (!id || !["cancelled", "spam"].includes(status)) {
+    throw new Error("Choose whether this enquiry is cancelled or spam.");
+  }
+  if (notes.length > 2000) throw new Error("Admin notes must be 2,000 characters or fewer.");
 
   const { data, error } = await supabase
     .from("wedding_event_requests")
     .update({ status, admin_notes: notes || null })
     .eq("id", id)
+    .eq("status", "new")
     .select()
     .single();
-
   if (error || !data) {
-    throw new Error(error?.message ?? "Could not update wedding enquiry.");
+    throw new Error(error?.message ?? "Only new enquiries can be cancelled or marked as spam.");
+  }
+  return data as WeddingEventRequest;
+}
+
+export async function saveWeddingEventAdminNotes(
+  id: string,
+  adminNotes: string,
+): Promise<WeddingEventRequest> {
+  const supabase = await requireWeddingEventAdmin();
+  const notes = adminNotes.trim();
+  if (!id || notes.length > 2000) {
+    throw new Error("Admin notes must be 2,000 characters or fewer.");
+  }
+  const { data, error } = await supabase
+    .from("wedding_event_requests")
+    .update({ admin_notes: notes || null })
+    .eq("id", id)
+    .neq("status", "confirmed")
+    .neq("status", "cancelled")
+    .neq("status", "spam")
+    .select()
+    .single();
+  if (error || !data) {
+    throw new Error(error?.message ?? "This enquiry is locked or could not be updated.");
   }
   return data as WeddingEventRequest;
 }
