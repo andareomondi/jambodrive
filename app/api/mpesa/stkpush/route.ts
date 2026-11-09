@@ -69,6 +69,28 @@ function getTimestamp(): string {
   );
 }
 
+async function markWeddingPaymentFailed(
+  requestId: string,
+  attempt: number,
+  reason: string,
+) {
+  const { error } = await supabaseAdmin
+    .from("wedding_event_requests")
+    .update({
+      status: attempt >= 3 ? "spam" : "quoted",
+      payment_status: "failed",
+      payment_failure_reason: reason,
+    })
+    .eq("id", requestId)
+    .eq("status", "quoted")
+    .eq("payment_status", "pending");
+
+  if (error) {
+    console.error("[mpesa/stkpush] Failed to save wedding payment failure:", error);
+    throw new Error("Payment failed, but the enquiry status could not be updated. Please contact support.");
+  }
+}
+
 // ─── Route Handler ───────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -86,6 +108,7 @@ export async function POST(req: NextRequest) {
     let paymentAmount: number;
     let accountReference: string;
     let transactionDesc: string;
+    let weddingPaymentAttempt = 0;
 
     if (airportPickupId) {
       const sessionClient = await createSessionClient();
@@ -139,7 +162,7 @@ export async function POST(req: NextRequest) {
 
       const { data: request, error: requestError } = await sessionClient
         .from("wedding_event_requests")
-        .select("id, customer_id, status, quote_amount, payment_status, paid_amount")
+        .select("id, customer_id, status, quote_amount, payment_status, paid_amount, payment_attempts")
         .eq("id", weddingEventRequestId)
         .single();
       if (requestError || !request) {
@@ -167,10 +190,16 @@ export async function POST(req: NextRequest) {
         request.payment_status === "paid" ||
         request.payment_status === "pending" ||
         Number(request.paid_amount ?? 0) > 0 ||
+        request.payment_attempts >= 3 ||
         !request.quote_amount
       ) {
         return NextResponse.json(
-          { error: "This wedding quote is not awaiting payment." },
+          {
+            error:
+              request.payment_attempts >= 3
+                ? "The three M-Pesa payment attempts have been used. This enquiry is closed."
+                : "This wedding quote is not awaiting payment.",
+          },
           { status: 409 },
         );
       }
@@ -204,29 +233,27 @@ export async function POST(req: NextRequest) {
     const token = await getAccessToken();
 
     if (weddingEventRequestId) {
-      const { data: reserved, error: reserveError } = await supabaseAdmin
-        .from("wedding_event_requests")
-        .update({
-          payment_status: "pending",
-          mpesa_phone: formattedPhone,
-          payment_failure_reason: null,
-        })
-        .eq("id", weddingEventRequestId)
-        .eq("status", "quoted")
-        .in("payment_status", ["unpaid", "failed"])
-        .is("paid_amount", null)
-        .select("id")
-        .maybeSingle();
+      const sessionClient = await createSessionClient();
+      const { data: attempt, error: reserveError } = await sessionClient.rpc(
+        "reserve_wedding_event_payment",
+        {
+          p_request_id: weddingEventRequestId,
+          p_phone: formattedPhone,
+        },
+      );
 
-      if (reserveError || !reserved) {
+      if (reserveError || typeof attempt !== "number") {
+        console.error("[mpesa/stkpush] Could not reserve wedding payment attempt:", reserveError);
         return NextResponse.json(
           {
             error:
+              reserveError?.message ??
               "This quote is no longer available for payment. Refresh and check its current status.",
           },
           { status: 409 },
         );
       }
+      weddingPaymentAttempt = attempt;
     }
 
     // ── Build callback URL ──────────────────────────────────────────────────
@@ -234,9 +261,17 @@ export async function POST(req: NextRequest) {
     const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/mpesa/callback?key=${process.env.MPESA_CALLBACK_SECRET}`;
 
     // ── Fire STK Push ───────────────────────────────────────────────────────
-    const stkRes = await fetch(
-      `${getMpesaBaseUrl()}/mpesa/stkpush/v1/processrequest`,
-      {
+    let stkRes: Response;
+    let stkData: {
+      ResponseCode?: string;
+      errorMessage?: string;
+      CheckoutRequestID?: string;
+      MerchantRequestID?: string;
+    };
+    try {
+      stkRes = await fetch(
+        `${getMpesaBaseUrl()}/mpesa/stkpush/v1/processrequest`,
+        {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -257,10 +292,24 @@ export async function POST(req: NextRequest) {
           AccountReference: accountReference,
           TransactionDesc: transactionDesc,
         }),
-      },
-    );
-
-    const stkData = await stkRes.json();
+        },
+      );
+      stkData = await stkRes.json();
+    } catch (error) {
+      const reason =
+        error instanceof Error ? error.message : "Could not reach M-Pesa.";
+      if (weddingEventRequestId) {
+        await markWeddingPaymentFailed(
+          weddingEventRequestId,
+          weddingPaymentAttempt,
+          reason,
+        );
+      }
+      return NextResponse.json(
+        { error: `M-Pesa request failed: ${reason}` },
+        { status: 502 },
+      );
+    }
 
     if (!stkRes.ok || stkData.ResponseCode !== "0") {
       console.error("STK Push rejected by Daraja:", stkData);
@@ -282,18 +331,11 @@ export async function POST(req: NextRequest) {
           );
         }
       } else if (weddingEventRequestId) {
-        const { error: weddingUpdateError } = await supabaseAdmin
-          .from("wedding_event_requests")
-          .update({
-            payment_status: "failed",
-            payment_failure_reason:
-              stkData.errorMessage ?? "M-Pesa request was rejected.",
-          })
-          .eq("id", weddingEventRequestId)
-          .eq("status", "quoted");
-        if (weddingUpdateError) {
-          console.error("Failed to mark wedding quote payment rejected:", weddingUpdateError);
-        }
+        await markWeddingPaymentFailed(
+          weddingEventRequestId,
+          weddingPaymentAttempt,
+          stkData.errorMessage ?? "M-Pesa request was rejected.",
+        );
       }
       return NextResponse.json(
         { error: stkData.errorMessage ?? "M-Pesa request was rejected." },
@@ -314,12 +356,10 @@ export async function POST(req: NextRequest) {
             .from("wedding_event_requests")
             .update({
               checkout_request_id: stkData.CheckoutRequestID,
-              mpesa_phone: formatPhone(String(phone)),
-              payment_status: "pending",
-              payment_failure_reason: null,
             })
             .eq("id", weddingEventRequestId)
             .eq("status", "quoted")
+            .eq("payment_status", "pending")
         : await supabaseAdmin
           .from("bookings")
           .update({ checkout_request_id: stkData.CheckoutRequestID })

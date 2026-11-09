@@ -129,7 +129,7 @@ const WEDDING_STATUS_DESCRIPTIONS: Record<WeddingEventRequestStatus, string> = {
   quoted: "We’re preparing or have shared a tailored transport proposal with you.",
   confirmed: "Your wedding transport plans have been confirmed with our team.",
   cancelled: "This enquiry was cancelled. Contact our team if you have questions.",
-  spam: "This enquiry has been closed.",
+  spam: "This enquiry was closed after three unsuccessful payment attempts. Contact our team if you need assistance.",
 };
 
 function formatDateRange(pickup: string, returnDate: string) {
@@ -410,6 +410,75 @@ export function DashboardClient({
       void channel.unsubscribe();
     };
   }, [profile.id]);
+
+  useEffect(() => {
+    let active = true;
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+
+    const pending = weddingEventRequests.filter(
+      (request) =>
+        request.status === "quoted" &&
+        request.payment_status === "pending" &&
+        request.checkout_request_id,
+    );
+
+    for (const request of pending) {
+      let checks = 0;
+      const checkStatus = async () => {
+        if (!active) return;
+        checks += 1;
+        try {
+          const response = await fetch("/api/mpesa/wedding-payment-status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ weddingEventRequestId: request.id }),
+          });
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.error ?? "Could not check M-Pesa status.");
+          }
+          if (result.paymentStatus !== "pending" && active) {
+            setWeddingEventRequests((current) =>
+              current.map((item) =>
+                item.id === request.id
+                  ? {
+                      ...item,
+                      status: result.status,
+                      payment_status: result.paymentStatus,
+                      payment_failure_reason: result.reason ?? item.payment_failure_reason,
+                    }
+                  : item,
+              ),
+            );
+            return;
+          }
+        } catch (error) {
+          console.error("[DashboardClient] Could not query pending wedding payment:", error);
+        }
+
+        if (active && checks < 6) {
+          const timer = setTimeout(() => {
+            timers.delete(timer);
+            void checkStatus();
+          }, 30_000);
+          timers.add(timer);
+        }
+      };
+
+      const updatedAt = new Date(request.updated_at).getTime();
+      const initialDelay = Math.max(0, 90_000 - (Date.now() - updatedAt));
+      const timer = setTimeout(() => {
+        timers.delete(timer);
+        void checkStatus();
+      }, initialDelay);
+      timers.add(timer);
+    }
+
+    return () => {
+      active = false;
+      timers.forEach(clearTimeout);
+    };
+  }, [weddingEventRequests]);
 
   // Memoised — only recalculates when bookings changes
   const { activeBookings, pastBookings } = useMemo(
@@ -801,7 +870,7 @@ export function DashboardClient({
                       )}
                       {request.payment_status === "pending" ? (
                         <p className="text-sm text-muted-foreground" role="status">
-                          Payment prompt sent{request.mpesa_phone ? ` to ${request.mpesa_phone}` : ""}. We&apos;ll confirm this enquiry after Safaricom verifies payment.
+                          Payment prompt sent{request.mpesa_phone ? ` to ${request.mpesa_phone}` : ""}. We&apos;ll confirm this enquiry after Safaricom verifies payment. Attempt {request.payment_attempts} of 3.
                         </p>
                       ) : request.payment_status === "paid" ? (
                         <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
@@ -812,7 +881,16 @@ export function DashboardClient({
                           We received KSh {request.paid_amount?.toLocaleString("en-KE")} but it did not match the quote. Please contact our team before making another payment.
                         </p>
                       ) : (
-                        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                        <div className="grid gap-2">
+                          {request.payment_status === "failed" && (
+                            <p className="text-xs text-muted-foreground">
+                              Attempt {request.payment_attempts} of 3
+                              {request.payment_attempts < 3
+                                ? ` · ${3 - request.payment_attempts} ${3 - request.payment_attempts === 1 ? "retry" : "retries"} remaining`
+                                : ""}
+                            </p>
+                          )}
+                          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                           <Input
                             type="tel"
                             value={weddingPaymentPhones[request.id] ?? request.mpesa_phone ?? currentProfile.phone ?? ""}
@@ -838,6 +916,7 @@ export function DashboardClient({
                             )}
                             Pay quote
                           </Button>
+                          </div>
                         </div>
                       )}
                       {request.payment_failure_reason && (

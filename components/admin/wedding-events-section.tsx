@@ -604,17 +604,28 @@ export function WeddingEventsSection({
                           </p>
                           <p className="mt-1 text-xs capitalize text-muted-foreground">
                             Payment: {request.payment_status}
+                            {request.payment_status === "pending" || request.payment_status === "failed"
+                              ? ` · attempt ${request.payment_attempts} of 3`
+                              : ""}
                             {request.paid_amount ? ` · received ${formatCurrency(request.paid_amount)}` : ""}
                           </p>
                         </div>
                         {request.payment_status === "pending" && (
                           <p className="text-sm text-muted-foreground" role="status">
-                            M-Pesa payment request is pending callback confirmation.
+                            M-Pesa payment request is pending callback confirmation. Attempt {request.payment_attempts} of 3.
                           </p>
                         )}
                         {Number(request.paid_amount ?? 0) > 0 && request.payment_status !== "paid" && (
                           <p className="text-sm text-destructive" role="alert">
                             Payment received ({formatCurrency(request.paid_amount ?? 0)}) did not match the quote. Review the receipt and contact the customer; another automatic charge is disabled to prevent overpayment.
+                          </p>
+                        )}
+                        {request.payment_status === "failed" && Number(request.paid_amount ?? 0) === 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Attempt {request.payment_attempts} of 3
+                            {request.payment_attempts < 3
+                              ? ` · ${3 - request.payment_attempts} ${3 - request.payment_attempts === 1 ? "retry" : "retries"} remaining`
+                              : ""}
                           </p>
                         )}
                         {request.payment_status !== "paid" &&

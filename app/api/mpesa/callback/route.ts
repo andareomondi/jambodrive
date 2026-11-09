@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
 
   const { data: weddingRequest } = await supabaseAdmin
     .from("wedding_event_requests")
-    .select("id, quote_amount")
+    .select("id, quote_amount, payment_attempts")
     .eq("checkout_request_id", CheckoutRequestID)
     .maybeSingle();
 
@@ -117,6 +117,7 @@ export async function POST(req: NextRequest) {
     await handleWeddingQuotePayment(
       weddingRequest.id,
       weddingRequest.quote_amount,
+      weddingRequest.payment_attempts,
       ResultCode,
       ResultDesc,
       CallbackMetadata,
@@ -134,6 +135,7 @@ export async function POST(req: NextRequest) {
 async function handleWeddingQuotePayment(
   requestId: string,
   quoteAmount: number | null,
+  paymentAttempts: number,
   resultCode: number,
   resultDesc: string,
   metadata?: { Item: CallbackItem[] },
@@ -172,8 +174,10 @@ async function handleWeddingQuotePayment(
   const { error } = await supabaseAdmin
     .from("wedding_event_requests")
     .update({
+      status: paymentAttempts >= 3 ? "spam" : "quoted",
       payment_status: "failed",
-      payment_failure_reason: resultDesc,
+      payment_failure_reason:
+        resultDesc || "M-Pesa payment was not completed.",
     })
     .eq("id", requestId)
     .eq("status", "quoted")

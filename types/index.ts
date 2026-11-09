@@ -223,6 +223,7 @@ export interface WeddingEventRequest {
   contact_method: "email" | "whatsapp" | "call" | null;
   payment_status: WeddingEventPaymentStatus;
   checkout_request_id: string | null;
+  payment_attempts: number;
   mpesa_receipt_number: string | null;
   mpesa_transaction_date: string | null;
   mpesa_phone: string | null;
