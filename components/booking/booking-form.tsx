@@ -15,6 +15,7 @@ interface BookingFormProps {
   carName: string;
   onSubmit: (data: BookingFormData) => void;
   isLoading?: boolean;
+  initialValues?: Partial<BookingFormData>;
 }
 
 export interface BookingFormData {
@@ -28,13 +29,19 @@ export interface BookingFormData {
   phone: string;
 }
 
-export function BookingForm({ onSubmit, isLoading = false }: BookingFormProps) {
+export function BookingForm({
+  onSubmit,
+  isLoading = false,
+  initialValues,
+}: BookingFormProps) {
   const {
     register,
     handleSubmit,
     control,
     formState: { errors },
-  } = useForm<BookingFormData>();
+  } = useForm<BookingFormData>({
+    defaultValues: initialValues,
+  });
 
   const onSubmitForm = (data: BookingFormData) => {
     if (new Date(data.pickupDate) >= new Date(data.returnDate)) {

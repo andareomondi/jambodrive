@@ -6,12 +6,13 @@ import { useRouter } from "next/navigation";
 import { useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Users, Fuel, Zap, ArrowRight, UserCheck } from "lucide-react";
-import type { Car } from "@/types";
+import type { Car, RentalSearch } from "@/types";
 
 interface CarCardProps {
   car: Car;
   days?: number;
   index?: number;
+  rentalSearch?: RentalSearch;
 }
 
 const FUEL_ICON: Record<string, React.ReactNode> = {
@@ -28,10 +29,25 @@ function formatType(type: string | null) {
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
-export function CarCard({ car, days, index = 3 }: CarCardProps) {
+export function CarCard({
+  car,
+  days,
+  index = 3,
+  rentalSearch,
+}: CarCardProps) {
   const router = useRouter();
   const prefetchTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const targetHref = `/cars/${car.id}`;
+  const search = new URLSearchParams();
+  if (rentalSearch?.pickupDate) search.set("from", rentalSearch.pickupDate);
+  if (rentalSearch?.returnDate) search.set("to", rentalSearch.returnDate);
+  if (rentalSearch?.pickupLocation) {
+    search.set("pickup_location", rentalSearch.pickupLocation);
+  }
+  if (rentalSearch?.returnLocation) {
+    search.set("dropoff_location", rentalSearch.returnLocation);
+  }
+  const query = search.toString();
+  const targetHref = `/cars/${car.id}${query ? `?${query}` : ""}`;
 
   const handleMouseEnter = () => {
     if (!car.available) return;

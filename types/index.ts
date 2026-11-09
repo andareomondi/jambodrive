@@ -65,6 +65,13 @@ export interface Booking {
   profiles?: Pick<Profile, "full_name" | "email" | "phone">;
 }
 
+export interface RentalSearch {
+  pickupDate?: string;
+  returnDate?: string;
+  pickupLocation?: string;
+  returnLocation?: string;
+}
+
 export type BookingInsert = Omit<
   Booking,
   | "id"

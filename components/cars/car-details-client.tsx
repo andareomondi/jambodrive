@@ -36,11 +36,12 @@ import {
 } from "@/components/booking/booking-form";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import type { Car } from "@/types";
+import type { Car, RentalSearch } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface CarDetailsClientProps {
   car: Car;
+  rentalSearch?: RentalSearch;
 }
 
 type BookingMode = "pay_now" | "pay_later";
@@ -49,7 +50,7 @@ type ModalStep =
 
 const MPESA_SUPPORT_NUMBER = "254758500943";
 
-export function CarDetailsClient({ car }: CarDetailsClientProps) {
+export function CarDetailsClient({ car, rentalSearch }: CarDetailsClientProps) {
   const images = car.images ?? (car.image ? [car.image] : []);
   const features = car.features ?? [];
 
@@ -648,6 +649,12 @@ export function CarDetailsClient({ car }: CarDetailsClientProps) {
                   carName={car.name}
                   onSubmit={handleFormSubmit}
                   isLoading={false}
+                  initialValues={{
+                    pickupDate: rentalSearch?.pickupDate,
+                    returnDate: rentalSearch?.returnDate,
+                    pickupLocation: rentalSearch?.pickupLocation,
+                    returnLocation: rentalSearch?.returnLocation,
+                  }}
                 />
               )}
 

@@ -3,10 +3,19 @@ import { notFound } from "next/navigation";
 import { getCarById, getAvailableCars } from "@/lib/services/cars";
 import { CarDetailsClient } from "@/components/cars/car-details-client";
 import type { Metadata } from "next";
-import type { Car } from "@/types";
+import type { Car, RentalSearch } from "@/types";
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+function getSearchString(
+  params: { [key: string]: string | string[] | undefined },
+  key: string,
+) {
+  const value = params[key];
+  return typeof value === "string" ? value : undefined;
 }
 
 export const dynamic = "force-dynamic";
@@ -58,10 +67,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 async function CarDetailsData({
   paramsPromise,
+  searchParamsPromise,
 }: {
   paramsPromise: Promise<{ id: string }>;
+  searchParamsPromise: Props["searchParams"];
 }) {
-  const { id } = await paramsPromise;
+  const [{ id }, searchParams] = await Promise.all([
+    paramsPromise,
+    searchParamsPromise,
+  ]);
+  const rentalSearch: RentalSearch = {
+    pickupDate: getSearchString(searchParams, "from"),
+    returnDate: getSearchString(searchParams, "to"),
+    pickupLocation: getSearchString(searchParams, "pickup_location"),
+    returnLocation: getSearchString(searchParams, "dropoff_location"),
+  };
   let car: Car;
 
   try {
@@ -110,12 +130,12 @@ async function CarDetailsData({
           __html: JSON.stringify(vehicleData).replace(/</g, "\\u003c"),
         }}
       />
-      <CarDetailsClient car={car} />
+      <CarDetailsClient car={car} rentalSearch={rentalSearch} />
     </>
   );
 }
 
-export default async function CarDetailsPage({ params }: Props) {
+export default async function CarDetailsPage({ params, searchParams }: Props) {
   return (
     <Suspense
       fallback={
@@ -124,7 +144,10 @@ export default async function CarDetailsPage({ params }: Props) {
         </div>
       }
     >
-      <CarDetailsData paramsPromise={params} />
+      <CarDetailsData
+        paramsPromise={params}
+        searchParamsPromise={searchParams}
+      />
     </Suspense>
   );
 }

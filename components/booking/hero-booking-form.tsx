@@ -119,8 +119,10 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
     const params = new URLSearchParams({
       from: data.pickupDate,
       pickup_time: data.pickupTime,
+      pickup_location: data.pickupLocation,
       to: data.dropOffDate,
       dropoff_time: data.dropOffTime,
+      dropoff_location: data.dropOffLocation,
       type: data.type,
     }).toString();
 

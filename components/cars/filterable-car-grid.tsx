@@ -22,6 +22,14 @@ export function FilterableCarGrid({
     typeof searchParams.from === "string" ? searchParams.from : undefined;
   const toParam =
     typeof searchParams.to === "string" ? searchParams.to : undefined;
+  const pickupLocationParam =
+    typeof searchParams.pickup_location === "string"
+      ? searchParams.pickup_location
+      : undefined;
+  const dropoffLocationParam =
+    typeof searchParams.dropoff_location === "string"
+      ? searchParams.dropoff_location
+      : undefined;
   const serviceParam =
     typeof searchParams.service === "string" ? searchParams.service : undefined;
 
@@ -110,12 +118,41 @@ export function FilterableCarGrid({
         <div className="w-full">
           {filteredCars.length > 0 ? (
             <>
-              <div className="mb-4 text-sm text-muted-foreground">
-                Showing {filteredCars.length} of {initialCars.length} vehicles
+              <div className="mb-4 flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  Showing {filteredCars.length} of {initialCars.length} vehicles
+                </span>
+                {(pickupLocationParam || dropoffLocationParam || fromParam) && (
+                  <span className="text-xs">
+                    {pickupLocationParam && `Pickup: ${pickupLocationParam}`}
+                    {pickupLocationParam && dropoffLocationParam && " · "}
+                    {dropoffLocationParam && `Drop-off: ${dropoffLocationParam}`}
+                    {(pickupLocationParam || dropoffLocationParam) &&
+                      fromParam &&
+                      " · "}
+                    {fromParam &&
+                      `${new Date(fromParam).toLocaleDateString("en-KE")}${
+                        toParam
+                          ? ` – ${new Date(toParam).toLocaleDateString("en-KE")}`
+                          : ""
+                      }`}
+                  </span>
+                )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredCars.map((car, index) => (
-                  <CarCard key={car.id} car={car} days={days} index={index} />
+                  <CarCard
+                    key={car.id}
+                    car={car}
+                    days={days}
+                    index={index}
+                    rentalSearch={{
+                      pickupDate: fromParam,
+                      returnDate: toParam,
+                      pickupLocation: pickupLocationParam,
+                      returnLocation: dropoffLocationParam,
+                    }}
+                  />
                 ))}
               </div>
             </>
