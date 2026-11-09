@@ -6,6 +6,7 @@ import {
   getUserAirportPickups,
   getUserBookings,
 } from "@/lib/services/bookings";
+import { getUserWeddingEventRequests } from "@/lib/actions/wedding-events";
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import type { Metadata } from "next";
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "My Dashboard",
   description:
-    "View and manage your car hire bookings, profile, and rental history.",
+    "Manage your profile, car hire bookings, airport pickups, and wedding transport enquiries.",
   robots: { index: false, follow: false },
 };
 
@@ -31,11 +32,22 @@ async function DashboardContent() {
     redirect("/auth/login");
   }
 
-  const [profile, bookings, airportPickups] = await Promise.all([
-    getProfileById(user.id),
-    getUserBookings(user.id),
-    getUserAirportPickups(user.id),
-  ]);
+  const [profile, bookings, airportPickups, weddingEventResult] =
+    await Promise.all([
+      getProfileById(user.id),
+      getUserBookings(user.id),
+      getUserAirportPickups(user.id),
+      getUserWeddingEventRequests(user.id).then(
+        (requests) => ({ requests, error: false as const }),
+        (loadError: unknown) => {
+          console.error(
+            "[DashboardPage] could not load wedding event enquiries:",
+            loadError,
+          );
+          return { requests: [], error: true as const };
+        },
+      ),
+    ]);
 
   return (
     <>
@@ -44,6 +56,12 @@ async function DashboardContent() {
         profile={profile}
         bookings={bookings}
         airportPickups={airportPickups}
+        weddingEventRequests={weddingEventResult.requests}
+        weddingEventLoadError={
+          weddingEventResult.error
+            ? "Wedding enquiries could not be loaded. Please try again later."
+            : undefined
+        }
       />
     </>
   );

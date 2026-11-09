@@ -195,6 +195,7 @@ export type WeddingEventRequestStatus =
 
 export interface WeddingEventRequest {
   id: string;
+  customer_id: string | null;
   contact_name: string;
   contact_email: string;
   contact_phone: string;

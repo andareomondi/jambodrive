@@ -23,9 +23,17 @@ import {
   Plane,
   Phone,
   Users,
+  Heart,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import type { AirportPickup, AirportPickupStatus, Booking, Profile } from "@/types";
+import type {
+  AirportPickup,
+  AirportPickupStatus,
+  Booking,
+  Profile,
+  WeddingEventRequest,
+  WeddingEventRequestStatus,
+} from "@/types";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,6 +41,8 @@ interface DashboardClientProps {
   profile: Profile;
   bookings: Booking[];
   airportPickups: AirportPickup[];
+  weddingEventRequests: WeddingEventRequest[];
+  weddingEventLoadError?: string;
 }
 
 const SUPPORT_NUMBER = "254758500943";
@@ -88,6 +98,30 @@ const AIRPORT_STATUS_STYLES: Record<AirportPickupStatus, string> = {
   completed: "bg-accent text-accent-foreground",
   rejected: "bg-destructive/10 text-destructive border border-destructive/20",
   cancelled: "bg-muted text-muted-foreground border border-border",
+};
+
+const WEDDING_STATUS_LABELS: Record<WeddingEventRequestStatus, string> = {
+  new: "Received",
+  contacted: "Contacted",
+  quoted: "Quote in progress",
+  confirmed: "Confirmed",
+  declined: "Contact support",
+};
+
+const WEDDING_STATUS_STYLES: Record<WeddingEventRequestStatus, string> = {
+  new: "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
+  contacted: "bg-sky-500/10 text-sky-800 dark:text-sky-300 border border-sky-500/20",
+  quoted: "bg-violet-500/10 text-violet-800 dark:text-violet-300 border border-violet-500/20",
+  confirmed: "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20",
+  declined: "bg-destructive/10 text-destructive border border-destructive/20",
+};
+
+const WEDDING_STATUS_DESCRIPTIONS: Record<WeddingEventRequestStatus, string> = {
+  new: "Your enquiry is with our team. We’ll contact you to discuss your plans.",
+  contacted: "Our team has reached out and is following up on your event details.",
+  quoted: "We’re preparing or have shared a tailored transport proposal with you.",
+  confirmed: "Your wedding transport plans have been confirmed with our team.",
+  declined: "We couldn’t accommodate this enquiry as submitted. Contact us to discuss options.",
 };
 
 function formatDateRange(pickup: string, returnDate: string) {
@@ -269,9 +303,13 @@ export function DashboardClient({
   profile,
   bookings: initialBookings,
   airportPickups: initialAirportPickups,
+  weddingEventRequests: initialWeddingEventRequests,
+  weddingEventLoadError,
 }: DashboardClientProps) {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [airportPickups, setAirportPickups] = useState<AirportPickup[]>(initialAirportPickups);
+  const [weddingEventRequests, setWeddingEventRequests] =
+    useState<WeddingEventRequest[]>(initialWeddingEventRequests);
   const [currentProfile, setCurrentProfile] = useState<Profile>(profile);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
@@ -322,6 +360,34 @@ export function DashboardClient({
             return exists
               ? current.map((pickup) =>
                   pickup.id === updated.id ? { ...pickup, ...updated } : pickup,
+                )
+              : [updated, ...current];
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "wedding_event_requests",
+          filter: `customer_id=eq.${profile.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            setWeddingEventRequests((current) =>
+              current.filter((request) => request.id !== payload.old.id),
+            );
+            return;
+          }
+          const updated = payload.new as WeddingEventRequest;
+          setWeddingEventRequests((current) => {
+            const exists = current.some((request) => request.id === updated.id);
+            return exists
+              ? current.map((request) =>
+                  request.id === updated.id
+                    ? { ...request, ...updated }
+                    : request,
                 )
               : [updated, ...current];
           });
@@ -578,6 +644,131 @@ export function DashboardClient({
               </p>
               <Button asChild className="mt-4 rounded-xl">
                 <Link href="/airport-pickup">Book an airport pickup</Link>
+              </Button>
+            </Card>
+          )}
+        </section>
+
+        <section>
+          <SectionHeading label="Wedding transport" accent />
+          {weddingEventLoadError ? (
+            <Card
+              role="alert"
+              className="border-amber-500/30 bg-amber-500/10 p-5 text-sm text-foreground"
+            >
+              {weddingEventLoadError} Confirm the wedding events Supabase
+              migration has been applied to enable enquiry tracking.
+            </Card>
+          ) : weddingEventRequests.length > 0 ? (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {weddingEventRequests.map((request) => (
+                <Card
+                  key={request.id}
+                  className="space-y-4 rounded-2xl border-border p-5 shadow-sm sm:p-6"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <span className="rounded-xl bg-accent/10 p-2 text-accent">
+                        <Heart className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          Wedding transport enquiry
+                        </p>
+                        <h3 className="mt-1 font-semibold text-foreground">
+                          {new Date(`${request.event_date}T12:00:00`).toLocaleDateString(
+                            "en-KE",
+                            { day: "numeric", month: "long", year: "numeric" },
+                          )}
+                        </h3>
+                      </div>
+                    </div>
+                    <Badge
+                      className={`shrink-0 text-xs ${WEDDING_STATUS_STYLES[request.status]}`}
+                      aria-label={`Wedding enquiry status: ${WEDDING_STATUS_LABELS[request.status]}`}
+                    >
+                      {WEDDING_STATUS_LABELS[request.status]}
+                    </Badge>
+                  </div>
+                  <div className="grid gap-2 text-sm sm:grid-cols-2">
+                    <p className="text-muted-foreground">
+                      <span className="text-xs">Budget</span>
+                      <br />
+                      <span className="font-medium text-foreground">
+                        KSh {request.budget_min.toLocaleString("en-KE")} – KSh{" "}
+                        {request.budget_max.toLocaleString("en-KE")}
+                      </span>
+                    </p>
+                    <p className="text-muted-foreground">
+                      <span className="text-xs">Vehicles</span>
+                      <br />
+                      <span className="font-medium text-foreground">
+                        {request.car_count} car{request.car_count === 1 ? "" : "s"} ·{" "}
+                        {request.preferred_car_types.join(", ")}
+                      </span>
+                    </p>
+                    <p className="text-muted-foreground sm:col-span-2">
+                      <span className="text-xs">Colour scheme</span>
+                      <br />
+                      <span className="font-medium text-foreground">
+                        {request.color_scheme}
+                      </span>
+                    </p>
+                    {request.venue && (
+                      <p className="text-muted-foreground sm:col-span-2">
+                        <span className="text-xs">Venue / route</span>
+                        <br />
+                        <span className="font-medium text-foreground">
+                          {request.venue}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  <p
+                    className="text-sm leading-5 text-muted-foreground"
+                    role="status"
+                  >
+                    {WEDDING_STATUS_DESCRIPTIONS[request.status]}
+                  </p>
+                  {request.status === "declined" && (
+                    <a
+                      href={`tel:+${SUPPORT_NUMBER}`}
+                      className="inline-flex min-h-10 items-center gap-2 rounded-lg text-sm font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <Phone className="h-4 w-4" />
+                      Contact support
+                    </a>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Reference: {request.id.slice(0, 8).toUpperCase()}
+                  </p>
+                </Card>
+              ))}
+              <Card className="flex flex-col items-start justify-center rounded-2xl border-dashed p-6">
+                <Heart className="h-7 w-7 text-accent" />
+                <h3 className="mt-3 font-semibold text-foreground">
+                  Planning another event?
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Send a new wedding transport enquiry with updated details.
+                </p>
+                <Button asChild className="mt-4 rounded-xl">
+                  <Link href="/wedding-events">Start another enquiry</Link>
+                </Button>
+              </Card>
+            </div>
+          ) : (
+            <Card className="p-8 text-center border-dashed rounded-2xl">
+              <Heart className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+              <p className="font-semibold text-foreground">
+                Planning wedding transport?
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Share your date, budget, vehicle ideas, and colour scheme. Track
+                your enquiry updates here.
+              </p>
+              <Button asChild className="mt-4 rounded-xl">
+                <Link href="/wedding-events">Plan wedding transport</Link>
               </Button>
             </Card>
           )}

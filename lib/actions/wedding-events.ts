@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import type {
   WeddingEventRequest,
@@ -65,6 +66,14 @@ export async function createWeddingEventRequest(
   input: WeddingEventRequestInput,
 ): Promise<{ id: string }> {
   const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) {
+    throw new Error(`Could not verify your account: ${authError.message}`);
+  }
+
   const contactName = input.contactName.trim();
   const contactEmail = input.contactEmail.trim().toLowerCase();
   const contactPhone = input.contactPhone.replace(/[^\d+]/g, "");
@@ -134,9 +143,12 @@ export async function createWeddingEventRequest(
     }
   }
 
-  const { data, error } = await supabase
+  const requestId = randomUUID();
+  const { error } = await supabase
     .from("wedding_event_requests")
     .insert({
+      id: requestId,
+      customer_id: user?.id ?? null,
       contact_name: contactName,
       contact_email: contactEmail,
       contact_phone: contactPhone,
@@ -150,15 +162,38 @@ export async function createWeddingEventRequest(
       venue: venue || null,
       notes: notes || null,
       status: "new",
-    })
-    .select("id")
-    .single();
+    });
 
-  if (error || !data) {
-    throw new Error(error?.message ?? "Could not submit your wedding enquiry.");
+  if (error) {
+    throw new Error(error.message ?? "Could not submit your wedding enquiry.");
   }
 
-  return data;
+  return { id: requestId };
+}
+
+export async function getUserWeddingEventRequests(
+  customerId: string,
+): Promise<WeddingEventRequest[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user || user.id !== customerId) {
+    throw new Error("You are not authorized to view these wedding enquiries.");
+  }
+
+  const { data, error } = await supabase
+    .from("wedding_event_requests")
+    .select("*")
+    .eq("customer_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Could not load your wedding enquiries: ${error.message}`);
+  }
+  return data as WeddingEventRequest[];
 }
 
 export async function getAdminWeddingEventRequests(): Promise<WeddingEventRequest[]> {

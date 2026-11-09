@@ -1,8 +1,10 @@
 -- Wedding event transport enquiries.
 -- Run this file in the Supabase SQL editor before deploying the application changes.
+-- Re-run it after deployment to apply customer tracking to an existing table.
 
 create table if not exists public.wedding_event_requests (
   id uuid primary key default gen_random_uuid(),
+  customer_id uuid references public.profiles(id) on delete set null,
   contact_name text not null check (char_length(trim(contact_name)) between 2 and 120),
   contact_email text not null check (char_length(trim(contact_email)) between 5 and 254),
   contact_phone text not null check (char_length(trim(contact_phone)) between 9 and 20),
@@ -24,10 +26,16 @@ create table if not exists public.wedding_event_requests (
   updated_at timestamptz not null default now()
 );
 
+alter table public.wedding_event_requests
+  add column if not exists customer_id uuid references public.profiles(id) on delete set null;
+
 create index if not exists wedding_event_requests_status_created_idx
   on public.wedding_event_requests (status, created_at desc);
 create index if not exists wedding_event_requests_event_date_idx
   on public.wedding_event_requests (event_date);
+create index if not exists wedding_event_requests_customer_created_idx
+  on public.wedding_event_requests (customer_id, created_at desc)
+  where customer_id is not null;
 
 create or replace function public.is_wedding_event_admin()
 returns boolean
@@ -75,6 +83,13 @@ create policy "Public can submit wedding event enquiries"
   with check (
     status = 'new'
     and admin_notes is null
+    and (
+      ((select auth.uid()) is null and customer_id is null)
+      or (
+        (select auth.uid()) is not null
+        and customer_id = (select auth.uid())
+      )
+    )
     and budget_max >= budget_min
     and event_date > current_date
     and preferred_car_types <@ array[
@@ -96,6 +111,14 @@ create policy "Super admins read wedding event enquiries"
   to authenticated
   using ((select public.is_wedding_event_admin()));
 
+drop policy if exists "Customers read their own wedding event enquiries"
+  on public.wedding_event_requests;
+create policy "Customers read their own wedding event enquiries"
+  on public.wedding_event_requests
+  for select
+  to authenticated
+  using (customer_id = (select auth.uid()));
+
 drop policy if exists "Super admins update wedding event enquiries"
   on public.wedding_event_requests;
 create policy "Super admins update wedding event enquiries"
@@ -109,3 +132,22 @@ revoke all on public.wedding_event_requests from public, anon, authenticated;
 grant insert on public.wedding_event_requests to anon, authenticated;
 grant select on public.wedding_event_requests to authenticated;
 grant update (status, admin_notes) on public.wedding_event_requests to authenticated;
+
+alter table public.wedding_event_requests replica identity full;
+
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (
+       select 1
+       from pg_publication_tables
+       where pubname = 'supabase_realtime'
+         and schemaname = 'public'
+         and tablename = 'wedding_event_requests'
+     ) then
+    execute 'alter publication supabase_realtime add table public.wedding_event_requests';
+  end if;
+end;
+$$;
+
+notify pgrst, 'reload schema';
