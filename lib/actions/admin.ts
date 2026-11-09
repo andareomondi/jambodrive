@@ -3,13 +3,44 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Booking, BookingStatus, Car, Profile } from "@/types";
 
+async function requireSuperAdmin() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) throw new Error("Please sign in to continue.");
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (error || profile?.role !== "super_admin") {
+    throw new Error("You are not authorized to update bookings.");
+  }
+
+  return supabase;
+}
+
 // ── Bookings ──────────────────────────────────────────────────────────────────
 
 export async function adminUpdateBookingStatus(
   id: string,
   status: BookingStatus
 ): Promise<{ booking: Booking; carId: string | null }> {
-  const supabase = await createClient();
+  if (
+    !id ||
+    !["pending", "confirmed", "completed", "cancelled", "failed"].includes(
+      status,
+    )
+  ) {
+    throw new Error("A valid booking and status are required.");
+  }
+
+  const supabase = await requireSuperAdmin();
 
   const { data, error } = await supabase
     .from("bookings")
