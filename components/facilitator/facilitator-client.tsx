@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
@@ -8,6 +8,7 @@ import {
   processCarReturn,
   initiateFacilitatorCharge,
 } from "@/lib/actions/facilitator";
+import { updateAirportPickupStatus } from "@/lib/actions/airport-pickups";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -21,8 +22,16 @@ import {
   CheckCircle,
   X,
   Phone,
+  Search,
+  CalendarClock,
+  Plane,
+  MapPin,
+  Users,
+  Luggage,
+  Clock3,
+  ArrowRight,
 } from "lucide-react";
-import type { Booking } from "@/types";
+import type { AirportPickup, AirportPickupStatus, Booking } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -36,7 +45,17 @@ type BookingWithCarPrice = Booking & {
 
 interface FacilitatorClientProps {
   initialBookings: BookingWithCarPrice[];
+  initialAirportPickups: AirportPickup[];
+  isSuperAdmin: boolean;
 }
+
+type OperationsView = "rentals" | "airport";
+
+const PICKUP_NEXT_STATUS: Partial<Record<AirportPickupStatus, AirportPickupStatus>> = {
+  requested: "accepted",
+  accepted: "in_progress",
+  in_progress: "completed",
+};
 
 // ── Checklist config ──────────────────────────────────────────────────────────
 
@@ -201,8 +220,16 @@ function PaymentOverlay({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function FacilitatorClient({ initialBookings }: FacilitatorClientProps) {
+export function FacilitatorClient({
+  initialBookings,
+  initialAirportPickups,
+  isSuperAdmin,
+}: FacilitatorClientProps) {
   const [bookings, setBookings] = useState(initialBookings);
+  const [airportPickups, setAirportPickups] = useState(initialAirportPickups);
+  const [activeView, setActiveView] = useState<OperationsView>("rentals");
+  const [query, setQuery] = useState("");
+  const [updatingPickupId, setUpdatingPickupId] = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking] =
     useState<BookingWithCarPrice | null>(null);
   const [paymentState, setPaymentState] = useState<PaymentState>("idle");
@@ -242,6 +269,99 @@ export function FacilitatorClient({ initialBookings }: FacilitatorClientProps) {
   }, [selectedBooking]);
 
   const totalAdditionalFees = damageFee + lateFeeDetails.fee;
+
+  const filteredBookings = useMemo(() => {
+    const search = query.trim().toLowerCase();
+    if (!search) return bookings;
+    return bookings.filter((booking) =>
+      [
+        booking.cars?.name,
+        booking.profiles?.full_name,
+        booking.profiles?.phone,
+        booking.pickup_location,
+        booking.return_location,
+      ]
+        .filter((value): value is string => typeof value === "string" && value.length > 0)
+        .some((value) => value.toLowerCase().includes(search)),
+    );
+  }, [bookings, query]);
+
+  const overdueCount = bookings.filter(
+    (booking) => new Date(booking.return_date).getTime() < new Date().setHours(0, 0, 0, 0),
+  ).length;
+
+  const handleUpdatePickup = async (
+    pickup: AirportPickup,
+    status: AirportPickupStatus,
+  ) => {
+    setUpdatingPickupId(pickup.id);
+    try {
+      await updateAirportPickupStatus(pickup.id, status);
+      setAirportPickups((current) =>
+        status === "completed" || status === "rejected"
+          ? current.filter((item) => item.id !== pickup.id)
+          : current.map((item) =>
+              item.id === pickup.id ? { ...item, status } : item,
+            ),
+      );
+      toast.success(
+        status === "completed"
+          ? "Airport pickup marked complete."
+          : `Pickup ${status.replace("_", " ")}.`,
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not update pickup status.",
+      );
+    } finally {
+      setUpdatingPickupId(null);
+    }
+  };
+
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("facilitator_airport_pickups")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "airport_pickups" },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            setAirportPickups((current) =>
+              current.filter((pickup) => pickup.id !== payload.old.id),
+            );
+            return;
+          }
+          const pickup = payload.new as AirportPickup;
+          if (
+            pickup.payment_status !== "paid" ||
+            !["requested", "accepted", "in_progress"].includes(pickup.status)
+          ) {
+            setAirportPickups((current) =>
+              current.filter((item) => item.id !== pickup.id),
+            );
+            return;
+          }
+          setAirportPickups((current) => {
+            const existing = current.find((item) => item.id === pickup.id);
+            if (existing) {
+              return current.map((item) =>
+                item.id === pickup.id ? { ...existing, ...pickup } : item,
+              );
+            }
+            return [...current, pickup].sort(
+              (a, b) =>
+                new Date(a.arrival_at).getTime() -
+                new Date(b.arrival_at).getTime(),
+            );
+          });
+        },
+      )
+      .subscribe();
+    return () => {
+      void channel.unsubscribe();
+    };
+  }, []);
 
   // ── Modal Open handler ────────────────────────────────────────────────────
 
@@ -435,70 +555,341 @@ ${customNotes || "None."}
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10 space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Facilitator Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Perform visual inspections and handle return balances.
-          </p>
-        </div>
-
-        {/* Booking list */}
-        <div className="grid gap-4">
-          {bookings.length === 0 ? (
-            <div className="p-8 text-center bg-card rounded-xl border border-border">
-              <ClipboardCheck className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-              <h3 className="text-lg font-medium text-foreground">
-                No Active Trips
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                All vehicles are back in the garage lot.
+      <main className="mx-auto max-w-6xl space-y-7 px-4 py-8 sm:px-6 lg:py-10">
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-accent/80 p-6 text-white shadow-xl sm:p-9">
+          <div className="absolute -right-10 -top-20 h-64 w-64 rounded-full border border-white/10" />
+          <div className="absolute -right-2 -top-12 h-48 w-48 rounded-full border border-white/10" />
+          <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/65">
+                Operations · {isSuperAdmin ? "Super admin view" : "Facilitator"}
+              </p>
+              <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+                Today&apos;s operations
+              </h1>
+              <p className="mt-2 max-w-xl text-sm text-white/75 sm:text-base">
+                Keep returns moving and stay ahead of airport arrivals.
               </p>
             </div>
-          ) : (
-            bookings.map((booking) => (
-              <div
-                key={booking.id}
-                className="bg-card p-5 sm:p-6 rounded-xl border border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm"
-              >
-                <div className="space-y-1">
-                  <h3 className="font-bold text-lg text-foreground">
-                    {booking.cars?.name ?? "Vehicle"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Customer:{" "}
-                    <span className="font-medium text-foreground">
-                      {booking.profiles?.full_name ?? "Unknown"}
-                    </span>{" "}
-                    {booking.profiles?.phone && `(${booking.profiles.phone})`}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Due:{" "}
-                    {new Date(booking.return_date).toLocaleDateString("en-KE", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                    {new Date() > new Date(booking.return_date) && (
-                      <span className="ml-2 text-destructive font-semibold">
-                        — OVERDUE
-                      </span>
-                    )}
+            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
+              <p className="text-xs text-white/65">Open tasks</p>
+              <p className="mt-1 text-2xl font-bold">
+                {bookings.length + airportPickups.length}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            {
+              label: "Active rentals",
+              value: bookings.length,
+              icon: CarIcon,
+              tone: "text-sky-700 bg-sky-500/10",
+            },
+            {
+              label: "Overdue returns",
+              value: overdueCount,
+              icon: AlertTriangle,
+              tone: "text-destructive bg-destructive/10",
+            },
+            {
+              label: "Airport pickups",
+              value: airportPickups.length,
+              icon: Plane,
+              tone: "text-violet-700 bg-violet-500/10",
+            },
+            {
+              label: "Due today",
+              value: bookings.filter((booking) => {
+                const today = new Date();
+                const due = new Date(booking.return_date);
+                return (
+                  due.getFullYear() === today.getFullYear() &&
+                  due.getMonth() === today.getMonth() &&
+                  due.getDate() === today.getDate()
+                );
+              }).length,
+              icon: CalendarClock,
+              tone: "text-amber-700 bg-amber-500/10",
+            },
+          ].map(({ label, value, icon: Icon, tone }) => (
+            <div
+              key={label}
+              className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-muted-foreground sm:text-sm">
+                  {label}
+                </p>
+                <span className={`rounded-xl p-2 ${tone}`}>
+                  <Icon className="h-4 w-4" />
+                </span>
+              </div>
+              <p className="mt-3 text-2xl font-bold text-foreground">{value}</p>
+            </div>
+          ))}
+        </section>
+
+        <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="flex flex-wrap gap-2 border-b border-border p-3 sm:p-4">
+            <button
+              type="button"
+              onClick={() => setActiveView("rentals")}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                activeView === "rentals"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              <CarIcon className="h-4 w-4" />
+              Rental returns
+              <span className="rounded-full bg-background/15 px-2 py-0.5 text-xs">
+                {bookings.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView("airport")}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                activeView === "airport"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              <Plane className="h-4 w-4" />
+              Airport arrivals
+              <span className="rounded-full bg-background/15 px-2 py-0.5 text-xs">
+                {airportPickups.length}
+              </span>
+            </button>
+          </div>
+
+          {activeView === "rentals" ? (
+            <div className="space-y-4 p-4 sm:p-6">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">
+                    Upcoming returns
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Confirm vehicle condition and settle any return balance.
                   </p>
                 </div>
-                <Button
-                  onClick={() => handleOpenInspect(booking)}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground w-full sm:w-auto rounded-xl shrink-0"
-                >
-                  Inspect & Return
-                </Button>
+                <div className="relative w-full sm:max-w-xs">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search car, customer, location..."
+                    className="h-10 rounded-xl pl-9"
+                  />
+                </div>
               </div>
-            ))
+
+              {filteredBookings.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border px-5 py-12 text-center">
+                  <ClipboardCheck className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+                  <h3 className="font-semibold text-foreground">
+                    {bookings.length ? "No matching rentals" : "No returns to process"}
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {bookings.length
+                      ? "Try another name, vehicle, or location."
+                      : "Confirmed rentals will appear here, ordered by return date."}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {filteredBookings.map((booking) => {
+                    const overdue =
+                      new Date(booking.return_date).getTime() <
+                      new Date().setHours(0, 0, 0, 0);
+                    return (
+                      <article
+                        key={booking.id}
+                        className="flex flex-col gap-4 rounded-2xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-bold text-foreground">
+                              {booking.cars?.name ?? "Vehicle"}
+                            </h3>
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                                overdue
+                                  ? "bg-destructive/10 text-destructive"
+                                  : "bg-accent/10 text-accent"
+                              }`}
+                            >
+                              {overdue ? "Overdue" : "Confirmed"}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {booking.profiles?.full_name ?? "Customer"}{" "}
+                            {booking.profiles?.phone && `· ${booking.profiles.phone}`}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+                            <span className="inline-flex items-center gap-1.5">
+                              <CalendarClock className="h-3.5 w-3.5" />
+                              Due{" "}
+                              {new Date(booking.return_date).toLocaleDateString(
+                                "en-KE",
+                                { day: "numeric", month: "short", year: "numeric" },
+                              )}
+                            </span>
+                            {booking.return_location && (
+                              <span className="inline-flex items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5" />
+                                {booking.return_location}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => handleOpenInspect(booking)}
+                          className="w-full shrink-0 rounded-xl bg-accent text-accent-foreground hover:bg-accent/90 sm:w-auto"
+                        >
+                          <ClipboardCheck className="mr-2 h-4 w-4" />
+                          Inspect return
+                        </Button>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4 p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">
+                    Paid airport transfers
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Accept the arrival, mark it in progress, then complete after drop-off.
+                  </p>
+                </div>
+              </div>
+
+              {airportPickups.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border px-5 py-12 text-center">
+                  <Plane className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+                  <h3 className="font-semibold text-foreground">
+                    No airport pickups waiting
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    New paid transfers will appear here automatically.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {airportPickups.map((pickup) => {
+                    const nextStatus = PICKUP_NEXT_STATUS[pickup.status];
+                    return (
+                      <article
+                        key={pickup.id}
+                        className="rounded-2xl border border-border p-4 sm:p-5"
+                      >
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-lg bg-violet-500/10 p-2 text-violet-700">
+                                <Plane className="h-4 w-4" />
+                              </span>
+                              <h3 className="font-bold text-foreground">
+                                {pickup.airport_name}{" "}
+                                <ArrowRight className="inline h-3.5 w-3.5 text-muted-foreground" />{" "}
+                                {pickup.destination}
+                              </h3>
+                              <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-bold uppercase text-accent">
+                                {pickup.status.replace("_", " ")}
+                              </span>
+                            </div>
+                            <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                              <span className="inline-flex items-center gap-2">
+                                <Clock3 className="h-4 w-4" />
+                                {new Date(pickup.arrival_at).toLocaleString(
+                                  "en-KE",
+                                  { dateStyle: "medium", timeStyle: "short" },
+                                )}
+                              </span>
+                              <span className="inline-flex items-center gap-2">
+                                <Plane className="h-4 w-4" />
+                                Flight {pickup.flight_number}
+                              </span>
+                              <span className="inline-flex items-center gap-2">
+                                <Users className="h-4 w-4" />
+                                {pickup.passenger_count} passengers
+                              </span>
+                              <span className="inline-flex items-center gap-2">
+                                <Luggage className="h-4 w-4" />
+                                {pickup.luggage_count} bags
+                              </span>
+                              <span className="inline-flex items-center gap-2">
+                                <Phone className="h-4 w-4" />
+                                {pickup.contact_phone}
+                              </span>
+                              <span>
+                                {pickup.profiles?.full_name ?? "Customer"}
+                                {pickup.profiles?.email
+                                  ? ` · ${pickup.profiles.email}`
+                                  : ""}
+                              </span>
+                            </div>
+                            {pickup.customer_notes && (
+                              <p className="mt-3 rounded-xl bg-muted/50 p-3 text-sm text-muted-foreground">
+                                {pickup.customer_notes}
+                              </p>
+                            )}
+                          </div>
+                          {nextStatus && (
+                            <div className="flex shrink-0 gap-2">
+                              {pickup.status === "requested" && (
+                                <Button
+                                  variant="outline"
+                                  disabled={updatingPickupId === pickup.id}
+                                  onClick={() =>
+                                    void handleUpdatePickup(pickup, "rejected")
+                                  }
+                                  className="rounded-xl"
+                                >
+                                  Reject
+                                </Button>
+                              )}
+                              <Button
+                                disabled={updatingPickupId === pickup.id}
+                                onClick={() =>
+                                  void handleUpdatePickup(pickup, nextStatus)
+                                }
+                                className="rounded-xl bg-accent text-accent-foreground hover:bg-accent/90"
+                              >
+                                {updatingPickupId === pickup.id ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <CheckCircle className="mr-2 h-4 w-4" />
+                                )}
+                                {nextStatus === "accepted"
+                                  ? "Accept pickup"
+                                  : nextStatus === "in_progress"
+                                    ? "Mark in progress"
+                                    : "Complete transfer"}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Rejecting a paid pickup does not automatically refund the customer; arrange any refund separately.
+              </p>
+            </div>
           )}
-        </div>
+        </section>
       </main>
 
       {/* Payment overlay */}

@@ -33,22 +33,41 @@ async function FacilitatorContent() {
   // super_admin can also access the facilitator view
   if (role !== "facilitator" && role !== "super_admin") redirect("/");
 
-  // Fetch confirmed bookings only — server-side filter, not client-side
-  // Include cars(price) so the client can calculate late fees
-  const { data: bookings, error: bookingsError } = await supabase
-    .from("bookings")
-    .select("*, cars(name, image, price), profiles(full_name, email, phone)")
-    .eq("status", "confirmed")
-    .order("return_date", { ascending: true }); // soonest return first
+  const [bookingsResult, pickupsResult] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select("*, cars(name, image, price), profiles(full_name, email, phone)")
+      .eq("status", "confirmed")
+      .order("return_date", { ascending: true }),
+    supabase
+      .from("airport_pickups")
+      .select("*, profiles!airport_pickups_customer_id_fkey(full_name, email)")
+      .eq("payment_status", "paid")
+      .in("status", ["requested", "accepted", "in_progress"])
+      .order("arrival_at", { ascending: true }),
+  ]);
 
-  if (bookingsError) {
-    console.error("[FacilitatorPage] bookings fetch failed:", bookingsError);
+  if (bookingsResult.error) {
+    console.error(
+      "[FacilitatorPage] bookings fetch failed:",
+      bookingsResult.error,
+    );
+  }
+  if (pickupsResult.error) {
+    console.error(
+      "[FacilitatorPage] airport pickups fetch failed:",
+      pickupsResult.error,
+    );
   }
 
   return (
     <>
       <AuthGuard />
-      <FacilitatorClient initialBookings={bookings ?? []} />
+      <FacilitatorClient
+        initialBookings={bookingsResult.data ?? []}
+        initialAirportPickups={pickupsResult.data ?? []}
+        isSuperAdmin={role === "super_admin"}
+      />
     </>
   );
 }

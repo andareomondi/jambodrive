@@ -8,6 +8,28 @@
 
 import { createClient } from "@/lib/supabase/server";
 
+async function requireFacilitatorAccess() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) throw new Error("Please sign in to continue.");
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (error || !profile || !["facilitator", "super_admin"].includes(profile.role)) {
+    throw new Error("You are not authorized to process vehicle returns.");
+  }
+
+  return supabase;
+}
+
 // ── Car return ────────────────────────────────────────────────────────────────
 
 export async function processCarReturn(
@@ -16,20 +38,51 @@ export async function processCarReturn(
   notes: string,
   damageFee: number,
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
+  const supabase = await requireFacilitatorAccess();
 
-  const { error: bookingError } = await supabase
+  if (
+    !bookingId ||
+    !carId ||
+    typeof notes !== "string" ||
+    notes.length > 5000 ||
+    !Number.isSafeInteger(damageFee) ||
+    damageFee < 0
+  ) {
+    return { success: false, error: "Invalid return details." };
+  }
+
+  const { data: booking, error: lookupError } = await supabase
+    .from("bookings")
+    .select("car_id, status")
+    .eq("id", bookingId)
+    .single();
+
+  if (lookupError || !booking) {
+    return { success: false, error: "Booking could not be found." };
+  }
+  if (booking.status !== "confirmed" || booking.car_id !== carId) {
+    return { success: false, error: "This booking is not eligible for return processing." };
+  }
+
+  const { data: updatedBooking, error: bookingError } = await supabase
     .from("bookings")
     .update({
       status: "completed",
       notes,
       ...(damageFee > 0 && { additional_fee_amount: damageFee }),
     })
-    .eq("id", bookingId);
+    .eq("id", bookingId)
+    .eq("car_id", carId)
+    .eq("status", "confirmed")
+    .select("id")
+    .maybeSingle();
 
-  if (bookingError) {
+  if (bookingError || !updatedBooking) {
     console.error("[processCarReturn] booking update failed:", bookingError);
-    return { success: false, error: bookingError.message };
+    return {
+      success: false,
+      error: bookingError?.message ?? "Booking has already been processed.",
+    };
   }
 
   const { error: carError } = await supabase
@@ -85,7 +138,35 @@ export async function initiateFacilitatorCharge(
   amount: number,
   reference: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
+  const supabase = await requireFacilitatorAccess();
+
+  if (!bookingId || !Number.isSafeInteger(amount) || amount < 1) {
+    return { success: false, error: "A valid booking and fee amount are required." };
+  }
+
+  if (typeof phone !== "string") {
+    return { success: false, error: "Enter a valid customer phone number." };
+  }
+
+  const { data: booking, error: bookingLookupError } = await supabase
+    .from("bookings")
+    .select("status, additional_fee_status")
+    .eq("id", bookingId)
+    .single();
+  if (bookingLookupError || !booking || booking.status !== "confirmed") {
+    return { success: false, error: "This booking is not eligible for an additional charge." };
+  }
+  if (booking.additional_fee_status === "pending") {
+    return {
+      success: false,
+      error: "An additional-fee payment is already pending for this booking.",
+    };
+  }
+
+  const normalizedPhone = phone.replace(/\D/g, "");
+  if (!/^(?:254|0|7|1)\d{8,9}$/.test(normalizedPhone)) {
+    return { success: false, error: "Enter a valid customer phone number." };
+  }
 
   const token = await getAccessToken();
   const timestamp = getTimestamp();
@@ -94,7 +175,7 @@ export async function initiateFacilitatorCharge(
   const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
 
   // Normalise to 254XXXXXXXXX
-  let formattedPhone = phone.replace(/\D/g, "");
+  let formattedPhone = normalizedPhone;
   if (formattedPhone.startsWith("0"))
     formattedPhone = `254${formattedPhone.slice(1)}`;
   else if (formattedPhone.startsWith("7") || formattedPhone.startsWith("1"))
@@ -130,17 +211,23 @@ export async function initiateFacilitatorCharge(
   }
 
   // Store CheckoutRequestID so the callback handler can route to this booking
-  const { error: dbError } = await supabase
+  const { data: updatedBooking, error: dbError } = await supabase
     .from("bookings")
     .update({
       facilitator_checkout_id: data.CheckoutRequestID,
       additional_fee_status: "pending",
     })
-    .eq("id", bookingId);
+    .eq("id", bookingId)
+    .eq("status", "confirmed")
+    .select("id")
+    .maybeSingle();
 
-  if (dbError) {
-    // STK already fired — log and continue, don't fail the request
+  if (dbError || !updatedBooking) {
     console.error("[initiateFacilitatorCharge] DB update failed:", dbError);
+    return {
+      success: false,
+      error: "M-Pesa prompt was sent, but its status could not be saved. Check the booking before retrying.",
+    };
   }
 
   return { success: true };
