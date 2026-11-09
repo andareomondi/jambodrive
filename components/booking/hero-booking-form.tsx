@@ -8,34 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MessageCircle } from "lucide-react";
 import { toast } from "sonner";
+import { RENTAL_LOCATION_GROUPS } from "@/lib/constants/locations";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const LOCATIONS = [
-  { id: "jkia", name: "JKIA" },
-  { id: "wilson_airport", name: "Wilson Airport" },
-  { id: "kilimani", name: "Kilimani" },
-  { id: "hurlingham", name: "Hurlingham" },
-  { id: "kileleshwa", name: "Kileleshwa" },
-  { id: "ngong", name: "Ngong" },
-  { id: "karen", name: "Karen" },
-  { id: "kitisuru", name: "Kitisuru" },
-  { id: "runda", name: "Runda" },
-  { id: "kawangware", name: "Kawangware" },
-  { id: "kikuyu", name: "Kikuyu" },
-  { id: "thika_town", name: "Thika Town" },
-  { id: "juja", name: "Juja" },
-  { id: "nairobi_cbd", name: "Nairobi CBD" },
-  { id: "kitengela", name: "Kitengela" },
-  { id: "sabaki", name: "Sabaki" },
-  { id: "syokimau", name: "Syokimau" },
-  { id: "embakasi", name: "Embakasi" },
-  { id: "athi_river", name: "Athi River" },
-  { id: "langata", name: "Lang'ata" },
-  { id: "uthiru", name: "Uthiru" },
-  { id: "ruaka", name: "Ruaka" },
-  { id: "kiambu", name: "Kiambu" },
-] as const;
+const RENTAL_LOCATIONS = RENTAL_LOCATION_GROUPS.flatMap(
+  (group) => group.locations,
+);
 
 const CAR_TYPES = [
   { id: "economy", name: "Economy" },
@@ -169,7 +148,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
               className={inputCls(!!errors.pickupLocation)}
             />
             <datalist id="pickup-locations">
-              {LOCATIONS.map((loc) => (
+              {RENTAL_LOCATIONS.map((loc) => (
                 <option key={`p-${loc.id}`} value={loc.name} />
               ))}
             </datalist>
@@ -191,7 +170,7 @@ export function HeroBookingForm({ onSuccess }: HeroBookingFormProps) {
               className={inputCls(!!errors.dropOffLocation)}
             />
             <datalist id="dropoff-locations">
-              {LOCATIONS.map((loc) => (
+              {RENTAL_LOCATIONS.map((loc) => (
                 <option key={`d-${loc.id}`} value={loc.name} />
               ))}
             </datalist>

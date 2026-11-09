@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RENTAL_LOCATION_GROUPS } from "@/lib/constants/locations";
 
 interface BookingFormProps {
   carName: string;
@@ -26,32 +27,6 @@ export interface BookingFormData {
   email: string;
   phone: string;
 }
-
-const LOCATIONS = [
-  "JKIA",
-  "Wilson Airport",
-  "Kilimani",
-  "Hurlingham",
-  "Kileleshwa",
-  "Ngong",
-  "Karen",
-  "Kitisuru",
-  "Runda",
-  "Kawangware",
-  "Kikuyu",
-  "Thika Town",
-  "Juja",
-  "Nairobi CBD",
-  "Kitengela",
-  "Sabaki",
-  "Syokimau",
-  "Embakasi",
-  "Athi River",
-  "Lang'ata",
-  "Uthiru",
-  "Ruaka",
-  "Kiambu",
-];
 
 export function BookingForm({ onSubmit, isLoading = false }: BookingFormProps) {
   const {
@@ -94,21 +69,34 @@ export function BookingForm({ onSubmit, isLoading = false }: BookingFormProps) {
             </Select.Icon>
           </Select.Trigger>
           <Select.Portal>
-            <Select.Content className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-card text-foreground shadow-md animate-in fade-in-80">
-              <Select.Viewport className="p-1 max-h-60 overflow-y-auto">
-                {LOCATIONS.map((loc) => (
-                  <Select.Item
-                    key={loc}
-                    value={loc}
-                    className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent/10 focus:text-accent data-[state=checked]:text-accent"
-                  >
-                    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                      <Select.ItemIndicator>
-                        <Check className="h-4 w-4" />
-                      </Select.ItemIndicator>
-                    </span>
-                    <Select.ItemText>{loc}</Select.ItemText>
-                  </Select.Item>
+            <Select.Content
+              position="popper"
+              side="bottom"
+              align="start"
+              sideOffset={4}
+              className="z-50 w-[var(--radix-select-trigger-width)] max-h-[var(--radix-select-content-available-height)] overflow-hidden rounded-md border border-border bg-card text-foreground shadow-md animate-in fade-in-80"
+            >
+              <Select.Viewport className="max-h-[min(60vh,var(--radix-select-content-available-height))] overflow-y-auto p-1">
+                {RENTAL_LOCATION_GROUPS.map((group) => (
+                  <Select.Group key={group.county}>
+                    <Select.Label className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                      {group.county}
+                    </Select.Label>
+                    {group.locations.map((location) => (
+                      <Select.Item
+                        key={location.id}
+                        value={location.name}
+                        className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent/10 focus:text-accent data-[state=checked]:text-accent"
+                      >
+                        <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                          <Select.ItemIndicator>
+                            <Check className="h-4 w-4" />
+                          </Select.ItemIndicator>
+                        </span>
+                        <Select.ItemText>{location.name}</Select.ItemText>
+                      </Select.Item>
+                    ))}
+                  </Select.Group>
                 ))}
               </Select.Viewport>
             </Select.Content>
