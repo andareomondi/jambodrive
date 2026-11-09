@@ -9,12 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, ArrowRight, Car, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { safeLocalRedirect } from "@/lib/auth/safe-redirect";
 function UnverifiedWarning({
-  email,
   onResend,
   isLoading,
 }: {
-  email: string;
   onResend: () => void;
   isLoading: boolean;
 }) {
@@ -47,11 +46,10 @@ function UnverifiedWarning({
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const rawReturnUrl = searchParams.get("returnUrl") ?? "/dashboard";
-  const returnUrl =
-    rawReturnUrl.startsWith("/") && !rawReturnUrl.startsWith("//")
-      ? rawReturnUrl
-      : "/dashboard";
+  const returnUrl = safeLocalRedirect(
+    searchParams.get("returnUrl"),
+    "/dashboard",
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -65,7 +63,7 @@ function LoginFormContent() {
         data: { session },
       } = await supabase.auth.getSession();
       if (session) {
-        router.replace(decodeURIComponent(returnUrl));
+        router.replace(returnUrl);
       } else {
         setIsCheckingSession(false);
       }
@@ -128,7 +126,7 @@ function LoginFormContent() {
         return;
       }
       toast.success("Logged in successfully!");
-      router.push(decodeURIComponent(returnUrl));
+      router.push(returnUrl);
     } catch {
       toast.error("Failed to login. Please try again.");
     } finally {
@@ -207,7 +205,6 @@ function LoginFormContent() {
           {/* Unverified email warning */}
           {showUnverified && (
             <UnverifiedWarning
-              email={unverifiedEmail}
               onResend={handleResendVerification}
               isLoading={isLoading}
             />
