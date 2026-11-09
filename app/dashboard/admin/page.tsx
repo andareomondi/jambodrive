@@ -5,6 +5,7 @@ import { getCars } from "@/lib/services/cars";
 import { getBookings } from "@/lib/services/bookings";
 import { getProfiles } from "@/lib/services/profile";
 import { getGalleryEvents } from "@/lib/services/gallery";
+import { getAdminWeddingEventRequests } from "@/lib/actions/wedding-events";
 import { AdminDashboardClient } from "@/components/admin/admin-dashboard-client";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import type { Metadata } from "next";
@@ -37,11 +38,24 @@ async function AdminContent() {
   // Schema uses "super_admin" not "admin"
   if (profileData?.role !== "super_admin") redirect("/");
 
-  const [cars, bookings, profiles, galleryEvents] = await Promise.all([
+  const [
+    cars,
+    bookings,
+    profiles,
+    galleryEvents,
+    weddingEventRequests,
+  ] = await Promise.all([
     getCars(),
     getBookings(),
     getProfiles(),
     getGalleryEvents().catch(() => []),
+    getAdminWeddingEventRequests().catch((loadError: unknown) => {
+      console.error(
+        "[AdminPage] could not load wedding event enquiries:",
+        loadError,
+      );
+      return null;
+    }),
   ]);
 
   return (
@@ -52,6 +66,12 @@ async function AdminContent() {
         initialBookings={bookings}
         initialProfiles={profiles}
         initialGalleryEvents={galleryEvents}
+        initialWeddingEventRequests={weddingEventRequests ?? []}
+        weddingEventLoadError={
+          weddingEventRequests === null
+            ? "Wedding enquiries could not be loaded. Confirm wedding_events.sql has been run in Supabase, then refresh."
+            : undefined
+        }
       />
     </>
   );

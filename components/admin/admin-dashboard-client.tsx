@@ -9,6 +9,7 @@ import { CarModal } from "@/components/admin/car-modal";
 import { DeleteCarModal } from "@/components/admin/delete-car-modal";
 import { AdminGallerySection } from "@/components/admin/admin-gallery-section";
 import { AirportPickupsSection } from "@/components/admin/airport-pickups-section";
+import { WeddingEventsSection } from "@/components/admin/wedding-events-section";
 import type { GalleryEvent } from "@/lib/services/gallery";
 import {
   Users,
@@ -41,7 +42,13 @@ import {
   fetchAdminBookings,
   fetchAdminProfiles,
 } from "@/lib/actions/admin";
-import type { Car, Booking, Profile, BookingStatus } from "@/types";
+import type {
+  Car,
+  Booking,
+  Profile,
+  BookingStatus,
+  WeddingEventRequest,
+} from "@/types";
 
 // ── Props Interface ───────────────────────────────────────────────────────────
 
@@ -50,6 +57,8 @@ export interface AdminDashboardClientProps {
   initialBookings: Booking[];
   initialProfiles: Profile[];
   initialGalleryEvents?: GalleryEvent[];
+  initialWeddingEventRequests: WeddingEventRequest[];
+  weddingEventLoadError?: string;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -181,6 +190,8 @@ export function AdminDashboardClient({
   initialBookings,
   initialProfiles,
   initialGalleryEvents,
+  initialWeddingEventRequests,
+  weddingEventLoadError,
 }: AdminDashboardClientProps) {
   const [cars, setCars] = useState<Car[]>(initialCars);
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
@@ -849,6 +860,11 @@ export function AdminDashboardClient({
         </Card>
 
         <AirportPickupsSection />
+        <WeddingEventsSection
+          initialRequests={initialWeddingEventRequests}
+          cars={cars}
+          initialLoadError={weddingEventLoadError}
+        />
         <AdminGallerySection initialEvents={initialGalleryEvents} />
       </main>
 

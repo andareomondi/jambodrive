@@ -185,3 +185,30 @@ export interface AirportPickup {
   updated_at: string;
   profiles?: Pick<Profile, "full_name" | "email">;
 }
+
+export type WeddingEventRequestStatus =
+  | "new"
+  | "contacted"
+  | "quoted"
+  | "confirmed"
+  | "declined";
+
+export interface WeddingEventRequest {
+  id: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string;
+  event_date: string;
+  budget_min: number;
+  budget_max: number;
+  car_count: number;
+  preferred_car_types: string[];
+  color_scheme: string;
+  sample_car_ids: string[];
+  venue: string | null;
+  notes: string | null;
+  status: WeddingEventRequestStatus;
+  admin_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}

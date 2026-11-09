@@ -71,11 +71,11 @@ const BOOKING_SERVICES = [
     comingSoon: true,
   },
   {
-    href: "#",
+    href: "/wedding-events",
     title: "Wedding Events",
     desc: "Make your special day perfect",
     icon: PartyPopper,
-    comingSoon: true,
+    comingSoon: false,
   },
 ] as const;
 
