@@ -107,6 +107,17 @@ export function Footer() {
                   Airport Transfers
                 </Link>
               </li>
+
+              <li>
+                <Link
+                  href="/wedding-events"
+                  prefetch={true}
+                  className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
+                  title="Planning Your Wedding? We Got You Covered!s"
+                >
+                  Wedding Events
+                </Link>
+              </li>
               <li>
                 <Link
                   href="#"
@@ -125,16 +136,6 @@ export function Footer() {
                   title="Coming Soon"
                 >
                   Hotel Transfers
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/wedding-events"
-                  prefetch={true}
-                  className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
-                  title="Planning Your Wedding? We Got You Covered!s"
-                >
-                  Wedding Events
                 </Link>
               </li>
             </ul>

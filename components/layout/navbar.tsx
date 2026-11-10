@@ -50,6 +50,21 @@ const BOOKING_SERVICES = [
     comingSoon: false,
   },
   {
+    href: "/airport-pickup",
+    title: "Airport Pickups",
+    desc: "Seamless airport transfers",
+    icon: Plane,
+    comingSoon: false,
+  },
+
+  {
+    href: "/wedding-events",
+    title: "Wedding Events",
+    desc: "Make your special day perfect",
+    icon: PartyPopper,
+    comingSoon: false,
+  },
+  {
     href: "#",
     title: "Tours",
     desc: "Explore amazing destinations",
@@ -57,25 +72,11 @@ const BOOKING_SERVICES = [
     comingSoon: true,
   },
   {
-    href: "/airport-pickup",
-    title: "Airport Pickups",
-    desc: "Seamless airport transfers",
-    icon: Plane,
-    comingSoon: false,
-  },
-  {
     href: "#",
     title: "Hotel Bookings",
     desc: "Comfortable stays guaranteed",
     icon: Building,
     comingSoon: true,
-  },
-  {
-    href: "/wedding-events",
-    title: "Wedding Events",
-    desc: "Make your special day perfect",
-    icon: PartyPopper,
-    comingSoon: false,
   },
 ] as const;
 
