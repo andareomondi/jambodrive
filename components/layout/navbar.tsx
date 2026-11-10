@@ -247,6 +247,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
           <div className="hidden lg:flex items-center gap-1">
             <Link
               href="/"
+              prefetch={true}
               className={desktopNavLinkClass}
             >
               Home
@@ -297,6 +298,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             <Link
               href="/cars"
               className={desktopNavLinkClass}
+              prefetch={true}
             >
               Browse All
             </Link>
@@ -326,12 +328,14 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             </Link>
             <Link
               href="/airport-pickup"
+              prefetch={true}
               className={desktopNavLinkClass}
             >
               Airport Pickups
             </Link>
             <Link
               href="/wedding-events"
+              prefetch={true}
               className={desktopNavLinkClass}
             >
               Wedding Events
@@ -411,6 +415,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 <Link
                   href="/"
                   onClick={closeAll}
+                  prefetch={true}
                   className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   Home
@@ -478,6 +483,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                   <Link
                     href="/airport-pickup"
                     onClick={closeAll}
+                    prefetch={true}
                     className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     Airport Pickups
@@ -485,6 +491,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                   <Link
                     href="/wedding-events"
                     onClick={closeAll}
+                    prefetch={true}
                     className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     Wedding Events
