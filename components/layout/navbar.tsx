@@ -251,6 +251,8 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               Home
             </Link>
             {/* Fleet dropdown */}
+            {/* Commenting out this fleet section */}
+            {/*
             <div
               ref={fleetRef}
               className="relative"
@@ -290,6 +292,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 </div>
               )}
             </div>
+            */}
             <Link
               href="/cars"
               className={desktopNavLinkClass}
@@ -321,10 +324,16 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               Gallery
             </Link>
             <Link
-              href="/contact"
+              href="/airport-pickup"
               className={desktopNavLinkClass}
             >
-              Contact
+              Airport Pickups
+            </Link>
+            <Link
+              href="/wedding-events"
+              className={desktopNavLinkClass}
+            >
+              Wedding Events
             </Link>
           </div>
 
@@ -407,6 +416,8 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                 </Link>
 
                 {/* Fleet section */}
+                {/* Commenting out this part since not need actually */}
+                {/*
                 <div className="mt-1 border-t border-border/70 pt-3">
                   <p className="px-4 pb-2 text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted-foreground">
                     Our Fleet
@@ -424,6 +435,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                     ))}
                   </div>
                 </div>
+                */}
 
                 <div className="mt-2 flex flex-col gap-1 border-t border-border/70 pt-3">
                   <Link
@@ -463,11 +475,18 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                     Gallery
                   </Link>
                   <Link
-                    href="/contact"
+                    href="/airport-pickup"
                     onClick={closeAll}
                     className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
-                    Contact
+                    Airport Pickups
+                  </Link>
+                  <Link
+                    href="/wedding-events"
+                    onClick={closeAll}
+                    className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Wedding Events
                   </Link>
                 </div>
               </div>

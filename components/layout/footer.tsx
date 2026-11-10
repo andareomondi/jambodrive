@@ -99,10 +99,10 @@ export function Footer() {
               {/* Disabled links for upcoming services - disabled prefetching since they don't lead to pages */}
               <li>
                 <Link
-                  href="#"
-                  prefetch={false}
+                  href="/airport-pickup"
+                  prefetch={true}
                   className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
-                  title="Coming Soon"
+                  title="Airport Transfers"
                 >
                   Airport Transfers
                 </Link>
@@ -129,10 +129,10 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
-                  prefetch={false}
+                  href="/wedding-events"
+                  prefetch={true}
                   className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
-                  title="Coming Soon"
+                  title="Planning Your Wedding? We Got You Covered!s"
                 >
                   Wedding Events
                 </Link>
