@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, ArrowRight, Car, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { safeLocalRedirect } from "@/lib/auth/safe-redirect";
+
 function UnverifiedWarning({
   onResend,
   isLoading,
@@ -43,6 +45,7 @@ function UnverifiedWarning({
     </div>
   );
 }
+
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -50,12 +53,22 @@ function LoginFormContent() {
     searchParams.get("returnUrl"),
     "/dashboard",
   );
+
+  const turnstileRef = useRef<TurnstileInstance>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [showUnverified, setShowUnverified] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState("");
+
+  const resetCaptcha = () => {
+    setCaptchaToken(null);
+    turnstileRef.current?.reset();
+  };
+
   useEffect(() => {
     const checkSession = async () => {
       const supabase = createClient();
@@ -70,7 +83,12 @@ function LoginFormContent() {
     };
     checkSession();
   }, [router, returnUrl]);
+
   const handleResendVerification = async () => {
+    if (!captchaToken) {
+      toast.error("Please complete the security check first");
+      return;
+    }
     setIsLoading(true);
     try {
       const supabase = createClient();
@@ -78,9 +96,11 @@ function LoginFormContent() {
         type: "signup",
         email: unverifiedEmail,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          emailRedirectTo: `${window.location.origin}/auth/confirm?next=/dashboard`,
+          captchaToken,
         },
       });
+      resetCaptcha();
       if (error) {
         toast.error(error.message);
         return;
@@ -93,12 +113,18 @@ function LoginFormContent() {
       setIsLoading(false);
     }
   };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       toast.error("Please fill in all fields");
       return;
     }
+    if (!captchaToken) {
+      toast.error("Please complete the security check");
+      return;
+    }
+
     setIsLoading(true);
     setShowUnverified(false);
     try {
@@ -106,12 +132,14 @@ function LoginFormContent() {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: { captchaToken },
       });
+
+      resetCaptcha();
+
       if (error) {
-        if (
-          error.message.toLowerCase().includes("email not confirmed") ||
-          error.message.toLowerCase().includes("verify")
-        ) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("email not confirmed")) {
           setUnverifiedEmail(email);
           setShowUnverified(true);
           return;
@@ -119,20 +147,25 @@ function LoginFormContent() {
         toast.error(error.message);
         return;
       }
+
       if (data.user && !data.user.email_confirmed_at) {
         setUnverifiedEmail(email);
         setShowUnverified(true);
         await supabase.auth.signOut();
         return;
       }
+
       toast.success("Logged in successfully!");
-      router.push(returnUrl);
+      // Refresh so the server-rendered Navbar picks up the new session cookie
+      router.replace(returnUrl);
+      router.refresh();
     } catch {
       toast.error("Failed to login. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+
   if (isCheckingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -140,11 +173,11 @@ function LoginFormContent() {
       </div>
     );
   }
+
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 bg-background">
       <div className="w-full max-w-sm flex flex-col gap-6">
         <Card className="p-8">
-          {/* Header */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <Car className="w-10 h-10 text-accent" />
@@ -154,7 +187,7 @@ function LoginFormContent() {
               Sign in to your Cosmara account
             </p>
           </div>
-          {/* Form */}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">Email Address</Label>
@@ -168,6 +201,7 @@ function LoginFormContent() {
                 required
               />
             </div>
+
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
@@ -188,10 +222,20 @@ function LoginFormContent() {
                 required
               />
             </div>
+
+            <Turnstile
+              ref={turnstileRef}
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+              onSuccess={setCaptchaToken}
+              onExpire={() => setCaptchaToken(null)}
+              onError={() => setCaptchaToken(null)}
+              options={{ theme: "auto" }}
+            />
+
             <Button
               type="submit"
               className="w-full bg-accent hover:bg-accent/90 text-accent-foreground mt-2"
-              disabled={isLoading}
+              disabled={isLoading || !captchaToken}
             >
               {isLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -202,14 +246,14 @@ function LoginFormContent() {
               )}
             </Button>
           </form>
-          {/* Unverified email warning */}
+
           {showUnverified && (
             <UnverifiedWarning
               onResend={handleResendVerification}
               isLoading={isLoading}
             />
           )}
-          {/* Sign up link */}
+
           <p className="text-center text-sm text-muted-foreground mt-6">
             Don&apos;t have an account?{" "}
             <Link
@@ -224,6 +268,7 @@ function LoginFormContent() {
     </div>
   );
 }
+
 export default function LoginPage() {
   return (
     <Suspense

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,30 +8,56 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Car, Loader2, ArrowLeft, Mail } from "lucide-react";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail]         = useState("");
+  const turnstileRef = useRef<TurnstileInstance>(null);
+
+  const [email, setEmail] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError]         = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const resetCaptcha = () => {
+    setCaptchaToken(null);
+    turnstileRef.current?.reset();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) { setError("Please enter your email address"); return; }
+    if (!email) {
+      setError("Please enter your email address");
+      return;
+    }
+    if (!captchaToken) {
+      setError("Please complete the security check");
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
 
     try {
       const supabase = createClient();
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/confirm?type=recovery`,
-      });
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        email,
+        {
+          redirectTo: `${window.location.origin}/auth/confirm?type=recovery`,
+          captchaToken,
+        },
+      );
 
-      if (resetError) { setError(resetError.message); return; }
+      resetCaptcha();
+
+      if (resetError) {
+        setError(resetError.message);
+        return;
+      }
 
       setSubmitted(true);
     } catch {
+      resetCaptcha();
       setError("Failed to send reset email. Please try again.");
     } finally {
       setIsLoading(false);
@@ -66,7 +92,10 @@ export default function ForgotPasswordPage() {
                 </p>
               </div>
               <Button
-                onClick={() => { setSubmitted(false); setEmail(""); }}
+                onClick={() => {
+                  setSubmitted(false);
+                  setEmail("");
+                }}
                 variant="outline"
                 className="w-full"
               >
@@ -88,17 +117,26 @@ export default function ForgotPasswordPage() {
                 />
               </div>
 
-              {error && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                onSuccess={setCaptchaToken}
+                onExpire={() => setCaptchaToken(null)}
+                onError={() => setCaptchaToken(null)}
+                options={{ theme: "auto" }}
+              />
+
+              {error && <p className="text-sm text-destructive">{error}</p>}
 
               <Button
                 type="submit"
                 className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                disabled={isLoading}
+                disabled={isLoading || !captchaToken}
               >
                 {isLoading ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...
+                  </>
                 ) : (
                   "Send Reset Link"
                 )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -11,19 +11,27 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Car, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 
 export default function SignUpPage() {
   const router = useRouter();
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const [formData, setFormData] = useState({
-    fullName:        "",
-    email:           "",
-    password:        "",
+    fullName: "",
+    email: "",
+    password: "",
     confirmPassword: "",
-    agreeTerms:      false,
+    agreeTerms: false,
   });
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError]         = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const resetCaptcha = () => {
+    setCaptchaToken(null);
+    turnstileRef.current?.reset();
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -34,8 +42,12 @@ export default function SignUpPage() {
     e.preventDefault();
     setError(null);
 
-    // Client-side validation
-    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (
+      !formData.fullName ||
+      !formData.email ||
+      !formData.password ||
+      !formData.confirmPassword
+    ) {
       setError("Please fill in all fields");
       return;
     }
@@ -51,40 +63,48 @@ export default function SignUpPage() {
       setError("You must agree to the terms and conditions");
       return;
     }
+    if (!captchaToken) {
+      setError("Please complete the security check");
+      return;
+    }
 
     setIsLoading(true);
     try {
       const supabase = createClient();
 
       const { data, error: signUpError } = await supabase.auth.signUp({
-        email:    formData.email,
+        email: formData.email,
         password: formData.password,
         options: {
           data: { full_name: formData.fullName },
           emailRedirectTo: `${window.location.origin}/auth/confirm?next=/dashboard`,
+          captchaToken,
         },
       });
 
+      resetCaptcha();
+
       if (signUpError) {
-        // Supabase returns this when the email is already registered
-        if (signUpError.message.toLowerCase().includes("already registered")) {
-          setError("An account with this email already exists. Please sign in.");
-        } else {
-          setError(signUpError.message);
-        }
+        const msg = signUpError.message.toLowerCase();
+        setError(
+          msg.includes("already registered")
+            ? "An account with this email already exists. Please sign in."
+            : signUpError.message,
+        );
         return;
       }
 
-      // identities being empty means the email is already taken
-      // (Supabase doesn't return an error in this case by default)
+      // Supabase returns an empty identities array when the email is already taken
       if (data?.user && !data.user.identities?.length) {
         setError("An account with this email already exists. Please sign in.");
         return;
       }
 
-      // Pass email to success page via query param so it can display it
-      router.push(`/auth/sign-up-success?email=${encodeURIComponent(formData.email)}`);
+      router.push(
+        `/auth/sign-up-success?email=${encodeURIComponent(formData.email)}`,
+      );
     } catch {
+      resetCaptcha();
       setError("Failed to create account. Please try again.");
     } finally {
       setIsLoading(false);
@@ -95,7 +115,6 @@ export default function SignUpPage() {
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 bg-background">
       <div className="w-full max-w-sm flex flex-col gap-6">
         <Card className="p-8">
-          {/* Header */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <Car className="w-10 h-10 text-accent" />
@@ -108,7 +127,6 @@ export default function SignUpPage() {
             </p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="fullName">Full Name</Label>
@@ -174,41 +192,61 @@ export default function SignUpPage() {
                 id="agreeTerms"
                 checked={formData.agreeTerms}
                 onCheckedChange={(checked) =>
-                  setFormData((prev) => ({ ...prev, agreeTerms: checked as boolean }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    agreeTerms: checked as boolean,
+                  }))
                 }
                 disabled={isLoading}
               />
-              <Label htmlFor="agreeTerms" className="text-sm leading-snug cursor-pointer">
+              <Label
+                htmlFor="agreeTerms"
+                className="text-sm leading-snug cursor-pointer"
+              >
                 I agree to the{" "}
-                <Link href="/terms" className="text-accent hover:text-accent/80 transition-colors">
+                <Link
+                  href="/terms"
+                  className="text-accent hover:text-accent/80 transition-colors"
+                >
                   Terms & Conditions
                 </Link>{" "}
                 and{" "}
-                <Link href="/privacy" className="text-accent hover:text-accent/80 transition-colors">
+                <Link
+                  href="/privacy"
+                  className="text-accent hover:text-accent/80 transition-colors"
+                >
                   Privacy Policy
                 </Link>
               </Label>
             </div>
 
-            {/* Inline error */}
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
+            <Turnstile
+              ref={turnstileRef}
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+              onSuccess={setCaptchaToken}
+              onExpire={() => setCaptchaToken(null)}
+              onError={() => setCaptchaToken(null)}
+              options={{ theme: "auto" }}
+            />
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
             <Button
               type="submit"
               className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-              disabled={isLoading}
+              disabled={isLoading || !captchaToken}
             >
               {isLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account...</>
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating
+                  account...
+                </>
               ) : (
                 "Create Account"
               )}
             </Button>
           </form>
 
-          {/* Sign in link */}
           <p className="text-center text-sm text-muted-foreground mt-6">
             Already have an account?{" "}
             <Link
