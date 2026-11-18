@@ -88,7 +88,8 @@ const AIRPORT_STATUS_DESCRIPTIONS: Record<AirportPickupStatus, string> = {
     "Payment confirmation is still pending. Check your M-Pesa messages or contact support before submitting again.",
   payment_failed:
     "Payment did not complete. If money was deducted, contact support before trying again.",
-  requested: "Payment is confirmed. Our team will review and confirm the transfer.",
+  requested:
+    "Payment is confirmed. Our team will review and confirm the transfer.",
   accepted: "Our team accepted the request and is arranging your transfer.",
   in_progress: "Your airport transfer is underway.",
   completed: "This transfer has been completed.",
@@ -99,10 +100,13 @@ const AIRPORT_STATUS_DESCRIPTIONS: Record<AirportPickupStatus, string> = {
 
 const AIRPORT_STATUS_STYLES: Record<AirportPickupStatus, string> = {
   pending_payment: "bg-muted text-muted-foreground border border-border",
-  payment_failed: "bg-destructive/10 text-destructive border border-destructive/20",
-  requested: "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
+  payment_failed:
+    "bg-destructive/10 text-destructive border border-destructive/20",
+  requested:
+    "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
   accepted: "bg-primary text-primary-foreground",
-  in_progress: "bg-sky-500/10 text-sky-800 dark:text-sky-300 border border-sky-500/20",
+  in_progress:
+    "bg-sky-500/10 text-sky-800 dark:text-sky-300 border border-sky-500/20",
   completed: "bg-accent text-accent-foreground",
   rejected: "bg-destructive/10 text-destructive border border-destructive/20",
   cancelled: "bg-muted text-muted-foreground border border-border",
@@ -119,19 +123,25 @@ const WEDDING_STATUS_LABELS: Record<WeddingEventRequestStatus, string> = {
 
 const WEDDING_STATUS_STYLES: Record<WeddingEventRequestStatus, string> = {
   new: "bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20",
-  contacted: "bg-sky-500/10 text-sky-800 dark:text-sky-300 border border-sky-500/20",
-  quoted: "bg-violet-500/10 text-violet-800 dark:text-violet-300 border border-violet-500/20",
-  confirmed: "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20",
+  contacted:
+    "bg-sky-500/10 text-sky-800 dark:text-sky-300 border border-sky-500/20",
+  quoted:
+    "bg-violet-500/10 text-violet-800 dark:text-violet-300 border border-violet-500/20",
+  confirmed:
+    "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20",
   cancelled: "bg-muted text-muted-foreground border border-border",
   spam: "bg-destructive/10 text-destructive border border-destructive/20",
 };
 
 const WEDDING_STATUS_DESCRIPTIONS: Record<WeddingEventRequestStatus, string> = {
   new: "Your enquiry is with our team. We’ll contact you to discuss your plans.",
-  contacted: "Our team has reached out and is following up on your event details.",
-  quoted: "We’re preparing or have shared a tailored transport proposal with you.",
+  contacted:
+    "Our team has reached out and is following up on your event details.",
+  quoted:
+    "We’re preparing or have shared a tailored transport proposal with you.",
   confirmed: "Your wedding transport plans have been confirmed with our team.",
-  cancelled: "This enquiry was cancelled. Contact our team if you have questions.",
+  cancelled:
+    "This enquiry was cancelled. Contact our team if you have questions.",
   spam: "This enquiry was closed after three unsuccessful payment attempts. Contact our team if you need assistance.",
 };
 
@@ -187,7 +197,10 @@ function ActiveBookingCard({
               Ref: {booking.id.split("-")[0]}
             </p>
           </div>
-          <Badge className={`text-xs ${STATUS_STYLES[status]}`} aria-label={`Booking status: ${BOOKING_STATUS_LABELS[status] ?? status}`}>
+          <Badge
+            className={`text-xs ${STATUS_STYLES[status]}`}
+            aria-label={`Booking status: ${BOOKING_STATUS_LABELS[status] ?? status}`}
+          >
             {BOOKING_STATUS_LABELS[status] ?? status}
           </Badge>
         </div>
@@ -223,7 +236,7 @@ function ActiveBookingCard({
               ? booking.payment_failure_reason
               : status === "pending"
                 ? "We are waiting for M-Pesa payment confirmation. Your booking is not confirmed yet."
-              : "Your rental is confirmed. Use Manage to review or cancel the booking."}
+                : "Your rental is confirmed. Use Manage to review or cancel the booking."}
           </p>
         </div>
       </div>
@@ -263,7 +276,10 @@ function PastBookingRow({
             <h3 className="font-semibold text-foreground">
               {booking.cars?.name ?? "Vehicle"}
             </h3>
-            <Badge className={`text-xs ${STATUS_STYLES[status]}`} aria-label={`Booking status: ${BOOKING_STATUS_LABELS[status] ?? status}`}>
+            <Badge
+              className={`text-xs ${STATUS_STYLES[status]}`}
+              aria-label={`Booking status: ${BOOKING_STATUS_LABELS[status] ?? status}`}
+            >
               {BOOKING_STATUS_LABELS[status] ?? status}
             </Badge>
           </div>
@@ -320,16 +336,27 @@ export function DashboardClient({
   weddingEventLoadError,
 }: DashboardClientProps) {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
-  const [airportPickups, setAirportPickups] = useState<AirportPickup[]>(initialAirportPickups);
-  const [weddingEventRequests, setWeddingEventRequests] =
-    useState<WeddingEventRequest[]>(initialWeddingEventRequests);
+  const [airportPickups, setAirportPickups] = useState<AirportPickup[]>(
+    initialAirportPickups,
+  );
+  const [weddingEventRequests, setWeddingEventRequests] = useState<
+    WeddingEventRequest[]
+  >(initialWeddingEventRequests);
   const [currentProfile, setCurrentProfile] = useState<Profile>(profile);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [weddingPaymentPhones, setWeddingPaymentPhones] = useState<Record<string, string>>({});
-  const [weddingPaymentLoadingId, setWeddingPaymentLoadingId] = useState<string | null>(null);
-  const [weddingPaymentDialogRequestId, setWeddingPaymentDialogRequestId] = useState<string | null>(null);
-  const [weddingPaymentDialogMessage, setWeddingPaymentDialogMessage] = useState("");
-  const [weddingAgreementLoadingId, setWeddingAgreementLoadingId] = useState<string | null>(null);
+  const [weddingPaymentPhones, setWeddingPaymentPhones] = useState<
+    Record<string, string>
+  >({});
+  const [weddingPaymentLoadingId, setWeddingPaymentLoadingId] = useState<
+    string | null
+  >(null);
+  const [weddingPaymentDialogRequestId, setWeddingPaymentDialogRequestId] =
+    useState<string | null>(null);
+  const [weddingPaymentDialogMessage, setWeddingPaymentDialogMessage] =
+    useState("");
+  const [weddingAgreementLoadingId, setWeddingAgreementLoadingId] = useState<
+    string | null
+  >(null);
   const weddingPaymentChannelRef = useRef<RealtimeChannel | null>(null);
 
   const [depositModalOpen, setDepositModalOpen] = useState(false);
@@ -427,7 +454,7 @@ export function DashboardClient({
         (b) => b.status === "confirmed" || b.status === "pending",
       ),
       pastBookings: bookings.filter(
-        b =>
+        (b) =>
           b.status === "completed" ||
           b.status === "cancelled" ||
           b.status === "failed",
@@ -461,7 +488,9 @@ export function DashboardClient({
   const requestWeddingPayment = async (request: WeddingEventRequest) => {
     const phone = weddingPaymentPhones[request.id]?.trim();
     if (!phone) {
-      toast.error("Enter the M-Pesa phone number to receive the payment prompt.");
+      toast.error(
+        "Enter the M-Pesa phone number to receive the payment prompt.",
+      );
       return;
     }
     setWeddingPaymentLoadingId(request.id);
@@ -520,18 +549,18 @@ export function DashboardClient({
             ? item.payment_status === "paid" || item.payment_status === "failed"
               ? item
               : {
-                ...item,
-                payment_status: "pending",
-                mpesa_phone: phone,
-                checkout_request_id: result.checkoutRequestId,
-              }
+                  ...item,
+                  payment_status: "pending",
+                  mpesa_phone: phone,
+                  checkout_request_id: result.checkoutRequestId,
+                }
             : item,
         ),
       );
       setWeddingPaymentDialogMessage(
         result.paymentMayBePending
-          ? result.error ??
-            "The payment request may have reached M-Pesa. Do not retry if you approved it; we are checking the status."
+          ? (result.error ??
+              "The payment request may have reached M-Pesa. Do not retry if you approved it; we are checking the status.")
           : "Enter your M-Pesa PIN to approve the prompt. We’ll confirm the quote once Safaricom verifies payment.",
       );
       toast.success(
@@ -554,7 +583,11 @@ export function DashboardClient({
     try {
       await downloadWeddingAgreement(request);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not download agreement.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not download agreement.",
+      );
     } finally {
       setWeddingAgreementLoadingId(null);
     }
@@ -584,10 +617,10 @@ export function DashboardClient({
             ? {
                 ...request,
                 payment_status: result.status === "paid" ? "paid" : "failed",
-                status:
-                  result.status === "paid" ? "confirmed" : request.status,
+                status: result.status === "paid" ? "confirmed" : request.status,
                 payment_failure_reason: result.reason ?? null,
-                mpesa_receipt_number: result.receiptNumber ?? request.mpesa_receipt_number,
+                mpesa_receipt_number:
+                  result.receiptNumber ?? request.mpesa_receipt_number,
                 paid_amount: result.amount ?? request.paid_amount,
               }
             : request,
@@ -596,7 +629,7 @@ export function DashboardClient({
       setWeddingPaymentDialogMessage(
         result.status === "paid"
           ? "Payment confirmed. Your wedding quote is confirmed."
-          : result.reason ?? "M-Pesa could not complete the payment.",
+          : (result.reason ?? "M-Pesa could not complete the payment."),
       );
       if (result.status === "paid") toast.success("Wedding payment confirmed.");
       weddingPaymentChannelRef.current?.unsubscribe();
@@ -613,7 +646,8 @@ export function DashboardClient({
         description="wedding quote"
         message={
           weddingPaymentDialogRequest?.payment_status === "failed"
-            ? weddingPaymentDialogRequest.payment_failure_reason ?? weddingPaymentDialogMessage
+            ? (weddingPaymentDialogRequest.payment_failure_reason ??
+              weddingPaymentDialogMessage)
             : weddingPaymentDialogMessage
         }
         onClose={() => {
@@ -732,80 +766,103 @@ export function DashboardClient({
         <section>
           <SectionHeading label="Airport pickups" accent />
           {airportPickups.length > 0 ? (
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {airportPickups.map((pickup) => (
                 <Card
                   key={pickup.id}
-                  className="space-y-4 rounded-2xl border-border p-5 shadow-sm sm:p-6"
+                  className="min-w-0 space-y-4 overflow-hidden rounded-2xl border-border p-4 shadow-sm sm:p-6"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Airport transfer
-                      </p>
-                      <h3 className="mt-1 flex items-center gap-2 font-semibold text-foreground">
-                        <span className="truncate">{pickup.airport_name}</span>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span className="truncate">{pickup.destination}</span>
-                      </h3>
-                    </div>
+                  {/* Header: label + status badge */}
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="min-w-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Airport transfer
+                    </p>
                     <Badge
-                      className={`shrink-0 text-xs ${AIRPORT_STATUS_STYLES[pickup.status]}`}
+                      className={`max-w-full shrink-0 whitespace-normal text-left text-xs ${AIRPORT_STATUS_STYLES[pickup.status]}`}
                       aria-label={`Airport pickup status: ${AIRPORT_STATUS_LABELS[pickup.status]}`}
                     >
                       {AIRPORT_STATUS_LABELS[pickup.status]}
                     </Badge>
                   </div>
-                  <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-                    <span className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 shrink-0 text-accent" />
-                      {new Date(pickup.arrival_at).toLocaleString("en-KE", {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
+
+                  {/* Route: wraps onto multiple lines instead of overflowing */}
+                  <h3 className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-semibold leading-snug text-foreground">
+                    <span className="min-w-0 break-words">
+                      {pickup.airport_name}
                     </span>
-                    <span className="flex items-center gap-2">
-                      <Plane className="h-4 w-4 shrink-0 text-accent" />
-                      Flight {pickup.flight_number}
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 break-words">
+                      {pickup.destination}
                     </span>
-                    <span className="flex items-center gap-2">
-                      <Users className="h-4 w-4 shrink-0 text-accent" />
-                      {pickup.passenger_count} passengers
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <Banknote className="h-4 w-4 shrink-0 text-accent" />
-                      KSh {pickup.fare_amount.toLocaleString("en-KE")}
-                      {pickup.payment_status === "paid" ? " · paid" : ""}
-                    </span>
-                  </div>
-                  <p className="text-sm leading-5 text-muted-foreground" role="status">
+                  </h3>
+
+                  {/* Details: single column on phones, two on larger screens */}
+                  <dl className="grid grid-cols-1 gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+                    <div className="flex min-w-0 items-start gap-2">
+                      <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                      <dd className="min-w-0 break-words">
+                        {new Date(pickup.arrival_at).toLocaleString("en-KE", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </dd>
+                    </div>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <Plane className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                      <dd className="min-w-0 break-all">
+                        Flight {pickup.flight_number}
+                      </dd>
+                    </div>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <Users className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                      <dd className="min-w-0">
+                        {pickup.passenger_count} passengers
+                      </dd>
+                    </div>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                      <dd className="min-w-0 break-words">
+                        KSh {pickup.fare_amount.toLocaleString("en-KE")}
+                        {pickup.payment_status === "paid" ? " · paid" : ""}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <p
+                    className="text-sm leading-5 text-muted-foreground"
+                    role="status"
+                  >
                     {AIRPORT_STATUS_DESCRIPTIONS[pickup.status]}
                   </p>
+
                   {(pickup.status === "pending_payment" ||
                     pickup.status === "payment_failed" ||
                     pickup.status === "rejected" ||
                     pickup.status === "cancelled") && (
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
                       {(pickup.status === "payment_failed" ||
                         pickup.status === "rejected") && (
                         <Button
                           asChild
                           variant="outline"
-                          className="min-h-10 rounded-lg"
+                          className="min-h-10 w-full rounded-lg sm:w-auto"
                         >
-                          <Link href="/airport-pickup">Request another pickup</Link>
+                          <Link href="/airport-pickup">
+                            Request another pickup
+                          </Link>
                         </Button>
                       )}
                       <a
                         href={`tel:+${SUPPORT_NUMBER}`}
-                        className="inline-flex min-h-10 items-center gap-2 rounded-lg text-sm font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:justify-start"
                       >
                         <Phone className="h-4 w-4" />
                         Contact support
                       </a>
                     </div>
                   )}
-                  <p className="text-xs text-muted-foreground">
+
+                  <p className="break-all text-xs text-muted-foreground">
                     Reference: {pickup.id.slice(0, 8).toUpperCase()}
                   </p>
                 </Card>
@@ -826,7 +883,6 @@ export function DashboardClient({
             </Card>
           )}
         </section>
-
         <section>
           <SectionHeading label="Wedding transport" accent />
           {weddingEventLoadError ? (
@@ -854,10 +910,13 @@ export function DashboardClient({
                           Wedding transport enquiry
                         </p>
                         <h3 className="mt-1 font-semibold text-foreground">
-                          {new Date(`${request.event_date}T12:00:00`).toLocaleDateString(
-                            "en-KE",
-                            { day: "numeric", month: "long", year: "numeric" },
-                          )}
+                          {new Date(
+                            `${request.event_date}T12:00:00`,
+                          ).toLocaleDateString("en-KE", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          })}
                         </h3>
                       </div>
                     </div>
@@ -881,7 +940,8 @@ export function DashboardClient({
                       <span className="text-xs">Vehicles</span>
                       <br />
                       <span className="font-medium text-foreground">
-                        {request.car_count} car{request.car_count === 1 ? "" : "s"} ·{" "}
+                        {request.car_count} car
+                        {request.car_count === 1 ? "" : "s"} ·{" "}
                         {request.preferred_car_types.join(", ")}
                       </span>
                     </p>
@@ -915,7 +975,8 @@ export function DashboardClient({
                           Quote amount
                         </span>
                         <span className="font-bold text-foreground">
-                          KSh {(request.quote_amount ?? 0).toLocaleString("en-KE")}
+                          KSh{" "}
+                          {(request.quote_amount ?? 0).toLocaleString("en-KE")}
                         </span>
                       </div>
                       {request.quote_notes && (
@@ -924,8 +985,17 @@ export function DashboardClient({
                         </p>
                       )}
                       {request.payment_status === "pending" ? (
-                        <p className="text-sm text-muted-foreground" role="status">
-                          Payment prompt sent{request.mpesa_phone ? ` to ${request.mpesa_phone}` : ""}. We&apos;ll confirm this enquiry after Safaricom verifies payment. Attempt {request.payment_attempts} of 3.
+                        <p
+                          className="text-sm text-muted-foreground"
+                          role="status"
+                        >
+                          Payment prompt sent
+                          {request.mpesa_phone
+                            ? ` to ${request.mpesa_phone}`
+                            : ""}
+                          . We&apos;ll confirm this enquiry after Safaricom
+                          verifies payment. Attempt {request.payment_attempts}{" "}
+                          of 3.
                         </p>
                       ) : request.payment_status === "paid" ? (
                         <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
@@ -933,7 +1003,10 @@ export function DashboardClient({
                         </p>
                       ) : Number(request.paid_amount ?? 0) > 0 ? (
                         <p className="text-sm text-destructive" role="alert">
-                          We received KSh {request.paid_amount?.toLocaleString("en-KE")} but it did not match the quote. Please contact our team before making another payment.
+                          We received KSh{" "}
+                          {request.paid_amount?.toLocaleString("en-KE")} but it
+                          did not match the quote. Please contact our team
+                          before making another payment.
                         </p>
                       ) : (
                         <div className="grid gap-2">
@@ -946,31 +1019,38 @@ export function DashboardClient({
                             </p>
                           )}
                           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                          <Input
-                            type="tel"
-                            value={weddingPaymentPhones[request.id] ?? request.mpesa_phone ?? currentProfile.phone ?? ""}
-                            onChange={(event) =>
-                              setWeddingPaymentPhones((current) => ({
-                                ...current,
-                                [request.id]: event.target.value,
-                              }))
-                            }
-                            placeholder="M-Pesa number, e.g. 07XX XXX XXX"
-                            aria-label="M-Pesa payment phone number"
-                          />
-                          <Button
-                            type="button"
-                            onClick={() => void requestWeddingPayment(request)}
-                            disabled={weddingPaymentLoadingId === request.id}
-                            className="rounded-xl"
-                          >
-                            {weddingPaymentLoadingId === request.id ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                              <Banknote className="mr-2 h-4 w-4" />
-                            )}
-                            Pay quote
-                          </Button>
+                            <Input
+                              type="tel"
+                              value={
+                                weddingPaymentPhones[request.id] ??
+                                request.mpesa_phone ??
+                                currentProfile.phone ??
+                                ""
+                              }
+                              onChange={(event) =>
+                                setWeddingPaymentPhones((current) => ({
+                                  ...current,
+                                  [request.id]: event.target.value,
+                                }))
+                              }
+                              placeholder="M-Pesa number, e.g. 07XX XXX XXX"
+                              aria-label="M-Pesa payment phone number"
+                            />
+                            <Button
+                              type="button"
+                              onClick={() =>
+                                void requestWeddingPayment(request)
+                              }
+                              disabled={weddingPaymentLoadingId === request.id}
+                              className="rounded-xl"
+                            >
+                              {weddingPaymentLoadingId === request.id ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Banknote className="mr-2 h-4 w-4" />
+                              )}
+                              Pay quote
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -997,7 +1077,8 @@ export function DashboardClient({
                       Download wedding agreement PDF
                     </Button>
                   )}
-                  {(request.status === "cancelled" || request.status === "spam") && (
+                  {(request.status === "cancelled" ||
+                    request.status === "spam") && (
                     <a
                       href={`tel:+${SUPPORT_NUMBER}`}
                       className="inline-flex min-h-10 items-center gap-2 rounded-lg text-sm font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
