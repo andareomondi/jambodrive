@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { CarCard } from "@/components/cars/car-card";
 import { HeroCarousel } from "@/components/home/hero-carousel";
 import { LocationTestimonial } from "@/components/home/location-testimonial";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { Car } from "@/types";
 
 export const revalidate = 900;
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 
 async function getFeaturedCars(): Promise<Car[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data, error } = await supabase
       .from("cars")
       .select("*")

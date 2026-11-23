@@ -1,11 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
-import { Suspense } from "react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
 import { FloatingSupport } from "@/components/home/floating-support";
 import AuthProvider from "@/components/auth/auth-provider";
@@ -86,35 +84,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   themeColor: "#D07D50",
 };
-
-async function NavbarServer() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  let role: string | null = null;
-  if (user) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    role = data?.role ?? "customer";
-  }
-
-  return <Navbar initialUser={user} initialRole={role} />;
-}
-
-function NavbarSkeleton() {
-  return (
-    <div className="sticky top-0 z-50 h-16 border-b border-border bg-background/95 backdrop-blur-sm" />
-  );
-}
 
 export default function RootLayout({
   children,
@@ -195,9 +166,7 @@ export default function RootLayout({
         />
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <AuthProvider>
-            <Suspense fallback={<NavbarSkeleton />}>
-              <NavbarServer />
-            </Suspense>
+            <Navbar />
             {children}
             <FloatingSupport />
             <Footer />

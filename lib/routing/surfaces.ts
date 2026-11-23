@@ -14,7 +14,7 @@
 export type Surface = "main" | "gallery" | "admin" | "facilitator";
 type SubSurface = Exclude<Surface, "main">;
 
-const RAW_ROOT = "cosmara.co.ke";
+const RAW_ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN?.trim() || "localhost:3000";
 export const ROOT_HOST = RAW_ROOT.split(":")[0];
 export const IS_LOCAL_ROOT = ROOT_HOST === "localhost";
 const PROTOCOL = IS_LOCAL_ROOT ? "http" : "https";
@@ -57,8 +57,7 @@ export function surfaceFromHost(host: string | null | undefined): Surface {
 export function internalSurfaceForPath(pathname: string): SubSurface | null {
   for (const surface of Object.keys(SURFACE_PREFIX) as SubSurface[]) {
     const prefix = SURFACE_PREFIX[surface];
-    if (pathname === prefix || pathname.startsWith(`${prefix}/`))
-      return surface;
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) return surface;
   }
   return null;
 }

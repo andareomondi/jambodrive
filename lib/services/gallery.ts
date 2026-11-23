@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
 export interface GalleryEvent {
   id: string;
@@ -12,7 +13,7 @@ export interface GalleryEvent {
 }
 
 export async function getGalleryEvents(page = 0, limit = 12): Promise<GalleryEvent[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const from = page * limit;
   const to = from + limit - 1;
 
@@ -22,13 +23,16 @@ export async function getGalleryEvents(page = 0, limit = 12): Promise<GalleryEve
     .order("event_date", { ascending: false })
     .range(from, to);
 
-  if (error) throw new Error(`getGalleryEvents: ${error.message}`);
+  if (error) {
+    console.error(`[gallery] getGalleryEvents failed: ${error.message}`);
+    return [];
+  }
   return data ?? [];
 }
 
 export async function getCarGalleryImages(page = 0, limit = 12): Promise<string[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data, error } = await supabase.storage
       .from("car-images")
       .list("cars", {

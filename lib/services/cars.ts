@@ -1,31 +1,39 @@
 import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { Car, CarInsert, CarUpdate } from "@/types";
 
 export async function getCars(): Promise<Car[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("cars")
     .select("*")
     .order("name", { ascending: true });
 
-  if (error) throw new Error(`getCars: ${error.message}`);
-  return data;
+  if (error) {
+    // Public pages degrade to an empty list rather than failing the build or the page.
+    console.error(`[cars] getCars failed: ${error.message}`);
+    return [];
+  }
+  return data ?? [];
 }
 
 export async function getAvailableCars(): Promise<Car[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("cars")
     .select("*")
     .eq("available", true)
     .order("name", { ascending: true });
 
-  if (error) throw new Error(`getAvailableCars: ${error.message}`);
-  return data;
+  if (error) {
+    console.error(`[cars] getAvailableCars failed: ${error.message}`);
+    return [];
+  }
+  return data ?? [];
 }
 
 export async function getCarById(id: string): Promise<Car> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("cars")
     .select("*")

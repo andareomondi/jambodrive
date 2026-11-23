@@ -80,15 +80,13 @@ const BOOKING_SERVICES = [
   },
 ] as const;
 
-interface NavbarProps {
-  initialUser: User | null;
-  initialRole: string | null;
-}
-
-export function Navbar({ initialUser, initialRole }: NavbarProps) {
+export function Navbar() {
   const pathname = usePathname();
-  const [user, setUser] = useState<User | null>(initialUser);
-  const [role, setRole] = useState<string | null>(initialRole);
+  const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  // Until the browser knows the session, render a placeholder so the signed-in
+  // and signed-out buttons never flash. The page itself is static and cacheable.
+  const [authReady, setAuthReady] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isFleetOpen, setIsFleetOpen] = useState(false);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
@@ -100,32 +98,36 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
   useEffect(() => {
     const supabase = createClient();
 
+    let active = true;
+
+    const applySession = async (currentUser: User | null) => {
+      if (!active) return;
+      setUser((prevUser) => (prevUser?.id === currentUser?.id ? prevUser : currentUser));
+      if (!currentUser) {
+        setRole(null);
+        return;
+      }
+      const { data } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", currentUser.id)
+        .single();
+      if (active) setRole(data?.role ?? "customer");
+    };
+
+    supabase.auth.getSession().then(async ({ data }) => {
+      await applySession(data.session?.user ?? null);
+      if (active) setAuthReady(true);
+    });
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Prevent redundant state updates if the user session hasn't changed
-      const currentUser = session?.user ?? null;
-
-      setUser((prevUser) => {
-        if (prevUser?.id === currentUser?.id) return prevUser;
-        return currentUser;
-      });
-
-      if (currentUser) {
-        // Only fetch profile if role isn't already synced or user changed
-        const { data } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", currentUser.id)
-          .single();
-
-        setRole(data?.role ?? "customer");
-      } else {
-        setRole(null);
-      }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      void applySession(session?.user ?? null);
     });
 
     return () => {
+      active = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -344,7 +346,9 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
 
           {/* Desktop auth & CTA */}
           <div className="hidden lg:flex items-center justify-end gap-2">
-            {isLoggedIn ? (
+            {!authReady ? (
+              <div aria-hidden className="h-9 w-40" />
+            ) : isLoggedIn ? (
               <>
                 <Button
                   variant="ghost"
@@ -501,7 +505,9 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
 
               {/* Mobile auth & CTA */}
               <div className="mt-3 flex flex-col gap-2 border-t border-border/70 px-1 pt-4">
-                {isLoggedIn ? (
+                {!authReady ? (
+              <div aria-hidden className="h-9 w-40" />
+            ) : isLoggedIn ? (
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
