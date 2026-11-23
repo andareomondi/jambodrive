@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { FacilitatorClient } from "@/components/facilitator/facilitator-client";
-import { AuthGuard } from "@/components/auth/auth-guard";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -62,7 +61,6 @@ async function FacilitatorContent() {
 
   return (
     <>
-      <AuthGuard />
       <FacilitatorClient
         initialBookings={bookingsResult.data ?? []}
         initialAirportPickups={pickupsResult.data ?? []}

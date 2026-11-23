@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendBookingReceipt, sendPickupReceipt } from "@/lib/email/receipts";
+import { EXPIRED_BOOKING_REASON } from "@/lib/constants/booking-status";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,7 +57,7 @@ async function updateBooking(
 ) {
   const { data: booking, error: lookupError } = await supabaseAdmin
     .from("bookings")
-    .select("id, car_id, status, total_price, checkout_request_id")
+    .select("id, car_id, status, total_price, checkout_request_id, payment_failure_reason")
     .eq("id", id)
     .maybeSingle();
   if (lookupError) throw lookupError;
@@ -68,7 +70,12 @@ async function updateBooking(
     if (error) throw error;
     return;
   }
-  if (booking.status !== "pending") return;
+  // A booking that expired unpaid can still be paid late: money received must
+  // never be ignored, so an expired booking is re-opened by a verified payment.
+  const isExpired =
+    booking.status === "failed" &&
+    booking.payment_failure_reason === EXPIRED_BOOKING_REASON;
+  if (booking.status !== "pending" && !isExpired) return;
   if (
     booking.checkout_request_id &&
     booking.checkout_request_id !== callback.CheckoutRequestID
@@ -100,12 +107,15 @@ async function updateBooking(
             : getFailureReason(callback.ResultCode, callback.ResultDesc),
       };
 
-  const { error } = await supabaseAdmin
+  const { data: changed, error } = await supabaseAdmin
     .from("bookings")
     .update(update)
     .eq("id", id)
-    .eq("status", "pending");
+    .eq("status", booking.status)
+    .select("id");
   if (error) throw error;
+  if (!changed?.length) return;
+  if (isPaid) await notifyCustomer(() => sendBookingReceipt(supabaseAdmin, id), `booking ${id}`);
   if (isPaid && booking.car_id) {
     const { error: carError } = await supabaseAdmin
       .from("cars")
@@ -138,7 +148,7 @@ async function updateAirportPickup(
     Number.isFinite(amount) &&
     amount === Math.ceil(Number(pickup.fare_amount));
 
-  const { error } = await supabaseAdmin
+  const { data: changed, error } = await supabaseAdmin
     .from("airport_pickups")
     .update(
       isPaid
@@ -164,8 +174,21 @@ async function updateAirportPickup(
           },
     )
     .eq("id", id)
-    .eq("payment_status", "pending");
+    .eq("payment_status", "pending")
+    .select("id");
   if (error) throw error;
+  if (isPaid && changed?.length) {
+    await notifyCustomer(() => sendPickupReceipt(supabaseAdmin, id), `pickup ${id}`);
+  }
+}
+
+/** Email failures are logged, not thrown: the payment is already recorded. */
+async function notifyCustomer(send: () => Promise<void>, label: string) {
+  try {
+    await send();
+  } catch (error) {
+    console.error(`[mpesa/callback] Payment saved for ${label}, but the receipt email failed:`, error);
+  }
 }
 
 async function updateWeddingPayment(

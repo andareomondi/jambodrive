@@ -93,7 +93,7 @@ export function FloatingSupport() {
                 Need help?
               </Dialog.Title>
               <Dialog.Description className="text-xs text-muted-foreground mt-0.5">
-                We're available 24/7
+                We&apos;re available 24/7
               </Dialog.Description>
             </div>
             <Dialog.Close className="rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring">

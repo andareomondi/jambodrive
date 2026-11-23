@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import {
   Menu,
   X,
-  ChevronDown,
   ArrowUpRight,
   CarFront,
   UserCheck,
@@ -22,6 +21,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
+import { surfaceUrl } from "@/lib/routing/surfaces";
 
 const CAR_TYPES = [
   { id: "compact", name: "Compact" },
@@ -304,7 +304,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             </Link>
             {role === "super_admin" && (
               <Link
-                href="/dashboard/admin"
+                href={surfaceUrl("admin")}
                 prefetch={false}
                 className={desktopNavLinkClass}
               >
@@ -313,7 +313,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
             )}
             {role === "facilitator" && (
               <Link
-                href="/dashboard/facilitator"
+                href={surfaceUrl("facilitator")}
                 prefetch={false}
                 className={desktopNavLinkClass}
               >
@@ -321,7 +321,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
               </Link>
             )}
             <Link
-              href="/gallery"
+              href={surfaceUrl("gallery")}
               className={desktopNavLinkClass}
             >
               Gallery
@@ -454,7 +454,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
 
                   {role === "super_admin" && (
                     <Link
-                      href="/dashboard/admin"
+                      href={surfaceUrl("admin")}
                       prefetch={false}
                       onClick={closeAll}
                       className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
@@ -465,7 +465,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
 
                   {role === "facilitator" && (
                     <Link
-                      href="/dashboard/facilitator"
+                      href={surfaceUrl("facilitator")}
                       prefetch={false}
                       onClick={closeAll}
                       className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
@@ -474,7 +474,7 @@ export function Navbar({ initialUser, initialRole }: NavbarProps) {
                     </Link>
                   )}
                   <Link
-                    href="/gallery"
+                    href={surfaceUrl("gallery")}
                     onClick={closeAll}
                     className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >

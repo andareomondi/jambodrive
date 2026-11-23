@@ -51,8 +51,10 @@ import type {
   Booking,
   Profile,
   BookingStatus,
+  ProfileRole,
   WeddingEventRequest,
 } from "@/types";
+import { surfaceUrl } from "@/lib/routing/surfaces";
 
 // ── Props Interface ───────────────────────────────────────────────────────────
 
@@ -353,12 +355,12 @@ export function AdminDashboardClient({
     };
   }, [refreshBookings, refreshProfiles]);
 
-  const handleRoleChange = useCallback(async (userId: string, role: string) => {
+  const handleRoleChange = useCallback(async (userId: string, role: ProfileRole) => {
     try {
       await adminUpdateUserRole(userId, role);
       setProfiles((prev) =>
         prev.map((u) =>
-          u.id === userId ? { ...u, role: role as Profile["role"] } : u,
+          u.id === userId ? { ...u, role } : u,
         ),
       );
       toast.success("User role updated.");
@@ -557,7 +559,7 @@ export function AdminDashboardClient({
                     )}
                     <select
                       value={u.role ?? "customer"}
-                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                      onChange={(e) => handleRoleChange(u.id, e.target.value as ProfileRole)}
                       className="text-xs px-2.5 py-1.5 rounded-xl border border-border bg-background"
                     >
                       <option value="customer">Customer</option>
@@ -787,7 +789,7 @@ export function AdminDashboardClient({
                               variant="outline"
                               className="rounded-lg"
                             >
-                              <Link href="/dashboard/facilitator">
+                              <Link href={surfaceUrl("facilitator")}>
                                 <ClipboardCheck className="mr-1 h-4 w-4" />
                                 Return
                               </Link>

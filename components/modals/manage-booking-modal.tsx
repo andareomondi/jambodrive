@@ -66,7 +66,7 @@ export function ManageBookingModal({
       toast.success("Booking cancelled successfully");
       onSuccess?.(updated);
       onOpenChange(false);
-    } catch (err) {
+    } catch {
       toast.error("Failed to cancel booking. Please try again.");
     } finally {
       setIsProcessing(false);

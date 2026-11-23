@@ -10,6 +10,7 @@ import { Plus, Trash2, Calendar, ImageIcon, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { GalleryEvent } from "@/lib/services/gallery";
+import { surfaceUrl } from "@/lib/routing/surfaces";
 
 interface AdminGallerySectionProps {
   initialEvents?: GalleryEvent[];
@@ -49,7 +50,7 @@ export function AdminGallerySection({
           </p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Link href="/gallery" target="_blank">
+          <Link href={surfaceUrl("gallery")} target="_blank">
             <Button variant="outline" size="sm" className="rounded-xl gap-1.5">
               <ExternalLink className="h-3.5 w-3.5" /> View Gallery
             </Button>

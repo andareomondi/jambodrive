@@ -80,7 +80,7 @@ export function EventImageModal({
       const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
       const filePath = `events/${fileName}`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("car-images") // Reuses your existing public bucket name
         .upload(filePath, imageFile, {
           cacheControl: "3600",

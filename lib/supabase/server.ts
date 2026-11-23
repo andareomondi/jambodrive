@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { COOKIE_DOMAIN } from "@/lib/routing/surfaces";
 
 /**
  * Especially important if using Fluid compute: Don't put this client in a
@@ -13,6 +14,7 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
     {
+      cookieOptions: COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN, path: "/" } : undefined,
       cookies: {
         getAll() {
           return cookieStore.getAll();
@@ -23,9 +25,8 @@ export async function createClient() {
               cookieStore.set(name, value, options),
             );
           } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have proxy refreshing
-            // user sessions.
+            // Called from a Server Component, where cookies are read-only.
+            // The proxy refreshes sessions, so this is safe to ignore.
           }
         },
       },

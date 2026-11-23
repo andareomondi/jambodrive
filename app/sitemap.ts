@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAvailableCars } from "@/lib/services/cars";
+import { surfaceUrl } from "@/lib/routing/surfaces";
 
 const SITE_URL = "https://cosmara.co.ke";
 const CAR_CATEGORIES = [
@@ -21,7 +22,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/cars",
     "/airport-pickup",
     "/wedding-events",
-    "/gallery",
     "/faq",
     "/contact",
     "/terms",
@@ -41,10 +41,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           : 0.7,
   }));
 
+  const gallery = {
+    url: surfaceUrl("gallery"),
+    lastModified,
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  };
+
   try {
     const cars = await getAvailableCars();
     return [
       ...staticRoutes,
+      gallery,
       ...cars.map((car) => ({
         url: `${SITE_URL}/cars/${encodeURIComponent(car.id)}`,
         lastModified,
@@ -54,6 +62,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ];
   } catch (error) {
     console.error("[sitemap] Could not load car detail routes:", error);
-    return staticRoutes;
+    return [...staticRoutes, gallery];
   }
 }

@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Filter, RotateCcw, Search, Check, X } from "lucide-react";
+import { Filter, RotateCcw, Search, Check} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CarFiltersProps {

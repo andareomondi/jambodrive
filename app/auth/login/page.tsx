@@ -10,7 +10,18 @@ import { Label } from "@/components/ui/label";
 import { AlertCircle, ArrowRight, Car, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
-import { safeLocalRedirect } from "@/lib/auth/safe-redirect";
+import { safeRedirectTarget } from "@/lib/auth/safe-redirect";
+import { ROOT_HOST } from "@/lib/routing/surfaces";
+
+// Absolute targets (a subdomain) need a full navigation; relative ones use the router.
+function navigateTo(router: ReturnType<typeof useRouter>, target: string) {
+  if (/^https?:\/\//.test(target)) {
+    window.location.assign(target);
+    return;
+  }
+  router.replace(target);
+  router.refresh();
+}
 
 function UnverifiedWarning({
   onResend,
@@ -49,9 +60,10 @@ function UnverifiedWarning({
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = safeLocalRedirect(
+  const returnUrl = safeRedirectTarget(
     searchParams.get("returnUrl"),
     "/dashboard",
+    ROOT_HOST,
   );
 
   const turnstileRef = useRef<TurnstileInstance>(null);
@@ -76,7 +88,7 @@ function LoginFormContent() {
         data: { session },
       } = await supabase.auth.getSession();
       if (session) {
-        router.replace(returnUrl);
+        navigateTo(router, returnUrl);
       } else {
         setIsCheckingSession(false);
       }
@@ -157,8 +169,7 @@ function LoginFormContent() {
 
       toast.success("Logged in successfully!");
       // Refresh so the server-rendered Navbar picks up the new session cookie
-      router.replace(returnUrl);
-      router.refresh();
+      navigateTo(router, returnUrl);
     } catch {
       toast.error("Failed to login. Please try again.");
     } finally {

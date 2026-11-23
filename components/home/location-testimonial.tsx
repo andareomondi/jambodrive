@@ -105,7 +105,7 @@ export function LocationTestimonial() {
                 </div>
 
                 <p className="text-foreground text-lg md:text-xl italic font-medium leading-relaxed mb-6">
-                  "{TESTIMONIALS[activeTestimonial].comment}"
+                  &ldquo;{TESTIMONIALS[activeTestimonial].comment}&rdquo;
                 </p>
 
                 <div>

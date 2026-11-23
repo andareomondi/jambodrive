@@ -7,7 +7,6 @@ import { getProfiles } from "@/lib/services/profile";
 import { getGalleryEvents } from "@/lib/services/gallery";
 import { getAdminWeddingEventRequests } from "@/lib/actions/wedding-events";
 import { AdminDashboardClient } from "@/components/admin/admin-dashboard-client";
-import { AuthGuard } from "@/components/auth/auth-guard";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -60,7 +59,6 @@ async function AdminContent() {
 
   return (
     <>
-      <AuthGuard />
       <AdminDashboardClient
         initialCars={cars}
         initialBookings={bookings}

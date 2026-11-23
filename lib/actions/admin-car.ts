@@ -1,12 +1,12 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { ADMIN_ROLES, requireRole } from "@/lib/auth/require-role";
 import type { Car, CarInsert, CarUpdate } from "@/types";
 
 export async function adminUpsertCar(
   payload: CarInsert | (CarUpdate & { id: string }),
 ): Promise<Car> {
-  const supabase = await createClient();
+  const { supabase } = await requireRole(ADMIN_ROLES);
 
   if ("id" in payload && payload.id) {
     const { id, ...updates } = payload as CarUpdate & { id: string };

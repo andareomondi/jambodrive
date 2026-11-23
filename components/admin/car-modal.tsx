@@ -14,12 +14,10 @@ import { Label } from "@/components/ui/label";
 import {
   Car as CarIcon,
   Save,
-  Plus,
   X,
   Image as ImageIcon,
   Gauge,
   Settings2,
-  Info,
   Loader2,
   ChevronDown,
   Trash2,

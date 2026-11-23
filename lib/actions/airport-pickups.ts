@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { ADMIN_ROLES, STAFF_ROLES, requireRole } from "@/lib/auth/require-role";
 import type {
   AirportPickup,
   AirportPickupRate,
@@ -35,29 +36,12 @@ const AIRPORT_PICKUP_STATUSES: AirportPickupStatus[] = [
   "cancelled",
 ];
 
-async function requireAirportPickupStaff(roles: ProfileRole[] = [
-  "super_admin",
-  "facilitator",
-]) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) throw new Error("Please sign in to continue.");
-
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (error || !profile || !roles.includes(profile.role as ProfileRole)) {
+async function requireAirportPickupStaff(roles: ProfileRole[] = STAFF_ROLES) {
+  try {
+    return await requireRole(roles);
+  } catch {
     throw new Error("You are not authorized to manage airport pickups.");
   }
-
-  return { supabase, user };
 }
 
 export async function createAirportPickupRequest(
@@ -172,7 +156,7 @@ export async function getAdminAirportPickupData(): Promise<{
 export async function saveAirportPickupRate(
   input: AirportPickupRateInput,
 ): Promise<AirportPickupRate> {
-  const { supabase } = await requireAirportPickupStaff(["super_admin"]);
+  const { supabase } = await requireAirportPickupStaff(ADMIN_ROLES);
   const airportCode = input.airportCode.trim().toUpperCase();
   const airportName = input.airportName.trim();
   const destination = input.destination.trim();

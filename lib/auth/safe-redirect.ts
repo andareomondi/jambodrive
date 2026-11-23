@@ -38,3 +38,27 @@ export function safeLocalRedirect(
 
   return fallback;
 }
+
+/**
+ * Like safeLocalRedirect, but also accepts an absolute URL on the site's own
+ * domain or one of its subdomains (for example, returning a staff member from
+ * the main site's login to admin.cosmara.co.ke). Anything else falls back.
+ */
+export function safeRedirectTarget(
+  value: string | null | undefined,
+  fallback: string,
+  rootHost: string,
+): string {
+  if (!value) return fallback;
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const url = new URL(value);
+      const host = url.hostname.toLowerCase();
+      const allowed = host === rootHost || host.endsWith(`.${rootHost}`);
+      return allowed ? url.toString() : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+  return safeLocalRedirect(value, fallback);
+}

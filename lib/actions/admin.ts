@@ -1,29 +1,18 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import type { Booking, BookingStatus, Car, Profile } from "@/types";
+import { ADMIN_ROLES, requireRole } from "@/lib/auth/require-role";
+import { canTransition } from "@/lib/domain/booking-status";
+import type { Booking, BookingStatus, Car, Profile, ProfileRole } from "@/types";
 
-async function requireSuperAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+const BOOKING_STATUSES: BookingStatus[] = [
+  "pending",
+  "confirmed",
+  "completed",
+  "cancelled",
+  "failed",
+];
 
-  if (authError || !user) throw new Error("Please sign in to continue.");
-
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (error || profile?.role !== "super_admin") {
-    throw new Error("You are not authorized to update bookings.");
-  }
-
-  return supabase;
-}
+const PROFILE_ROLES: ProfileRole[] = ["customer", "super_admin", "facilitator"];
 
 // ── Bookings ──────────────────────────────────────────────────────────────────
 
@@ -31,16 +20,11 @@ export async function adminUpdateBookingStatus(
   id: string,
   status: BookingStatus,
 ): Promise<{ booking: Booking; carId: string | null }> {
-  if (
-    !id ||
-    !["pending", "confirmed", "completed", "cancelled", "failed"].includes(
-      status,
-    )
-  ) {
+  if (!id || !BOOKING_STATUSES.includes(status)) {
     throw new Error("A valid booking and status are required.");
   }
 
-  const supabase = await requireSuperAdmin();
+  const { supabase } = await requireRole(ADMIN_ROLES);
 
   const { data: current, error: currentError } = await supabase
     .from("bookings")
@@ -49,24 +33,11 @@ export async function adminUpdateBookingStatus(
     .single();
 
   if (currentError || !current) {
-    throw new Error(currentError?.message ?? "Booking not found.");
+    throw new Error("Booking not found.");
   }
 
-  const terminalStatuses: BookingStatus[] = ["cancelled", "failed"];
-  if (terminalStatuses.includes(current.status as BookingStatus)) {
-    throw new Error("This booking is already locked in a terminal state.");
-  }
-
-  const allowedTransitions: Record<BookingStatus, BookingStatus[]> = {
-    pending: ["confirmed", "cancelled", "failed"],
-    confirmed: ["completed", "cancelled", "failed"],
-    completed: [],
-    cancelled: [],
-    failed: [],
-  };
-
-  if (!allowedTransitions[(current.status ?? "pending") as BookingStatus]?.includes(status)) {
-    throw new Error("This status change is not allowed. Please move forward only.");
+  if (!canTransition(current.status as BookingStatus | null, status)) {
+    throw new Error("This status change is not allowed.");
   }
 
   const { data, error } = await supabase
@@ -80,18 +51,6 @@ export async function adminUpdateBookingStatus(
   return { booking: data, carId: data.car_id };
 }
 
-export async function adminUpdateCarAvailability(
-  carId: string,
-  available: boolean
-): Promise<void> {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("cars")
-    .update({ available })
-    .eq("id", carId);
-  if (error) throw new Error(error.message);
-}
-
 export async function adminCreateBooking(bookingData: {
   car_id: string;
   profile_id: string | null;
@@ -102,13 +61,14 @@ export async function adminCreateBooking(bookingData: {
   total_price: number;
   insurance: boolean;
 }): Promise<Booking> {
-  const supabase = await createClient();
+  const { supabase } = await requireRole(ADMIN_ROLES);
 
-  const days = Math.ceil(
-    (new Date(bookingData.return_date).getTime() -
-      new Date(bookingData.pickup_date).getTime()) /
-      86_400_000
-  );
+  const start = new Date(bookingData.pickup_date).getTime();
+  const end = new Date(bookingData.return_date).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
+    throw new Error("The return date must be after the pickup date.");
+  }
+  const days = Math.ceil((end - start) / 86_400_000);
 
   const { data, error } = await supabase
     .from("bookings")
@@ -126,22 +86,50 @@ export async function adminCreateBooking(bookingData: {
 
   if (error) throw new Error(error.message);
 
-  // Mark car as unavailable
-  await supabase
+  const { error: carError } = await supabase
     .from("cars")
     .update({ available: false })
     .eq("id", bookingData.car_id);
+  if (carError) throw new Error(carError.message);
 
   return data;
+}
+
+// ── Cars ──────────────────────────────────────────────────────────────────────
+
+export async function adminUpdateCarAvailability(
+  carId: string,
+  available: boolean,
+): Promise<void> {
+  const { supabase } = await requireRole(ADMIN_ROLES);
+  const { error } = await supabase
+    .from("cars")
+    .update({ available })
+    .eq("id", carId);
+  if (error) throw new Error(error.message);
+}
+
+export async function adminDeleteCar(carId: string): Promise<void> {
+  const { supabase } = await requireRole(ADMIN_ROLES);
+  const { error } = await supabase.from("cars").delete().eq("id", carId);
+  if (error) throw new Error(error.message);
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────
 
 export async function adminUpdateUserRole(
   userId: string,
-  role: string
+  role: ProfileRole,
 ): Promise<Profile> {
-  const supabase = await createClient();
+  const { supabase, user } = await requireRole(ADMIN_ROLES);
+
+  if (!PROFILE_ROLES.includes(role)) {
+    throw new Error("That role does not exist.");
+  }
+  if (userId === user.id && role !== "super_admin") {
+    throw new Error("You cannot remove your own admin access.");
+  }
+
   const { data, error } = await supabase
     .from("profiles")
     .update({ role })
@@ -152,18 +140,10 @@ export async function adminUpdateUserRole(
   return data;
 }
 
-// ── Cars ──────────────────────────────────────────────────────────────────────
-
-export async function adminDeleteCar(carId: string): Promise<void> {
-  const supabase = await createClient();
-  const { error } = await supabase.from("cars").delete().eq("id", carId);
-  if (error) throw new Error(error.message);
-}
-
 // ── Data refresh ──────────────────────────────────────────────────────────────
 
 export async function fetchAdminCars(): Promise<Car[]> {
-  const supabase = await createClient();
+  const { supabase } = await requireRole(ADMIN_ROLES);
   const { data, error } = await supabase
     .from("cars")
     .select("*")
@@ -173,7 +153,7 @@ export async function fetchAdminCars(): Promise<Car[]> {
 }
 
 export async function fetchAdminBookings(): Promise<Booking[]> {
-  const supabase = await createClient();
+  const { supabase } = await requireRole(ADMIN_ROLES);
   const { data, error } = await supabase
     .from("bookings")
     .select("*, cars(name, image), profiles(full_name, email, phone)")
@@ -183,7 +163,7 @@ export async function fetchAdminBookings(): Promise<Booking[]> {
 }
 
 export async function fetchAdminProfiles(): Promise<Profile[]> {
-  const supabase = await createClient();
+  const { supabase } = await requireRole(ADMIN_ROLES);
   const { data, error } = await supabase
     .from("profiles")
     .select("*")

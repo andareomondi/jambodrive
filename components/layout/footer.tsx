@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Car, Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin } from "lucide-react";
 import { AppImage } from "@/components/ui/app-image";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { surfaceUrl } from "@/lib/routing/surfaces";
 
 export function Footer() {
   const currentYear = 2026;
@@ -52,7 +53,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/gallery"
+                  href={surfaceUrl("gallery")}
                   className="text-muted-foreground hover:text-accent transition-colors"
                   title="View our catalogue"
                 >

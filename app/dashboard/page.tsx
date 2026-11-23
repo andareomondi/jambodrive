@@ -8,7 +8,6 @@ import {
 } from "@/lib/services/bookings";
 import { getUserWeddingEventRequests } from "@/lib/actions/wedding-events";
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
-import { AuthGuard } from "@/components/auth/auth-guard";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +50,6 @@ async function DashboardContent() {
 
   return (
     <>
-      <AuthGuard />
       <DashboardClient
         profile={profile}
         bookings={bookings}
