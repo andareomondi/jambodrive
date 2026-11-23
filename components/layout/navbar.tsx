@@ -36,21 +36,21 @@ const CAR_TYPES = [
 // Moved outside the component to prevent re-creation on every render
 const BOOKING_SERVICES = [
   {
-    href: "/cars?service=self-chauffeured",
+    href: "https://cosmara.co.ke/cars?service=self-chauffeured",
     title: "Self-Chauffeured",
     desc: "Drive yourself at your own pace",
     icon: CarFront,
     comingSoon: false,
   },
   {
-    href: "/cars?service=chauffeured",
+    href: "https://cosmara.co.ke/cars?service=chauffeured",
     title: "Chauffeured",
     desc: "Sit back and let our experts drive",
     icon: UserCheck,
     comingSoon: false,
   },
   {
-    href: "/airport-pickup",
+    href: "https://cosmara.co.ke/airport-pickup",
     title: "Airport Pickups",
     desc: "Seamless airport transfers",
     icon: Plane,
@@ -58,7 +58,7 @@ const BOOKING_SERVICES = [
   },
 
   {
-    href: "/wedding-events",
+    href: "https://cosmara.co.ke/wedding-events",
     title: "Wedding Events",
     desc: "Make your special day perfect",
     icon: PartyPopper,
@@ -102,7 +102,9 @@ export function Navbar() {
 
     const applySession = async (currentUser: User | null) => {
       if (!active) return;
-      setUser((prevUser) => (prevUser?.id === currentUser?.id ? prevUser : currentUser));
+      setUser((prevUser) =>
+        prevUser?.id === currentUser?.id ? prevUser : currentUser,
+      );
       if (!currentUser) {
         setRole(null);
         return;
@@ -223,7 +225,7 @@ export function Navbar() {
         <div className="flex h-[4.5rem] items-center justify-between gap-4">
           {/* Logo */}
           <Link
-            href="/"
+            href="https://cosmara.co.ke"
             onClick={closeAll}
             className="group flex shrink-0 items-center gap-3 rounded-full pr-3 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
@@ -248,7 +250,7 @@ export function Navbar() {
           {/* Desktop nav */}
           <div className="hidden lg:flex items-center gap-1">
             <Link
-              href="/"
+              href="https://cosmara.co.ke"
               prefetch={true}
               className={desktopNavLinkClass}
             >
@@ -298,7 +300,7 @@ export function Navbar() {
             </div>
             */}
             <Link
-              href="/cars"
+              href="https://cosmara.co.ke/cars"
               className={desktopNavLinkClass}
               prefetch={true}
             >
@@ -322,21 +324,18 @@ export function Navbar() {
                 Facilitator
               </Link>
             )}
-            <Link
-              href={surfaceUrl("gallery")}
-              className={desktopNavLinkClass}
-            >
+            <Link href={surfaceUrl("gallery")} className={desktopNavLinkClass}>
               Gallery
             </Link>
             <Link
-              href="/airport-pickup"
+              href="https://cosmara.co.ke/airport-pickup"
               prefetch={true}
               className={desktopNavLinkClass}
             >
               Airport Pickups
             </Link>
             <Link
-              href="/wedding-events"
+              href="https://cosmara.co.ke/wedding-events"
               prefetch={true}
               className={desktopNavLinkClass}
             >
@@ -356,10 +355,11 @@ export function Navbar() {
                   asChild
                   className={cn(
                     "rounded-full px-4 font-semibold text-foreground/80 hover:bg-white/8 hover:text-foreground",
-                    heroOverlay && "text-white/90 hover:bg-white/10 hover:text-white",
+                    heroOverlay &&
+                      "text-white/90 hover:bg-white/10 hover:text-white",
                   )}
                 >
-                  <Link href="/dashboard" prefetch={false}>
+                  <Link href="https://cosmara.co.ke/dashboard" prefetch={false}>
                     Profile
                   </Link>
                 </Button>
@@ -369,7 +369,8 @@ export function Navbar() {
                   onClick={handleLogout}
                   className={cn(
                     "rounded-full px-4 font-semibold text-foreground/80 hover:bg-white/8 hover:text-foreground",
-                    heroOverlay && "text-white/90 hover:bg-white/10 hover:text-white",
+                    heroOverlay &&
+                      "text-white/90 hover:bg-white/10 hover:text-white",
                   )}
                 >
                   Log Out
@@ -382,10 +383,11 @@ export function Navbar() {
                 asChild
                 className={cn(
                   "rounded-full px-4 font-semibold text-foreground/80 hover:bg-white/8 hover:text-foreground",
-                  heroOverlay && "text-white/90 hover:bg-white/10 hover:text-white",
+                  heroOverlay &&
+                    "text-white/90 hover:bg-white/10 hover:text-white",
                 )}
               >
-                <Link href="/auth/login" prefetch={false}>
+                <Link href="https://cosmara.co.ke/auth/login" prefetch={false}>
                   Sign In
                 </Link>
               </Button>
@@ -449,7 +451,7 @@ export function Navbar() {
 
                 <div className="mt-2 flex flex-col gap-1 border-t border-border/70 pt-3">
                   <Link
-                    href="/cars"
+                    href="https://cosmara.co.ke/cars"
                     onClick={closeAll}
                     className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
@@ -485,7 +487,7 @@ export function Navbar() {
                     Gallery
                   </Link>
                   <Link
-                    href="/airport-pickup"
+                    href="https://cosmara.co.ke/airport-pickup"
                     onClick={closeAll}
                     prefetch={true}
                     className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
@@ -493,7 +495,7 @@ export function Navbar() {
                     Airport Pickups
                   </Link>
                   <Link
-                    href="/wedding-events"
+                    href="https://cosmara.co.ke/wedding-events"
                     onClick={closeAll}
                     prefetch={true}
                     className="font-display rounded-2xl px-4 py-3 text-lg font-semibold tracking-wide text-foreground transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
@@ -506,8 +508,8 @@ export function Navbar() {
               {/* Mobile auth & CTA */}
               <div className="mt-3 flex flex-col gap-2 border-t border-border/70 px-1 pt-4">
                 {!authReady ? (
-              <div aria-hidden className="h-9 w-40" />
-            ) : isLoggedIn ? (
+                  <div aria-hidden className="h-9 w-40" />
+                ) : isLoggedIn ? (
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -515,7 +517,7 @@ export function Navbar() {
                       className="h-11 flex-1 rounded-full font-bold"
                     >
                       <Link
-                        href="/dashboard"
+                        href="https://cosmara.co.ke/dashboard"
                         prefetch={false}
                         onClick={closeAll}
                       >
@@ -536,7 +538,11 @@ export function Navbar() {
                     asChild
                     className="h-11 w-full rounded-full font-bold"
                   >
-                    <Link href="/auth/login" prefetch={false} onClick={closeAll}>
+                    <Link
+                      href="https://cosmara.co.ke/auth/login"
+                      prefetch={false}
+                      onClick={closeAll}
+                    >
                       Sign In
                     </Link>
                   </Button>

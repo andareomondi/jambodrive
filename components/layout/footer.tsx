@@ -35,7 +35,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  href="/"
+                  href="https://cosmara.co.ke"
                   className="text-muted-foreground hover:text-accent transition-colors"
                   title="Back to Homepage"
                 >
@@ -44,7 +44,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/cars"
+                  href="https://cosmara.co.ke/cars"
                   className="text-muted-foreground hover:text-accent transition-colors"
                   title="View our cars"
                 >
@@ -80,7 +80,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  href="/cars?service=self-chauffeured"
+                  href="https://cosmara.co.ke/cars?service=self-chauffeured"
                   className="text-muted-foreground hover:text-accent transition-colors"
                   title="Self Drive"
                 >
@@ -89,7 +89,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/cars?service=chauffeured"
+                  href="https://cosmara.co.ke/cars?service=chauffeured"
                   className="text-muted-foreground hover:text-accent transition-colors"
                   title="Get Personal Driver"
                 >
@@ -100,7 +100,7 @@ export function Footer() {
               {/* Disabled links for upcoming services - disabled prefetching since they don't lead to pages */}
               <li>
                 <Link
-                  href="/airport-pickup"
+                  href="https://cosmara.co.ke/airport-pickup"
                   prefetch={true}
                   className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
                   title="Airport Transfers"
@@ -111,7 +111,7 @@ export function Footer() {
 
               <li>
                 <Link
-                  href="/wedding-events"
+                  href="https://cosmara.co.ke/wedding-events"
                   prefetch={true}
                   className="text-muted-foreground hover:text-accent transition-colors cursor-not-allowed"
                   title="Planning Your Wedding? We Got You Covered!s"
@@ -148,7 +148,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  href="/faq"
+                  href="https://cosmara.co.ke/faq"
                   className="text-muted-foreground hover:text-accent transition-colors"
                   title="Frequently Asked Questions"
                 >
@@ -157,7 +157,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/contact"
+                  href="https://cosmara.co.ke/contact"
                   className="text-muted-foreground hover:text-accent transition-colors"
                   title="Reach out to Us"
                 >
@@ -166,7 +166,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/terms"
+                  href="https://cosmara.co.ke/terms"
                   className="text-muted-foreground hover:text-accent transition-colors"
                   title="Terms and Conditions"
                 >
