@@ -80,19 +80,23 @@ export function CarDetailsClient({ car, rentalSearch }: CarDetailsClientProps) {
     modalStep === "waiting_pin",
     async (result) => {
       if (result.status === "confirmed") {
-        await supabase.from("cars").update({ available: false }).eq("id", car.id);
+        await supabase
+          .from("cars")
+          .update({ available: false })
+          .eq("id", car.id);
         setReceiptNumber(result.receiptNumber ?? null);
         setModalStep("success");
         toast.success("Payment confirmed! Vehicle reserved.");
         channelRef.current?.unsubscribe();
       } else if (result.status === "failed") {
-        setPaymentMessage(result.reason ?? "M-Pesa could not complete the payment.");
+        setPaymentMessage(
+          result.reason ?? "M-Pesa could not complete the payment.",
+        );
         setModalStep("failed");
         channelRef.current?.unsubscribe();
       }
     },
   );
-
 
   useEffect(() => {
     return () => {
@@ -279,14 +283,20 @@ export function CarDetailsClient({ car, rentalSearch }: CarDetailsClientProps) {
 
         const stkData = await stkResponse.json();
 
-        if ((!stkResponse.ok || !stkData.success) && !stkData.paymentMayBePending) {
+        if (
+          (!stkResponse.ok || !stkData.success) &&
+          !stkData.paymentMayBePending
+        ) {
           channel.unsubscribe();
           const { error: failureUpdateError } = await supabase
             .from("bookings")
             .update({ status: "failed", payment_failure_reason: stkData.error })
             .eq("id", newBooking.id);
           if (failureUpdateError) {
-            console.error("[CarDetails] Could not record rejected M-Pesa request:", failureUpdateError);
+            console.error(
+              "[CarDetails] Could not record rejected M-Pesa request:",
+              failureUpdateError,
+            );
           }
           throw new Error(stkData.error ?? "M-Pesa STK request failed.");
         }
@@ -344,7 +354,7 @@ export function CarDetailsClient({ car, rentalSearch }: CarDetailsClientProps) {
         : "Premium vehicle";
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background pb-20">
+    <div className="relative min-h-screen overflow-x-clip bg-background pb-20">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] bg-[radial-gradient(ellipse_at_top,rgba(236,173,110,0.12),transparent_65%)]" />
       <div className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         <Link
@@ -382,242 +392,252 @@ export function CarDetailsClient({ car, rentalSearch }: CarDetailsClientProps) {
             </h1>
           </div>
           <p className="max-w-sm text-sm leading-relaxed text-muted-foreground md:text-right">
-            A considered choice for the journeys that matter. Explore the details
-            and reserve your dates.
+            A considered choice for the journeys that matter. Explore the
+            details and reserve your dates.
           </p>
         </header>
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(350px,0.75fr)] lg:gap-8">
           <div className="min-w-0">
-          {activeImage ? (
-            <button
-              type="button"
-              onClick={() => activeLoaded && setLightboxOpen(true)}
-              aria-label="Expand image"
-              className="group relative block h-[340px] w-full cursor-zoom-in overflow-hidden rounded-[28px] border border-white/10 bg-muted text-left shadow-[0_30px_90px_rgba(0,0,0,0.22)] sm:h-[480px] lg:h-[560px]"
-            >
-              <AppImage
-                src={activeImage}
-                alt={car.name}
-                fill
-                className={`object-cover transition-transform duration-700 group-hover:scale-[1.025] ${activeLoaded ? "opacity-100" : "opacity-0"}`}
-                priority={selectedImage === 0}
-                loading={selectedImage === 0 ? "eager" : "lazy"}
-                sizes="(max-width: 1024px) 100vw, 66vw"
-                onLoad={() =>
-                  setLoadedImages((prev) => ({ ...prev, [activeImage]: true }))
-                }
-                onError={() => {
-                  if (sourceImage) {
-                    setFailedImages((prev) => ({
+            {activeImage ? (
+              <button
+                type="button"
+                onClick={() => activeLoaded && setLightboxOpen(true)}
+                aria-label="Expand image"
+                className="group relative block h-[340px] w-full cursor-zoom-in overflow-hidden rounded-[28px] border border-white/10 bg-muted text-left shadow-[0_30px_90px_rgba(0,0,0,0.22)] sm:h-[480px] lg:h-[560px]"
+              >
+                <AppImage
+                  src={activeImage}
+                  alt={car.name}
+                  fill
+                  className={`object-cover transition-transform duration-700 group-hover:scale-[1.025] ${activeLoaded ? "opacity-100" : "opacity-0"}`}
+                  priority={selectedImage === 0}
+                  loading={selectedImage === 0 ? "eager" : "lazy"}
+                  sizes="(max-width: 1024px) 100vw, 66vw"
+                  onLoad={() =>
+                    setLoadedImages((prev) => ({
                       ...prev,
-                      [sourceImage]: true,
-                    }));
-                    setImageFallbackNotice(
-                      "This vehicle image couldn't be loaded, so the backup image is being shown.",
-                    );
+                      [activeImage]: true,
+                    }))
                   }
-                }}
-              />
+                  onError={() => {
+                    if (sourceImage) {
+                      setFailedImages((prev) => ({
+                        ...prev,
+                        [sourceImage]: true,
+                      }));
+                      setImageFallbackNotice(
+                        "This vehicle image couldn't be loaded, so the backup image is being shown.",
+                      );
+                    }
+                  }}
+                />
 
-              {!activeLoaded && (
-                <div className="absolute inset-0 z-20 flex animate-pulse items-center justify-center bg-muted">
-                  <span className="rounded-full border border-border/70 bg-background/80 px-4 py-2 text-xs font-medium text-muted-foreground">
-                    Loading vehicle image…
-                  </span>
-                </div>
-              )}
-
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10" />
-              {imageFallbackNotice && (
-                <div className="absolute left-4 right-4 top-4 z-30 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-100 backdrop-blur-md sm:left-6 sm:right-auto sm:top-6">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  {imageFallbackNotice}
-                </div>
-              )}
-              <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-md sm:left-6 sm:top-6">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                {car.year} · {formattedType}
-              </div>
-              {activeLoaded && (
-                <span className="absolute bottom-4 right-4 z-20 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/35 px-4 py-2.5 text-xs font-semibold text-white shadow-lg backdrop-blur-md transition-colors group-hover:bg-accent group-hover:text-accent-foreground sm:bottom-6 sm:right-6">
-                  <Maximize2 className="h-3.5 w-3.5" /> View gallery
-                </span>
-              )}
-
-              {!car.available && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/45 backdrop-blur-[2px]">
-                  <span className="rounded-full border border-white/20 bg-black/40 px-5 py-2.5 text-sm font-bold uppercase tracking-[0.16em] text-white backdrop-blur">
-                    Currently reserved
-                  </span>
-                </div>
-              )}
-            </button>
-          ) : (
-            <div className="flex h-[340px] items-center justify-center rounded-[28px] border border-border/70 bg-card sm:h-[480px] lg:h-[560px]">
-              <p className="text-muted-foreground text-sm">
-                No image available
-              </p>
-            </div>
-          )}
-
-          {images.length > 1 && (
-            <div className="mt-3 flex gap-3 overflow-x-auto py-2 scroll-smooth snap-x">
-              {images.map((image, idx) => {
-                const failed = !!failedImages[image];
-
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImage(idx)}
-                    className={`relative h-20 w-28 shrink-0 snap-start overflow-hidden rounded-xl border-2 transition-all sm:h-24 sm:w-36 ${
-                      selectedImage === idx
-                        ? "border-accent shadow-lg shadow-accent/15"
-                        : "border-border/70 opacity-75 hover:border-accent/50 hover:opacity-100"
-                    }`}
-                  >
-                    <AppImage
-                      src={failed ? "/hero/car1.webp" : image}
-                      alt={`${car.name} ${idx + 1}`}
-                      fill
-                      className="object-cover"
-                      sizes="80px"
-                      onLoad={() =>
-                        setLoadedImages((prev) => ({ ...prev, [image]: true }))
-                      }
-                      onError={() => {
-                        setFailedImages((prev) => ({ ...prev, [image]: true }));
-                        setImageFallbackNotice(
-                          "This vehicle image couldn't be loaded, so the backup image is being shown."
-                        );
-                      }}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="mt-8 border-t border-border/70 pt-7 sm:mt-10 sm:pt-8">
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
-              About the vehicle
-            </p>
-            <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
-              {car.description ?? "No description available."}
-            </p>
-            {features.length > 0 && (
-              <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2.5">
-                {features.map((feature, i) => (
-                  <li
-                    key={`${feature}-${i}`}
-                    className="inline-flex items-center gap-2 text-xs font-medium text-foreground/80 sm:text-sm"
-                  >
-                    <CheckCircle className="h-3.5 w-3.5 shrink-0 text-accent" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
-        <aside className="lg:sticky lg:top-24">
-          <Card className="overflow-hidden rounded-[28px] border-border/70 bg-card/90 p-0 shadow-[0_28px_75px_rgba(0,0,0,0.18)] backdrop-blur-xl">
-            <div className="border-b border-border/70 p-5 sm:p-7">
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
-                Vehicle details
-              </p>
-              <h2 className="font-display text-3xl font-medium leading-none text-foreground">
-                At a glance
-              </h2>
-              <div className="mt-5 grid grid-cols-2 gap-2.5">
-                {[
-                  { icon: Users, label: "Seats", value: String(car.seats) },
-                  {
-                    icon: Settings2,
-                    label: "Transmission",
-                    value: car.transmission,
-                  },
-                  {
-                    icon:
-                      car.fuel === "electric" || car.fuel === "hybrid"
-                        ? Zap
-                        : Fuel,
-                    label: "Fuel",
-                    value: car.fuel,
-                  },
-                  { icon: Clock, label: "Year", value: String(car.year) },
-                ].map(({ icon: Icon, label, value }) => (
-                  <div
-                    key={label}
-                    className="rounded-2xl border border-border/60 bg-background/45 p-3.5"
-                  >
-                    <Icon className="mb-3 h-4 w-4 text-accent" />
-                    <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                      {label}
-                    </p>
-                    <p className="mt-1 truncate text-sm font-semibold capitalize text-foreground">
-                      {value}
-                    </p>
+                {!activeLoaded && (
+                  <div className="absolute inset-0 z-20 flex animate-pulse items-center justify-center bg-muted">
+                    <span className="rounded-full border border-border/70 bg-background/80 px-4 py-2 text-xs font-medium text-muted-foreground">
+                      Loading vehicle image…
+                    </span>
                   </div>
-                ))}
-              </div>
-              {car.chauffeured && (
-                <div className="mt-3 flex items-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-3.5 py-3 text-xs font-semibold text-accent">
-                  <UserCheck className="h-4 w-4 shrink-0" />
-                  Chauffeur included in the daily rate
-                </div>
-              )}
-            </div>
+                )}
 
-            <div className="p-5 sm:p-7">
-              <div className="mb-5">
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                  Daily hire from
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10" />
+                {imageFallbackNotice && (
+                  <div className="absolute left-4 right-4 top-4 z-30 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-100 backdrop-blur-md sm:left-6 sm:right-auto sm:top-6">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    {imageFallbackNotice}
+                  </div>
+                )}
+                <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-md sm:left-6 sm:top-6">
+                  <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                  {car.year} · {formattedType}
+                </div>
+                {activeLoaded && (
+                  <span className="absolute bottom-4 right-4 z-20 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/35 px-4 py-2.5 text-xs font-semibold text-white shadow-lg backdrop-blur-md transition-colors group-hover:bg-accent group-hover:text-accent-foreground sm:bottom-6 sm:right-6">
+                    <Maximize2 className="h-3.5 w-3.5" /> View gallery
+                  </span>
+                )}
+
+                {!car.available && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/45 backdrop-blur-[2px]">
+                    <span className="rounded-full border border-white/20 bg-black/40 px-5 py-2.5 text-sm font-bold uppercase tracking-[0.16em] text-white backdrop-blur">
+                      Currently reserved
+                    </span>
+                  </div>
+                )}
+              </button>
+            ) : (
+              <div className="flex h-[340px] items-center justify-center rounded-[28px] border border-border/70 bg-card sm:h-[480px] lg:h-[560px]">
+                <p className="text-muted-foreground text-sm">
+                  No image available
                 </p>
-                <div className="flex items-baseline gap-2">
-                  <span className="font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-                    KSh {car.price.toLocaleString("en-KE")}
-                  </span>
-                  <span className="text-xs font-medium text-muted-foreground">
-                    / day
-                  </span>
-                </div>
               </div>
-              <div className="mb-5 flex items-center gap-2 border-y border-border/70 py-3 text-xs text-muted-foreground">
-                <Shield className="h-4 w-4 shrink-0 text-accent" />
-                Flexible booking with personal support
+            )}
+
+            {images.length > 1 && (
+              <div className="mt-3 flex gap-3 overflow-x-auto py-2 scroll-smooth snap-x">
+                {images.map((image, idx) => {
+                  const failed = !!failedImages[image];
+
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedImage(idx)}
+                      className={`relative h-20 w-28 shrink-0 snap-start overflow-hidden rounded-xl border-2 transition-all sm:h-24 sm:w-36 ${
+                        selectedImage === idx
+                          ? "border-accent shadow-lg shadow-accent/15"
+                          : "border-border/70 opacity-75 hover:border-accent/50 hover:opacity-100"
+                      }`}
+                    >
+                      <AppImage
+                        src={failed ? "/hero/car1.webp" : image}
+                        alt={`${car.name} ${idx + 1}`}
+                        fill
+                        className="object-cover"
+                        sizes="80px"
+                        onLoad={() =>
+                          setLoadedImages((prev) => ({
+                            ...prev,
+                            [image]: true,
+                          }))
+                        }
+                        onError={() => {
+                          setFailedImages((prev) => ({
+                            ...prev,
+                            [image]: true,
+                          }));
+                          setImageFallbackNotice(
+                            "This vehicle image couldn't be loaded, so the backup image is being shown.",
+                          );
+                        }}
+                      />
+                    </button>
+                  );
+                })}
               </div>
-              <div className="space-y-3">
-              {car.available ? (
-                <div className="flex flex-col gap-3">
-                  <Button
-                    onClick={() => openBookingModal("pay_now")}
-                    className="h-12 w-full rounded-full bg-accent font-bold text-accent-foreground shadow-lg shadow-accent/15 transition-all hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-accent/25"
-                  >
-                    <CreditCard className="h-4 w-4" /> Reserve this vehicle
-                  </Button>
-                  <Button
-                    onClick={() => openBookingModal("pay_later")}
-                    variant="outline"
-                    className="h-12 w-full rounded-full border-border/80 bg-background/40 font-semibold text-foreground hover:border-accent/40 hover:bg-accent/10 hover:text-accent"
-                  >
-                    <Clock className="h-4 w-4" /> Book & pay in person
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  onClick={handleWhatsAppInquiry}
-                  variant="outline"
-                  className="h-12 w-full rounded-full border-accent/40 text-accent hover:bg-accent/10"
-                >
-                  <MessageCircle className="h-4 w-4" /> Ask about availability
-                </Button>
+            )}
+
+            <div className="mt-8 border-t border-border/70 pt-7 sm:mt-10 sm:pt-8">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
+                About the vehicle
+              </p>
+              <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
+                {car.description ?? "No description available."}
+              </p>
+              {features.length > 0 && (
+                <ul className="mt-5 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {features.map((feature, i) => (
+                    <li
+                      key={`${feature}-${i}`}
+                      className="flex min-w-0 items-start gap-2 text-xs font-medium text-foreground/80 sm:text-sm"
+                    >
+                      <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
+                      <span className="min-w-0 break-words">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
               )}
-              </div>
             </div>
-          </Card>
-        </aside>
+          </div>
+
+          <aside className="self-start lg:sticky lg:top-24">
+            <Card className="overflow-hidden rounded-[28px] border-border/70 bg-card/90 p-0 shadow-[0_28px_75px_rgba(0,0,0,0.18)] backdrop-blur-xl">
+              <div className="border-b border-border/70 p-5 sm:p-7">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
+                  Vehicle details
+                </p>
+                <h2 className="font-display text-3xl font-medium leading-none text-foreground">
+                  At a glance
+                </h2>
+                <div className="mt-5 grid grid-cols-2 gap-2.5">
+                  {[
+                    { icon: Users, label: "Seats", value: String(car.seats) },
+                    {
+                      icon: Settings2,
+                      label: "Transmission",
+                      value: car.transmission,
+                    },
+                    {
+                      icon:
+                        car.fuel === "electric" || car.fuel === "hybrid"
+                          ? Zap
+                          : Fuel,
+                      label: "Fuel",
+                      value: car.fuel,
+                    },
+                    { icon: Clock, label: "Year", value: String(car.year) },
+                  ].map(({ icon: Icon, label, value }) => (
+                    <div
+                      key={label}
+                      className="rounded-2xl border border-border/60 bg-background/45 p-3.5"
+                    >
+                      <Icon className="mb-3 h-4 w-4 text-accent" />
+                      <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                        {label}
+                      </p>
+                      <p className="mt-1 truncate text-sm font-semibold capitalize text-foreground">
+                        {value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {car.chauffeured && (
+                  <div className="mt-3 flex items-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-3.5 py-3 text-xs font-semibold text-accent">
+                    <UserCheck className="h-4 w-4 shrink-0" />
+                    Chauffeur included in the daily rate
+                  </div>
+                )}
+              </div>
+
+              <div className="p-5 sm:p-7">
+                <div className="mb-5">
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    Daily hire from
+                  </p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+                      KSh {car.price.toLocaleString("en-KE")}
+                    </span>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      / day
+                    </span>
+                  </div>
+                </div>
+                <div className="mb-5 flex items-center gap-2 border-y border-border/70 py-3 text-xs text-muted-foreground">
+                  <Shield className="h-4 w-4 shrink-0 text-accent" />
+                  Flexible booking with personal support
+                </div>
+                <div className="space-y-3">
+                  {car.available ? (
+                    <div className="flex flex-col gap-3">
+                      <Button
+                        onClick={() => openBookingModal("pay_now")}
+                        className="h-12 w-full rounded-full bg-accent font-bold text-accent-foreground shadow-lg shadow-accent/15 transition-all hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-accent/25"
+                      >
+                        <CreditCard className="h-4 w-4" /> Reserve this vehicle
+                      </Button>
+                      <Button
+                        onClick={() => openBookingModal("pay_later")}
+                        variant="outline"
+                        className="h-12 w-full rounded-full border-border/80 bg-background/40 font-semibold text-foreground hover:border-accent/40 hover:bg-accent/10 hover:text-accent"
+                      >
+                        <Clock className="h-4 w-4" /> Book & pay in person
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={handleWhatsAppInquiry}
+                      variant="outline"
+                      className="h-12 w-full rounded-full border-accent/40 text-accent hover:bg-accent/10"
+                    >
+                      <MessageCircle className="h-4 w-4" /> Ask about
+                      availability
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </Card>
+          </aside>
         </div>
 
         <section className="mt-16 border-t border-border/70 pt-10 sm:mt-20 sm:pt-14">
@@ -857,7 +877,10 @@ export function CarDetailsClient({ car, rentalSearch }: CarDetailsClientProps) {
                       <strong>{formData?.phone}</strong> to authorize charge.
                     </p>
                     {paymentMessage && (
-                      <p role="status" className="mt-2 text-xs text-muted-foreground">
+                      <p
+                        role="status"
+                        className="mt-2 text-xs text-muted-foreground"
+                      >
                         {paymentMessage}
                       </p>
                     )}
