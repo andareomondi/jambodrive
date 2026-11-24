@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AppImage } from "@/components/ui/app-image";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { DepositFundsModal } from "@/components/modals/deposit-funds-modal";
 import { ManageBookingModal } from "@/components/modals/manage-booking-modal";
 import { BookingSummaryModal } from "@/components/modals/booking-summary-modal";
@@ -40,8 +40,7 @@ import type {
   WeddingEventRequest,
   WeddingEventRequestStatus,
 } from "@/types";
-import type { RealtimeChannel } from "@supabase/supabase-js";
-import { useMpesaStatusPolling } from "@/hooks/use-mpesa-status-polling";
+import { useMpesaPayment } from "@/hooks/use-mpesa-payment";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -352,12 +351,10 @@ export function DashboardClient({
   >(null);
   const [weddingPaymentDialogRequestId, setWeddingPaymentDialogRequestId] =
     useState<string | null>(null);
-  const [weddingPaymentDialogMessage, setWeddingPaymentDialogMessage] =
-    useState("");
   const [weddingAgreementLoadingId, setWeddingAgreementLoadingId] = useState<
     string | null
   >(null);
-  const weddingPaymentChannelRef = useRef<RealtimeChannel | null>(null);
+  const weddingPayment = useMpesaPayment();
 
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [manageModalOpen, setManageModalOpen] = useState(false);
@@ -443,7 +440,6 @@ export function DashboardClient({
 
     return () => {
       void channel.unsubscribe();
-      weddingPaymentChannelRef.current?.unsubscribe();
     };
   }, [profile.id]);
 
@@ -495,87 +491,88 @@ export function DashboardClient({
     }
     setWeddingPaymentLoadingId(request.id);
     setWeddingPaymentDialogRequestId(request.id);
-    setWeddingPaymentDialogMessage("");
-    weddingPaymentChannelRef.current?.unsubscribe();
 
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`wedding_payment_${request.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "wedding_event_requests",
-          filter: `id=eq.${request.id}`,
-        },
-        (payload) => {
-          const updated = payload.new as WeddingEventRequest;
-          setWeddingEventRequests((current) =>
-            current.map((item) =>
-              item.id === updated.id ? { ...item, ...updated } : item,
-            ),
-          );
-          if (updated.payment_status === "paid") {
-            setWeddingPaymentDialogMessage(
-              "Payment confirmed. Your wedding quote is confirmed.",
+    weddingPayment.start({
+      pollType: "wedding",
+      watch: {
+        table: "wedding_event_requests",
+        id: request.id,
+        statusColumn: "payment_status",
+        paidValue: "paid",
+        failedValue: "failed",
+        reasonColumn: "payment_failure_reason",
+        receiptColumn: "mpesa_receipt_number",
+        amountColumn: "paid_amount",
+      },
+      initiate: async () => {
+        try {
+          const response = await fetch("/api/mpesa/stkpush", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone, weddingEventRequestId: request.id }),
+          });
+          const result = await response.json();
+          if (result.success || result.paymentMayBePending) {
+            setWeddingEventRequests((current) =>
+              current.map((item) =>
+                item.id === request.id
+                  ? item.payment_status === "paid" || item.payment_status === "failed"
+                    ? item
+                    : {
+                        ...item,
+                        payment_status: "pending",
+                        mpesa_phone: phone,
+                        checkout_request_id: result.checkoutRequestId,
+                      }
+                  : item,
+              ),
             );
-            toast.success("Wedding payment confirmed.");
-            channel.unsubscribe();
-          } else if (updated.payment_status === "failed") {
-            setWeddingPaymentDialogMessage(
-              updated.payment_failure_reason ?? "The M-Pesa payment failed.",
-            );
-            channel.unsubscribe();
           }
-        },
-      )
-      .subscribe();
-    weddingPaymentChannelRef.current = channel;
-
-    try {
-      const response = await fetch("/api/mpesa/stkpush", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, weddingEventRequestId: request.id }),
-      });
-      const result = await response.json();
-      if ((!response.ok || !result.success) && !result.paymentMayBePending) {
-        throw new Error(result.error ?? "Could not initiate M-Pesa payment.");
-      }
-      setWeddingEventRequests((current) =>
-        current.map((item) =>
-          item.id === request.id
-            ? item.payment_status === "paid" || item.payment_status === "failed"
-              ? item
-              : {
+          return {
+            success: Boolean(result.success),
+            error: result.error ?? null,
+            paymentMayBePending: Boolean(result.paymentMayBePending),
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : "Could not initiate payment.",
+          };
+        } finally {
+          setWeddingPaymentLoadingId(null);
+        }
+      },
+      onPaid: (outcome) => {
+        setWeddingEventRequests((current) =>
+          current.map((item) =>
+            item.id === request.id
+              ? {
                   ...item,
-                  payment_status: "pending",
-                  mpesa_phone: phone,
-                  checkout_request_id: result.checkoutRequestId,
+                  payment_status: "paid",
+                  status: "confirmed",
+                  payment_failure_reason: null,
+                  mpesa_receipt_number: outcome.receiptNumber ?? item.mpesa_receipt_number,
+                  paid_amount: outcome.amount ?? item.paid_amount,
                 }
-            : item,
-        ),
-      );
-      setWeddingPaymentDialogMessage(
-        result.paymentMayBePending
-          ? (result.error ??
-              "The payment request may have reached M-Pesa. Do not retry if you approved it; we are checking the status.")
-          : "Enter your M-Pesa PIN to approve the prompt. We’ll confirm the quote once Safaricom verifies payment.",
-      );
-      toast.success(
-        result.paymentMayBePending
-          ? "Payment request may have reached M-Pesa. Check status before retrying."
-          : "M-Pesa prompt sent. Your enquiry will confirm after payment is verified.",
-      );
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Could not initiate payment.";
-      setWeddingPaymentDialogMessage(message);
-      toast.error(message);
-    } finally {
-      setWeddingPaymentLoadingId(null);
-    }
+              : item,
+          ),
+        );
+        toast.success("Wedding payment confirmed.");
+      },
+      onFailed: (outcome) => {
+        setWeddingEventRequests((current) =>
+          current.map((item) =>
+            item.id === request.id
+              ? {
+                  ...item,
+                  payment_status: "failed",
+                  payment_failure_reason: outcome.reason ?? item.payment_failure_reason,
+                }
+              : item,
+          ),
+        );
+      },
+    });
   };
 
   const downloadAgreement = async (request: WeddingEventRequest) => {
@@ -598,62 +595,24 @@ export function DashboardClient({
   const weddingPaymentDialogRequest = weddingEventRequests.find(
     (request) => request.id === weddingPaymentDialogRequestId,
   );
-  const weddingPaymentDialogState =
-    weddingPaymentLoadingId === weddingPaymentDialogRequestId
-      ? "processing"
-      : weddingPaymentDialogRequest?.payment_status === "paid"
-        ? "success"
-        : weddingPaymentDialogRequest?.payment_status === "pending"
-          ? "waiting"
-          : "failed";
-  useMpesaStatusPolling(
-    "wedding",
-    weddingPaymentDialogRequestId,
-    weddingPaymentDialogRequest?.payment_status === "pending",
-    (result) => {
-      setWeddingEventRequests((current) =>
-        current.map((request) =>
-          request.id === weddingPaymentDialogRequestId
-            ? {
-                ...request,
-                payment_status: result.status === "paid" ? "paid" : "failed",
-                status: result.status === "paid" ? "confirmed" : request.status,
-                payment_failure_reason: result.reason ?? null,
-                mpesa_receipt_number:
-                  result.receiptNumber ?? request.mpesa_receipt_number,
-                paid_amount: result.amount ?? request.paid_amount,
-              }
-            : request,
-        ),
-      );
-      setWeddingPaymentDialogMessage(
-        result.status === "paid"
-          ? "Payment confirmed. Your wedding quote is confirmed."
-          : (result.reason ?? "M-Pesa could not complete the payment."),
-      );
-      if (result.status === "paid") toast.success("Wedding payment confirmed.");
-      weddingPaymentChannelRef.current?.unsubscribe();
-    },
-  );
+  const closeWeddingPaymentDialog = () => {
+    weddingPayment.reset();
+    setWeddingPaymentDialogRequestId(null);
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <MpesaPaymentDialog
-        open={Boolean(weddingPaymentDialogRequestId)}
-        state={weddingPaymentDialogState}
+        open={weddingPayment.phase !== "idle"}
+        state={weddingPayment.phase === "idle" ? "processing" : weddingPayment.phase}
         phone={weddingPaymentDialogRequest?.mpesa_phone}
         amount={weddingPaymentDialogRequest?.quote_amount}
         description="wedding quote"
-        message={
-          weddingPaymentDialogRequest?.payment_status === "failed"
-            ? (weddingPaymentDialogRequest.payment_failure_reason ??
-              weddingPaymentDialogMessage)
-            : weddingPaymentDialogMessage
-        }
-        onClose={() => {
-          setWeddingPaymentDialogRequestId(null);
-          setWeddingPaymentDialogMessage("");
-        }}
+        message={weddingPayment.message}
+        receiptNumber={weddingPayment.outcome.receiptNumber}
+        canDismiss={weddingPayment.slow}
+        onClose={closeWeddingPaymentDialog}
+        onRetry={closeWeddingPaymentDialog}
       />
       <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 space-y-10">
         {/* ── Page header ── */}

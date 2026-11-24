@@ -1,80 +1,35 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import * as Dialog from "@radix-ui/react-dialog";
 import {
   BookingForm,
   BookingFormData,
 } from "@/components/booking/booking-form";
 import { EmptyState } from "@/components/common/empty-state";
+import { MpesaPaymentDialog } from "@/components/booking/mpesa-payment-dialog";
 import { toast } from "sonner";
-import {
-  CheckCircle,
-  Loader2,
-  XCircle,
-  Smartphone,
-  Wifi,
-  Copy,
-  Phone,
-} from "lucide-react";
+import { CheckCircle, Copy } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import type { Car } from "@/types";
-import type { RealtimeChannel } from "@supabase/supabase-js";
-import { useMpesaStatusPolling } from "@/hooks/use-mpesa-status-polling";
-
-type PaymentState =
-  | "idle"
-  | "processing"
-  | "waiting_for_pin"
-  | "success"
-  | "failed";
-
-interface PaymentResult {
-  receiptNumber?: string;
-  amount?: number;
-}
-
-// Updated to the official Cosmara support number
-const MPESA_SUPPORT_NUMBER = "254758500943";
+import { useMpesaPayment } from "@/hooks/use-mpesa-payment";
 
 export default function BookingClientPage({ car }: { car: Car | null }) {
   const [bookingData, setBookingData] = useState<BookingFormData | null>(null);
-  const [paymentState, setPaymentState] = useState<PaymentState>("idle");
-  const [paymentMessage, setPaymentMessage] = useState("");
-  const [paymentResult, setPaymentResult] = useState<PaymentResult>({});
-  const [paymentBookingId, setPaymentBookingId] = useState<string | null>(null);
-
-  const channelRef = useRef<RealtimeChannel | null>(null);
   const supabase = createClient();
 
-  useMpesaStatusPolling(
-    "booking",
-    paymentBookingId,
-    paymentState === "waiting_for_pin",
-    (result) => {
-      if (result.status === "confirmed") {
-        setPaymentResult({
-          receiptNumber: result.receiptNumber ?? undefined,
-          amount: result.amount ?? undefined,
-        });
-        setPaymentState("success");
-        toast.success("Payment confirmed! Your car is booked.");
-        channelRef.current?.unsubscribe();
-      } else if (result.status === "failed") {
-        setPaymentMessage(result.reason ?? "M-Pesa could not complete the payment.");
-        setPaymentState("failed");
-        channelRef.current?.unsubscribe();
+  const payment = useMpesaPayment({
+    onPaid: async () => {
+      if (!car) return;
+      try {
+        await supabase.from("cars").update({ available: false }).eq("id", car.id);
+      } catch (carError) {
+        console.error("Failed to update car availability:", carError);
       }
+      toast.success("Payment confirmed! Your car is booked.");
     },
-  );
-
-  useEffect(() => {
-    return () => {
-      channelRef.current?.unsubscribe();
-    };
-  }, []);
+  });
 
   const calcDays = (data: BookingFormData) => {
     const ms =
@@ -98,26 +53,21 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
         toast.error("Please log in to make a booking.");
         return;
       }
-
-      setBookingData(data);
-      setPaymentBookingId(null);
-      setPaymentState("processing");
-      setPaymentMessage("");
-
-      const days = calcDays(data);
-      const total = days * car!.price;
-
+      if (!car) throw new Error("Car not found.");
       if (data.returnDate <= data.pickupDate) {
         throw new Error("Return date must be after pickup date.");
       }
-      if (!car!.available) {
+      if (!car.available) {
         throw new Error("Sorry, this car is no longer available.");
       }
+
+      const days = calcDays(data);
+      const total = days * car.price;
 
       const { data: newBooking, error: bookingError } = await supabase
         .from("bookings")
         .insert({
-          car_id: car!.id,
+          car_id: car.id,
           profile_id: user.id,
           pickup_date: new Date(data.pickupDate).toISOString(),
           return_date: new Date(data.returnDate).toISOString(),
@@ -133,152 +83,56 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
       if (bookingError || !newBooking) {
         throw new Error(bookingError?.message ?? "Failed to create booking.");
       }
-      setPaymentBookingId(newBooking.id);
 
-      const channel = supabase
-        .channel(`booking_status_${newBooking.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "bookings",
-            filter: `id=eq.${newBooking.id}`,
-          },
-          async (payload) => {
-            const updated = payload.new as {
-              status?: string;
-              mpesa_receipt_number?: string | null;
-              paid_amount?: number | null;
-              payment_failure_reason?: string | null;
-            };
-            if (updated.status === "confirmed") {
-              try {
-                // Mark the vehicle as unavailable/booked in the database
-                await supabase
-                  .from("cars")
-                  .update({ available: false })
-                  .eq("id", car!.id);
-              } catch (carError) {
-                console.error("Failed to update car availability:", carError);
-              }
+      setBookingData(data);
 
-              setPaymentResult({
-                receiptNumber: updated.mpesa_receipt_number ?? undefined,
-                amount: updated.paid_amount ?? undefined,
-              });
-              setPaymentState("success");
-              toast.success("Payment confirmed! Your car is booked.");
-              channel.unsubscribe();
-            } else if (updated.status === "failed") {
-              setPaymentState("failed");
-              setPaymentMessage(
-                updated.payment_failure_reason ??
-                  "Payment was cancelled or failed.",
-              );
-              channel.unsubscribe();
-            }
-          },
-        );
-
-      channelRef.current = channel;
-
-      try {
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(
-            () =>
-              reject(
-                new Error("Could not establish a live booking status connection."),
-              ),
-            10_000,
-          );
-          channel.subscribe((status) => {
-            if (status === "SUBSCRIBED") {
-              clearTimeout(timeout);
-              resolve();
-            } else if (
-              status === "CHANNEL_ERROR" ||
-              status === "TIMED_OUT" ||
-              status === "CLOSED"
-            ) {
-              clearTimeout(timeout);
-              reject(
-                new Error("Could not establish a live booking status connection."),
-              );
-            }
+      // The engine listens for the result and polls as a fallback. It never
+      // fails the booking before the prompt is sent.
+      payment.start({
+        pollType: "booking",
+        watch: {
+          table: "bookings",
+          id: newBooking.id,
+          statusColumn: "status",
+          paidValue: "confirmed",
+          failedValue: "failed",
+          reasonColumn: "payment_failure_reason",
+          receiptColumn: "mpesa_receipt_number",
+          amountColumn: "paid_amount",
+        },
+        initiate: async () => {
+          const stkResponse = await fetch("/api/mpesa/stkpush", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phone: data.phone,
+              amount: total,
+              bookingId: newBooking.id,
+            }),
           });
-        });
-      } catch (connectionError) {
-        const { error: updateError } = await supabase
-          .from("bookings")
-          .update({
-            status: "failed",
-            payment_failure_reason: "Could not establish a live status connection.",
-          })
-          .eq("id", newBooking.id);
-        if (updateError) {
-          console.error(
-            "[BookingPage] failed to mark booking after realtime connection error:",
-            updateError,
-          );
-        }
-        channel.unsubscribe();
-        channelRef.current = null;
-        throw connectionError;
-      }
+          const stkData = await stkResponse.json();
 
-      const stkResponse = await fetch("/api/mpesa/stkpush", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: data.phone,
-          amount: total,
-          bookingId: newBooking.id,
-        }),
-      });
-
-      const stkData = await stkResponse.json();
-
-      if ((!stkResponse.ok || !stkData.success) && !stkData.paymentMayBePending) {
-        channel.unsubscribe();
-        const { error: failureUpdateError } = await supabase
-          .from("bookings")
-          .update({ status: "failed", payment_failure_reason: stkData.error })
-          .eq("id", newBooking.id);
-        if (failureUpdateError) {
-          console.error("[BookingPage] Could not record rejected M-Pesa request:", failureUpdateError);
-        }
-        throw new Error(stkData.error ?? "M-Pesa request failed.");
-      }
-
-      if (stkData.paymentMayBePending) {
-        setPaymentMessage(
-          stkData.error ??
-            "The payment request may have reached M-Pesa. Do not retry if you approved the prompt; we are checking its status.",
-        );
-      }
-      setPaymentState((current) =>
-        current === "success" || current === "failed"
-          ? current
-          : "waiting_for_pin",
-      );
-
-      setTimeout(() => {
-        setPaymentState((current) => {
-          if (current === "waiting_for_pin") {
-            setPaymentMessage(
-              "Still waiting for M-Pesa to confirm. Check your messages; if you approved the prompt, do not retry while we verify the payment.",
-            );
+          if ((!stkResponse.ok || !stkData.success) && !stkData.paymentMayBePending) {
+            const { error: failureUpdateError } = await supabase
+              .from("bookings")
+              .update({ status: "failed", payment_failure_reason: stkData.error })
+              .eq("id", newBooking.id);
+            if (failureUpdateError) {
+              console.error("[BookingPage] Could not record rejected M-Pesa request:", failureUpdateError);
+            }
+            return { success: false, error: stkData.error ?? "M-Pesa request failed." };
           }
-          return current;
-        });
-      }, 90_000);
+
+          return {
+            success: Boolean(stkData.success),
+            error: stkData.error ?? null,
+            paymentMayBePending: Boolean(stkData.paymentMayBePending),
+          };
+        },
+      });
     } catch (err: unknown) {
       console.error("[BookingPage] handleBooking error:", err);
-      const message =
-        err instanceof Error ? err.message : "Something went wrong.";
-      setPaymentState("failed");
-      setPaymentMessage(message);
+      toast.error(err instanceof Error ? err.message : "Something went wrong.");
     }
   };
   if (!car || !car.available) {
@@ -295,7 +149,7 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
 
   const totalAmount = bookingData ? calcDays(bookingData) * car.price : 0;
 
-  if (paymentState === "success" && bookingData) {
+  if (payment.phase === "success" && bookingData) {
     return (
       <div className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="max-w-md w-full text-center space-y-6">
@@ -312,18 +166,18 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
             </p>
           </div>
 
-          {paymentResult.receiptNumber && (
+          {payment.outcome.receiptNumber && (
             <div className="bg-card border border-border rounded-2xl p-4 text-left space-y-2">
               <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
                 M-Pesa Receipt
               </p>
               <div className="flex items-center justify-between">
                 <span className="font-mono text-lg font-bold text-foreground">
-                  {paymentResult.receiptNumber}
+                  {payment.outcome.receiptNumber}
                 </span>
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(paymentResult.receiptNumber!);
+                    navigator.clipboard.writeText(payment.outcome.receiptNumber!);
                     toast.success("Receipt number copied!");
                   }}
                   className="p-2 rounded-lg hover:bg-muted transition-colors"
@@ -334,7 +188,7 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
               <p className="text-sm text-muted-foreground">
                 Amount paid:{" "}
                 <span className="text-foreground font-medium">
-                  Ksh {(paymentResult.amount ?? totalAmount).toLocaleString()}
+                  Ksh {(payment.outcome.amount ?? totalAmount).toLocaleString()}
                 </span>
               </p>
             </div>
@@ -359,126 +213,23 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
     );
   }
 
-  const PaymentModal = () => {
-    if (paymentState === "idle") return null;
-
-    return (
-      <Dialog.Root open>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
-          <Dialog.Content
-            onEscapeKeyDown={(event) => event.preventDefault()}
-            onPointerDownOutside={(event) => event.preventDefault()}
-            className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl"
-        >
-          {paymentState === "processing" && (
-            <div className="p-8 flex flex-col items-center text-center gap-4">
-              <Loader2 className="w-12 h-12 text-primary animate-spin" />
-              <div>
-                <Dialog.Title className="text-xl font-bold text-foreground mb-1">
-                  Connecting to M-Pesa
-                </Dialog.Title>
-                <Dialog.Description role="status" aria-live="polite" className="text-sm text-muted-foreground">
-                  Securing your booking and reaching Safaricom...
-                </Dialog.Description>
-              </div>
-            </div>
-          )}
-
-          {paymentState === "waiting_for_pin" && (
-            <div className="p-8 flex flex-col items-center text-center gap-5 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-primary animate-pulse" />
-              <div className="relative">
-                <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
-                <div className="relative w-20 h-20 bg-card border border-border rounded-full flex items-center justify-center shadow-inner">
-                  <Smartphone className="w-9 h-9 text-primary" />
-                  <Wifi className="w-4 h-4 text-primary absolute -top-1 -right-1 animate-pulse" />
-                </div>
-              </div>
-
-              <div>
-                <Dialog.Title className="text-xl font-bold text-foreground mb-2">
-                  Check Your Phone
-                </Dialog.Title>
-                <Dialog.Description role="status" aria-live="polite" className="text-sm text-muted-foreground">
-                  An M-Pesa prompt has been sent to{" "}
-                  <span className="font-medium text-foreground">
-                    {bookingData?.phone}
-                  </span>
-                  . Enter your PIN to pay{" "}
-                  <span className="font-bold text-foreground">
-                    Ksh {totalAmount.toLocaleString()}
-                  </span>
-                  .
-                </Dialog.Description>
-              </div>
-
-              <div className="bg-muted rounded-xl px-4 py-3 w-full flex items-center justify-center gap-3">
-                <Loader2 className="w-4 h-4 text-muted-foreground animate-spin shrink-0" />
-                <span className="text-sm text-muted-foreground">
-                  {paymentMessage || "Waiting for your confirmation..."}
-                </span>
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                Prompt not received?{" "}
-                <a
-                  href={`tel:+${MPESA_SUPPORT_NUMBER}`}
-                  className="text-accent hover:underline inline-flex items-center gap-1"
-                >
-                  <Phone className="w-3 h-3" /> Call support
-                </a>
-              </p>
-            </div>
-          )}
-
-          {paymentState === "failed" && (
-            <div className="p-8 flex flex-col items-center text-center gap-5">
-              <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center border border-destructive/20">
-                <XCircle className="w-8 h-8 text-destructive" />
-              </div>
-              <div>
-                <Dialog.Title className="text-xl font-bold text-foreground mb-2">
-                  Payment Failed
-                </Dialog.Title>
-                <Dialog.Description role="alert" className="text-sm text-muted-foreground">
-                  {paymentMessage ||
-                    "You cancelled the prompt or the request timed out."}
-                </Dialog.Description>
-              </div>
-
-              <div className="flex flex-col gap-3 w-full">
-                <button
-                  onClick={() => {
-                    setPaymentState("idle");
-                    setPaymentMessage("");
-                  }}
-                  className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:opacity-90 transition-opacity"
-                >
-                  Try Again
-                </button>
-                <a
-                  href={`tel:+${MPESA_SUPPORT_NUMBER}`}
-                  className="w-full px-6 py-3 bg-muted text-foreground rounded-xl font-medium text-center hover:bg-muted/80 transition-colors inline-flex items-center justify-center gap-2"
-                >
-                  <Phone className="w-4 h-4" /> Contact Support
-                </a>
-              </div>
-            </div>
-          )}
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-    );
-  };
-
   const isProcessingPayment =
-    paymentState !== "idle" && paymentState !== "failed";
+    payment.phase === "processing" || payment.phase === "waiting";
 
   return (
     <>
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-        <PaymentModal />
+        <MpesaPaymentDialog
+          open={payment.phase !== "idle"}
+          state={payment.phase === "idle" ? "processing" : payment.phase}
+          phone={bookingData?.phone}
+          amount={bookingData ? calcDays(bookingData) * car.price : null}
+          description="car rental"
+          message={payment.message}
+          canDismiss={payment.slow}
+          onClose={payment.reset}
+          onRetry={payment.reset}
+        />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           <div className="lg:col-span-8">
             <BookingForm

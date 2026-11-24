@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   CalendarDays,
@@ -40,8 +40,7 @@ import type {
   WeddingEventRequest,
   WeddingEventRequestStatus,
 } from "@/types";
-import type { RealtimeChannel } from "@supabase/supabase-js";
-import { useMpesaStatusPolling } from "@/hooks/use-mpesa-status-polling";
+import { useMpesaPayment } from "@/hooks/use-mpesa-payment";
 
 const STATUSES: { value: WeddingEventRequestStatus; label: string }[] = [
   { value: "new", label: "New enquiry" },
@@ -93,9 +92,8 @@ export function WeddingEventsSection({
   const [paymentPhone, setPaymentPhone] = useState("");
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentProgressRequestId, setPaymentProgressRequestId] = useState<string | null>(null);
-  const [paymentProgressMessage, setPaymentProgressMessage] = useState("");
   const [agreementLoadingId, setAgreementLoadingId] = useState<string | null>(null);
-  const paymentChannelRef = useRef<RealtimeChannel | null>(null);
+  const weddingPayment = useMpesaPayment();
 
   const carsById = useMemo(
     () => new Map(cars.map((car) => [car.id, car])),
@@ -104,43 +102,10 @@ export function WeddingEventsSection({
   const paymentProgressRequest = requests.find(
     (request) => request.id === paymentProgressRequestId,
   );
-  const paymentProgressState =
-    paymentLoading
-      ? "processing"
-      : paymentProgressRequest?.payment_status === "paid"
-        ? "success"
-        : paymentProgressRequest?.payment_status === "pending"
-          ? "waiting"
-          : "failed";
-  useMpesaStatusPolling(
-    "wedding",
-    paymentProgressRequestId,
-    paymentProgressRequest?.payment_status === "pending",
-    (result) => {
-      setRequests((current) =>
-        current.map((request) =>
-          request.id === paymentProgressRequestId
-            ? {
-                ...request,
-                payment_status: result.status === "paid" ? "paid" : "failed",
-                status:
-                  result.status === "paid" ? "confirmed" : request.status,
-                payment_failure_reason: result.reason ?? null,
-                mpesa_receipt_number: result.receiptNumber ?? request.mpesa_receipt_number,
-                paid_amount: result.amount ?? request.paid_amount,
-              }
-            : request,
-        ),
-      );
-      setPaymentProgressMessage(
-        result.status === "paid"
-          ? "Payment confirmed and wedding request confirmed."
-          : result.reason ?? "M-Pesa could not complete the payment.",
-      );
-      if (result.status === "paid") toast.success("Wedding payment confirmed.");
-      paymentChannelRef.current?.unsubscribe();
-    },
-  );
+  const closePaymentProgress = () => {
+    weddingPayment.reset();
+    setPaymentProgressRequestId(null);
+  };
   const filteredRequests = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return requests.filter((request) => {
@@ -200,7 +165,6 @@ export function WeddingEventsSection({
 
     return () => {
       void channel.unsubscribe();
-      paymentChannelRef.current?.unsubscribe();
     };
   }, [refresh]);
 
@@ -301,93 +265,104 @@ export function WeddingEventsSection({
 
   const requestPayment = async () => {
     if (!paymentRequest) return;
+    const requestId = paymentRequest.id;
     setPaymentLoading(true);
-    setPaymentProgressRequestId(paymentRequest.id);
-    setPaymentProgressMessage("");
-    paymentChannelRef.current?.unsubscribe();
+    setPaymentProgressRequestId(requestId);
 
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`admin_wedding_payment_${paymentRequest.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "wedding_event_requests",
-          filter: `id=eq.${paymentRequest.id}`,
-        },
-        (payload) => {
-          const updated = payload.new as WeddingEventRequest;
-          setRequests((current) =>
-            current.map((request) =>
-              request.id === updated.id ? { ...request, ...updated } : request,
-            ),
-          );
-          if (updated.payment_status === "paid") {
-            setPaymentProgressMessage("Payment confirmed and wedding request confirmed.");
-            toast.success("Wedding payment confirmed.");
-            channel.unsubscribe();
-          } else if (updated.payment_status === "failed") {
-            setPaymentProgressMessage(
-              updated.payment_failure_reason ?? "The M-Pesa payment failed.",
+    weddingPayment.start({
+      pollType: "wedding",
+      watch: {
+        table: "wedding_event_requests",
+        id: requestId,
+        statusColumn: "payment_status",
+        paidValue: "paid",
+        failedValue: "failed",
+        reasonColumn: "payment_failure_reason",
+        receiptColumn: "mpesa_receipt_number",
+        amountColumn: "paid_amount",
+      },
+      initiate: async () => {
+        try {
+          const response = await fetch("/api/mpesa/stkpush", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phone: paymentPhone,
+              weddingEventRequestId: requestId,
+            }),
+          });
+          const result = await response.json();
+
+          if (result.success || result.paymentMayBePending) {
+            setRequests((current) =>
+              current.map((request) =>
+                request.id === requestId
+                  ? request.payment_status === "paid" || request.payment_status === "failed"
+                    ? request
+                    : {
+                        ...request,
+                        payment_status: "pending",
+                        mpesa_phone: paymentPhone,
+                        checkout_request_id: result.checkoutRequestId,
+                      }
+                  : request,
+              ),
             );
-            channel.unsubscribe();
+            toast.success(
+              result.paymentMayBePending
+                ? "Payment request may have reached M-Pesa. Check status before retrying."
+                : "M-Pesa payment prompt sent.",
+            );
+            setPaymentRequest(null);
+            setPaymentPhone("");
+            await refresh();
           }
-        },
-      )
-      .subscribe();
-    paymentChannelRef.current = channel;
 
-    try {
-      const response = await fetch("/api/mpesa/stkpush", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: paymentPhone,
-          weddingEventRequestId: paymentRequest.id,
-        }),
-      });
-      const result = await response.json();
-      if ((!response.ok || !result.success) && !result.paymentMayBePending) {
-        throw new Error(result.error ?? "Could not initiate M-Pesa payment.");
-      }
-      toast.success(
-        result.paymentMayBePending
-          ? "Payment request may have reached M-Pesa. Check status before retrying."
-          : "M-Pesa payment prompt sent.",
-      );
-      setRequests((current) =>
-        current.map((request) =>
-          request.id === paymentRequest.id
-            ? request.payment_status === "paid" || request.payment_status === "failed"
-              ? request
-              : {
-                ...request,
-                payment_status: "pending",
-                mpesa_phone: paymentPhone,
-                checkout_request_id: result.checkoutRequestId,
-              }
-            : request,
-        ),
-      );
-      setPaymentProgressMessage(
-        result.paymentMayBePending
-          ? result.error ??
-            "The payment request may have reached M-Pesa. Do not retry if approved; check the enquiry status."
-          : "Enter the customer’s M-Pesa PIN to approve the prompt. The enquiry will be confirmed after payment is verified.",
-      );
-      setPaymentRequest(null);
-      setPaymentPhone("");
-      await refresh();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Could not initiate payment.";
-      setPaymentProgressMessage(message);
-      toast.error(message);
-    } finally {
-      setPaymentLoading(false);
-    }
+          return {
+            success: Boolean(result.success),
+            error: result.error ?? null,
+            paymentMayBePending: Boolean(result.paymentMayBePending),
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : "Could not initiate payment.",
+          };
+        } finally {
+          setPaymentLoading(false);
+        }
+      },
+      onPaid: (outcome) => {
+        setRequests((current) =>
+          current.map((request) =>
+            request.id === requestId
+              ? {
+                  ...request,
+                  payment_status: "paid",
+                  status: "confirmed",
+                  payment_failure_reason: null,
+                  mpesa_receipt_number: outcome.receiptNumber ?? request.mpesa_receipt_number,
+                  paid_amount: outcome.amount ?? request.paid_amount,
+                }
+              : request,
+          ),
+        );
+        toast.success("Wedding payment confirmed.");
+      },
+      onFailed: (outcome) => {
+        setRequests((current) =>
+          current.map((request) =>
+            request.id === requestId
+              ? {
+                  ...request,
+                  payment_status: "failed",
+                  payment_failure_reason: outcome.reason ?? request.payment_failure_reason,
+                }
+              : request,
+          ),
+        );
+      },
+    });
   };
 
   const downloadAgreement = async (request: WeddingEventRequest) => {
@@ -422,20 +397,16 @@ export function WeddingEventsSection({
   return (
     <Card className="overflow-hidden border-border shadow-sm">
       <MpesaPaymentDialog
-        open={Boolean(paymentProgressRequestId)}
-        state={paymentProgressState}
+        open={weddingPayment.phase !== "idle"}
+        state={weddingPayment.phase === "idle" ? "processing" : weddingPayment.phase}
         phone={paymentProgressRequest?.mpesa_phone}
         amount={paymentProgressRequest?.quote_amount}
         description="wedding quote"
-        message={
-          paymentProgressRequest?.payment_status === "failed"
-            ? paymentProgressRequest.payment_failure_reason ?? paymentProgressMessage
-            : paymentProgressMessage
-        }
-        onClose={() => {
-          setPaymentProgressRequestId(null);
-          setPaymentProgressMessage("");
-        }}
+        message={weddingPayment.message}
+        receiptNumber={weddingPayment.outcome.receiptNumber}
+        canDismiss={weddingPayment.slow}
+        onClose={closePaymentProgress}
+        onRetry={closePaymentProgress}
       />
       <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div>

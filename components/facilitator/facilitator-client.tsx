@@ -32,8 +32,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import type { AirportPickup, AirportPickupStatus, Booking } from "@/types";
-import type { RealtimeChannel } from "@supabase/supabase-js";
-import { useMpesaStatusPolling } from "@/hooks/use-mpesa-status-polling";
+import { useMpesaPayment } from "@/hooks/use-mpesa-payment";
+import { MpesaPaymentDialog } from "@/components/booking/mpesa-payment-dialog";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -240,7 +240,10 @@ export function FacilitatorClient({
   const [damageFee, setDamageFee] = useState(0);
   const [overridePhone, setOverridePhone] = useState("");
 
-  const channelRef = useRef<RealtimeChannel | null>(null);
+  // Fee payments (M-Pesa) run through the shared engine. The no-fee return uses paymentState.
+  const payment = useMpesaPayment();
+  const resetPayment = payment.reset;
+  const [returnError, setReturnError] = useState<string | null>(null);
   const compiledNotesRef = useRef("");
   const totalFeesRef = useRef(0);
   const finalizedFeePaymentsRef = useRef(new Set<string>());
@@ -378,20 +381,24 @@ export function FacilitatorClient({
   // ── Close + reset ─────────────────────────────────────────────────────────
 
   const closeModal = useCallback(() => {
-    if (paymentState === "processing" || paymentState === "waiting_for_pin")
+    if (
+      paymentState === "processing" ||
+      payment.phase === "processing" ||
+      payment.phase === "waiting"
+    )
       return;
-    channelRef.current?.unsubscribe();
-    channelRef.current = null;
     setSelectedBooking(null);
     setPaymentState("idle");
     setPaymentMessage("");
+    setReturnError(null);
+    resetPayment();
     setChecklist(DEFAULT_CHECKLIST);
     setCustomNotes("");
     setDamageFee(0);
     setOverridePhone("");
     compiledNotesRef.current = "";
     totalFeesRef.current = 0;
-  }, [paymentState]);
+  }, [paymentState, payment.phase, resetPayment]);
 
   // ── Build inspection note ────────────────────────────────────────────────
 
@@ -454,153 +461,60 @@ ${customNotes || "None."}
       return;
     }
 
-    setPaymentState("processing");
-    setPaymentMessage("");
+    const booking = selectedBooking;
+    setReturnError(null);
 
-    try {
-      const supabase = createClient();
-      const channel = supabase
-        .channel(`facilitator_fee_${selectedBooking.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "bookings",
-            filter: `id=eq.${selectedBooking.id}`,
-          },
-          async (payload) => {
-            const updated = payload.new as {
-              additional_fee_status?: string;
-              additional_fee_reason?: string;
-            };
-
-            if (updated.additional_fee_status === "confirmed") {
-              if (finalizedFeePaymentsRef.current.has(selectedBooking.id)) return;
-              finalizedFeePaymentsRef.current.add(selectedBooking.id);
-              channel.unsubscribe();
-              channelRef.current = null;
-              try {
-                const result = await processCarReturn(
-                  selectedBooking.id,
-                  selectedBooking.car_id!,
-                  compiledNotesRef.current,
-                  totalFeesRef.current,
-                );
-                if (!result.success) throw new Error(result.error);
-                setPaymentState("success");
-                setTimeout(() => {
-                  setBookings((prev) =>
-                    prev.filter((b) => b.id !== selectedBooking.id),
-                  );
-                  closeModal();
-                }, 2500);
-              } catch (err: unknown) {
-                setPaymentState("failed");
-                setPaymentMessage(
-                  err instanceof Error
-                    ? err.message
-                    : "Payment received but failed to complete return.",
-                );
-              }
-            } else if (updated.additional_fee_status === "failed") {
-              if (finalizedFeePaymentsRef.current.has(selectedBooking.id)) return;
-              channel.unsubscribe();
-              channelRef.current = null;
-              setPaymentState("failed");
-              setPaymentMessage(
-                updated.additional_fee_reason ||
-                  "Payment was cancelled or failed.",
-              );
-            }
-          },
-        )
-        .subscribe();
-
-      channelRef.current = channel;
-
-      const stkResponse = await initiateFacilitatorCharge(
-        selectedBooking.id,
-        targetPhone,
-        totalAdditionalFees,
-        selectedBooking.id.slice(0, 12),
-      );
-
-      if (!stkResponse.success && !stkResponse.paymentMayBePending) {
-        channel.unsubscribe();
-        channelRef.current = null;
-        throw new Error(stkResponse.error || "STK push failed.");
-      }
-
-      if (stkResponse.paymentMayBePending) {
-        setPaymentMessage(
-          stkResponse.error ??
-            "The payment request may have reached M-Pesa. Do not retry if approved; check the booking before sending another prompt.",
+    payment.start({
+      pollType: "facilitator",
+      watch: {
+        table: "bookings",
+        id: booking.id,
+        statusColumn: "additional_fee_status",
+        paidValue: "confirmed",
+        failedValue: "failed",
+        reasonColumn: "additional_fee_reason",
+        receiptColumn: "additional_fee_receipt",
+        amountColumn: "additional_fee_amount",
+      },
+      initiate: async () => {
+        const stkResponse = await initiateFacilitatorCharge(
+          booking.id,
+          targetPhone,
+          totalAdditionalFees,
+          booking.id.slice(0, 12),
         );
-      }
-
-      setPaymentState("waiting_for_pin");
-
-      setTimeout(() => {
-        setPaymentState((current) => {
-          if (current === "waiting_for_pin") {
-            setPaymentMessage(
-              "Still waiting for M-Pesa to confirm. If the customer approved the prompt, do not send another request while we verify the payment.",
-            );
-          }
-          return current;
-        });
-      }, 90_000);
-    } catch (err: unknown) {
-      channelRef.current?.unsubscribe();
-      channelRef.current = null;
-      setPaymentState("failed");
-      setPaymentMessage(
-        err instanceof Error ? err.message : "Something went wrong.",
-      );
-    }
-  };
-
-  useMpesaStatusPolling(
-    "facilitator",
-    selectedBooking?.id,
-    paymentState === "waiting_for_pin",
-    async (result) => {
-      if (!selectedBooking) return;
-      if (finalizedFeePaymentsRef.current.has(selectedBooking.id)) return;
-      finalizedFeePaymentsRef.current.add(selectedBooking.id);
-      channelRef.current?.unsubscribe();
-      channelRef.current = null;
-      if (result.status === "confirmed") {
+        return {
+          success: Boolean(stkResponse.success),
+          error: stkResponse.error ?? null,
+          paymentMayBePending: Boolean(stkResponse.paymentMayBePending),
+        };
+      },
+      onPaid: async () => {
+        if (finalizedFeePaymentsRef.current.has(booking.id)) return;
+        finalizedFeePaymentsRef.current.add(booking.id);
         try {
-          const returnResult = await processCarReturn(
-            selectedBooking.id,
-            selectedBooking.car_id!,
+          const result = await processCarReturn(
+            booking.id,
+            booking.car_id!,
             compiledNotesRef.current,
             totalFeesRef.current,
           );
-          if (!returnResult.success) throw new Error(returnResult.error);
-          setPaymentState("success");
+          if (!result.success) throw new Error(result.error);
           setTimeout(() => {
-            setBookings((previous) =>
-              previous.filter((booking) => booking.id !== selectedBooking.id),
-            );
+            payment.reset();
+            setBookings((prev) => prev.filter((b) => b.id !== booking.id));
             closeModal();
           }, 2500);
-        } catch (error) {
-          setPaymentState("failed");
-          setPaymentMessage(
+        } catch (error: unknown) {
+          setReturnError(
             error instanceof Error
               ? `Payment received, but the vehicle return could not be completed: ${error.message}`
               : "Payment received, but the vehicle return could not be completed. Contact support.",
           );
         }
-      } else if (result.status === "failed") {
-        setPaymentState("failed");
-        setPaymentMessage(result.reason ?? "M-Pesa could not complete the payment.");
-      }
-    },
-  );
+      },
+    });
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -952,8 +866,29 @@ ${customNotes || "None."}
         onRetry={() => setPaymentState("idle")}
       />
 
+      {/* Fee payments: shared M-Pesa modal */}
+      <MpesaPaymentDialog
+        open={payment.phase !== "idle"}
+        state={returnError ? "failed" : payment.phase === "idle" ? "processing" : payment.phase}
+        phone={overridePhone || selectedBooking?.profiles?.phone}
+        amount={totalAdditionalFees}
+        description="vehicle return"
+        message={returnError ?? payment.message}
+        receiptNumber={payment.outcome.receiptNumber}
+        canDismiss={payment.slow}
+        onClose={() => {
+          payment.reset();
+          setReturnError(null);
+          closeModal();
+        }}
+        onRetry={() => {
+          payment.reset();
+          setReturnError(null);
+        }}
+      />
+
       {/* Inspection modal */}
-      {selectedBooking && paymentState === "idle" && (
+      {selectedBooking && paymentState === "idle" && payment.phase === "idle" && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-200">
             {/* Modal header */}

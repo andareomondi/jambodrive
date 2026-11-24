@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -13,14 +13,12 @@ import {
 import { toast } from "sonner";
 import { createAirportPickupRequest } from "@/lib/actions/airport-pickups";
 import { MpesaPaymentDialog } from "@/components/booking/mpesa-payment-dialog";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { AirportPickup, AirportPickupRate } from "@/types";
-import type { RealtimeChannel } from "@supabase/supabase-js";
-import { useMpesaStatusPolling } from "@/hooks/use-mpesa-status-polling";
+import { useMpesaPayment } from "@/hooks/use-mpesa-payment";
 
 const SUPPORT_NUMBER = "254758500943";
 
@@ -42,41 +40,18 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
   const [contactPhone, setContactPhone] = useState("");
   const [customerNotes, setCustomerNotes] = useState("");
   const [pickup, setPickup] = useState<AirportPickup | null>(null);
-  const [paymentState, setPaymentState] = useState<
-    "idle" | "processing" | "waiting" | "paid" | "failed"
-  >("idle");
-  const [paymentMessage, setPaymentMessage] = useState("");
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const paymentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const supabase = createClient();
+  const payment = useMpesaPayment({
+    onPaid: () => {
+      toast.success("Payment confirmed. Airport pickup requested.");
+    },
+  });
+  // The markup below reads these names. Phase "success" is shown as "paid".
+  const paymentState = payment.phase === "success" ? "paid" : payment.phase;
+  const paymentMessage =
+    payment.phase === "success"
+      ? "Payment confirmed. Your request has been sent to our team."
+      : payment.message;
   const selectedRate = rates.find((rate) => rate.id === rateId);
-
-  useMpesaStatusPolling(
-    "airport",
-    pickup?.id,
-    paymentState === "waiting",
-    (result) => {
-      if (result.status === "paid") {
-        setPaymentState("paid");
-        setPaymentMessage("Payment confirmed. Your request has been sent to our team.");
-        toast.success("Payment confirmed. Airport pickup requested.");
-        channelRef.current?.unsubscribe();
-      } else if (result.status === "failed") {
-        setPaymentState("failed");
-        setPaymentMessage(result.reason ?? "M-Pesa could not complete the payment.");
-        channelRef.current?.unsubscribe();
-      }
-    },
-  );
-
-  useEffect(
-    () => () => {
-      channelRef.current?.unsubscribe();
-      if (paymentTimeoutRef.current) clearTimeout(paymentTimeoutRef.current);
-    },
-    [],
-  );
 
   const handleAirportChange = (nextAirport: string) => {
     setAirportCode(nextAirport);
@@ -90,92 +65,50 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
       return;
     }
 
-    setPaymentState("processing");
-    setPaymentMessage("");
-    setPaymentDialogOpen(true);
-    try {
-      const request = await createAirportPickupRequest({
-        rateId: selectedRate.id,
-        arrivalAt: new Date(arrivalAt).toISOString(),
-        flightNumber,
-        passengerCount: Number(passengerCount),
-        luggageCount: Number(luggageCount),
-        contactPhone,
-        customerNotes,
-      });
-      setPickup(request);
+    const request = await createAirportPickupRequest({
+      rateId: selectedRate.id,
+      arrivalAt: new Date(arrivalAt).toISOString(),
+      flightNumber,
+      passengerCount: Number(passengerCount),
+      luggageCount: Number(luggageCount),
+      contactPhone,
+      customerNotes,
+    }).catch((error: unknown) => {
+      toast.error(error instanceof Error ? error.message : "Could not submit the request.");
+      return null;
+    });
+    if (!request) return;
+    setPickup(request);
 
-      const channel = supabase
-        .channel(`airport_pickup_${request.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "airport_pickups",
-            filter: `id=eq.${request.id}`,
-          },
-          (payload) => {
-            const updated = payload.new as AirportPickup;
-            setPickup(updated);
-            if (updated.payment_status === "paid") {
-              setPaymentState("paid");
-              setPaymentMessage("Payment confirmed. Your request has been sent to our team.");
-              if (paymentTimeoutRef.current) {
-                clearTimeout(paymentTimeoutRef.current);
-              }
-              toast.success("Payment confirmed. Airport pickup requested.");
-              channel.unsubscribe();
-            } else if (updated.payment_status === "failed") {
-              setPaymentState("failed");
-              setPaymentMessage(
-                updated.payment_failure_reason ?? "The M-Pesa payment failed.",
-              );
-              channel.unsubscribe();
-            }
-          },
-        );
-      channelRef.current = channel;
-      channel.subscribe();
-
-      setPaymentState("waiting");
-      setPaymentMessage("Check your phone and enter your M-Pesa PIN.");
-      const response = await fetch("/api/mpesa/stkpush", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          airportPickupId: request.id,
-          phone: contactPhone,
-        }),
-      });
-      const result = await response.json();
-
-      if ((!response.ok || !result.success) && !result.paymentMayBePending) {
-        channel.unsubscribe();
-        throw new Error(result.error ?? "Could not start the M-Pesa payment.");
-      }
-
-      if (result.paymentMayBePending) {
-        setPaymentMessage(
-          result.error ??
-            "The payment request may have reached M-Pesa. Do not retry if you approved it; we are checking its status.",
-        );
-      }
-
-      paymentTimeoutRef.current = setTimeout(() => {
-        setPaymentMessage(
-          "Payment confirmation is taking longer than expected. Check your M-Pesa messages; do not retry if you approved the prompt. Contact support if it remains pending.",
-        );
-      }, 90_000);
-    } catch (error: unknown) {
-      channelRef.current?.unsubscribe();
-      channelRef.current = null;
-      const message =
-        error instanceof Error ? error.message : "Could not submit the request.";
-      setPaymentState("failed");
-      setPaymentMessage(message);
-      toast.error(message);
-    }
+    payment.start({
+      pollType: "airport",
+      watch: {
+        table: "airport_pickups",
+        id: request.id,
+        statusColumn: "payment_status",
+        paidValue: "paid",
+        failedValue: "failed",
+        reasonColumn: "payment_failure_reason",
+        receiptColumn: "mpesa_receipt_number",
+        amountColumn: "paid_amount",
+      },
+      initiate: async () => {
+        const response = await fetch("/api/mpesa/stkpush", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            airportPickupId: request.id,
+            phone: contactPhone,
+          }),
+        });
+        const result = await response.json();
+        return {
+          success: Boolean(result.success),
+          error: result.error ?? null,
+          paymentMayBePending: Boolean(result.paymentMayBePending),
+        };
+      },
+    });
   };
 
   if (rates.length === 0) {
@@ -196,19 +129,16 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
   return (
     <>
     <MpesaPaymentDialog
-      open={paymentDialogOpen}
-      state={
-        paymentState === "processing" || paymentState === "waiting"
-          ? paymentState
-          : paymentState === "paid"
-            ? "success"
-            : "failed"
-      }
+      open={payment.phase !== "idle"}
+      state={payment.phase === "idle" ? "processing" : payment.phase}
       phone={contactPhone}
       amount={selectedRate?.fare_amount}
       description="airport pickup"
       message={paymentMessage}
-      onClose={() => setPaymentDialogOpen(false)}
+      receiptNumber={payment.outcome.receiptNumber}
+      canDismiss={payment.slow}
+      onClose={payment.reset}
+      onRetry={payment.reset}
     />
     <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_0.72fr]">
       <div>
@@ -386,7 +316,7 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
                 variant="outline"
                 className="w-full"
                 onClick={() => {
-                  setPaymentState("idle");
+                  payment.reset();
                   setPickup(null);
                 }}
               >
@@ -444,9 +374,9 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
               <span>{paymentMessage}</span>
             </div>
           )}
-          {paymentState === "paid" && pickup?.mpesa_receipt_number && (
+          {paymentState === "paid" && payment.outcome.receiptNumber && (
             <p className="mt-3 text-xs text-muted-foreground">
-              M-Pesa receipt: <strong>{pickup.mpesa_receipt_number}</strong>
+              M-Pesa receipt: <strong>{payment.outcome.receiptNumber}</strong>
             </p>
           )}
           {paymentState === "paid" && (

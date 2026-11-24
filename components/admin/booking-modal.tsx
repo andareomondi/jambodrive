@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { toast } from "sonner";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -8,22 +8,19 @@ import * as Select from "@radix-ui/react-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Calendar, 
-  Banknote, 
-  ChevronDown, 
-  Loader2, 
-  X, 
+import {
+  Calendar,
+  Banknote,
+  ChevronDown,
+  Loader2,
+  X,
   Phone,
   Smartphone,
-  Wifi,
-  CheckCircle,
-  XCircle
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { Booking } from "@/types"; // Make sure to import Booking type
-import { useMpesaStatusPolling } from "@/hooks/use-mpesa-status-polling";
+import { useMpesaPayment } from "@/hooks/use-mpesa-payment";
+import { MpesaPaymentDialog } from "@/components/booking/mpesa-payment-dialog";
 
 interface BookingFormData {
   car_id: string;
@@ -50,7 +47,6 @@ interface CustomerProfile {
   email: string | null;
 }
 
-type PaymentState = "idle" | "processing" | "waiting_for_pin" | "success" | "failed";
 
 export function BookingModal({
   open,
@@ -68,10 +64,8 @@ export function BookingModal({
   const [profiles, setProfiles] = useState<CustomerProfile[]>([]);
   
   // STK Push State
-  const [paymentState, setPaymentState] = useState<PaymentState>("idle");
-  const [paymentMessage, setPaymentMessage] = useState("");
-  const [paymentBookingId, setPaymentBookingId] = useState<string | null>(null);
-  const channelRef = useRef<RealtimeChannel | null>(null);
+  const payment = useMpesaPayment();
+  const resetPayment = payment.reset;
 
   const { register, handleSubmit, control, reset, watch, setValue } = useForm<BookingFormData>({
     defaultValues: {
@@ -102,10 +96,7 @@ export function BookingModal({
         total_price: 0,
         insurance: false,
       });
-      setPaymentState("idle");
-      setPaymentMessage("");
-      setPaymentBookingId(null);
-      channelRef.current?.unsubscribe();
+      resetPayment();
       return;
     }
 
@@ -138,14 +129,7 @@ export function BookingModal({
       if (carsRes.data) setAvailableCars(carsRes.data);
       if (profilesRes.data) setProfiles(profilesRes.data);
     });
-  }, [open, reset, booking]);
-
-  // Cleanup channel on unmount[cite: 3]
-  useEffect(() => {
-    return () => {
-      channelRef.current?.unsubscribe();
-    };
-  }, []);
+  }, [open, reset, booking, resetPayment]);
 
   // Auto-calculate Total Price[cite: 3]
   useEffect(() => {
@@ -169,7 +153,6 @@ export function BookingModal({
 
   const onSubmit = async (data: BookingFormData) => {
     setIsLoading(true);
-    setPaymentState("processing");
 
     try {
       const supabase = createClient();
@@ -224,129 +207,87 @@ export function BookingModal({
         }
         targetBookingId = newBooking.id;
       }
-      setPaymentBookingId(targetBookingId ?? null);
+      const bookingId = targetBookingId;
+      if (!bookingId) throw new Error("Booking could not be created.");
+      const carId = data.car_id;
 
-      // 2. Listen for Daraja webhook success[cite: 3]
-      const channel = supabase
-        .channel(`admin_booking_status_${targetBookingId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "bookings",
-            filter: `id=eq.${targetBookingId}`,
-          },
-          async (payload) => {
-            const updated = payload.new as Booking;
-            if (updated.status === "confirmed") {
-              setPaymentMessage("");
-              await supabase.from("cars").update({ available: false }).eq("id", data.car_id);
-              
-              setPaymentState("success");
-              toast.success("STK Payment confirmed!");
-              channel.unsubscribe();
-              
-              // Auto-close modal after brief success celebration
-              setTimeout(() => {
-                onSuccess();
-                onOpenChange(false);
-              }, 2500);
+      // Listen for the callback result and poll as a fallback. Neither blocks the STK push.
+      payment.start({
+        pollType: "booking",
+        watch: {
+          table: "bookings",
+          id: bookingId,
+          statusColumn: "status",
+          paidValue: "confirmed",
+          failedValue: "failed",
+          reasonColumn: "payment_failure_reason",
+          receiptColumn: "mpesa_receipt_number",
+          amountColumn: "paid_amount",
+        },
+        initiate: async () => {
+          const stkResponse = await fetch("/api/mpesa/stkpush", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phone: data.mpesa_phone,
+              amount: data.total_price,
+              bookingId,
+            }),
+          });
+          const stkData = await stkResponse.json();
 
-            } else if (updated.status === "failed") {
-              setPaymentState("failed");
-              setPaymentMessage(
-                updated.payment_failure_reason ?? "M-Pesa could not complete the payment.",
-              );
-              toast.error(updated.payment_failure_reason ?? "Payment was cancelled or failed.");
-              channel.unsubscribe();
+          if ((!stkResponse.ok || !stkData.success) && !stkData.paymentMayBePending) {
+            const { error: failureUpdateError } = await supabase
+              .from("bookings")
+              .update({ status: "failed", payment_failure_reason: stkData.error })
+              .eq("id", bookingId);
+            if (failureUpdateError) {
+              console.error("[BookingModal] Could not record rejected M-Pesa request:", failureUpdateError);
             }
+            return { success: false, error: stkData.error ?? "M-Pesa request failed." };
           }
-        )
-        .subscribe();
 
-      channelRef.current = channel;
-
-      // 3. Initiate the STK Push[cite: 3]
-      const stkResponse = await fetch("/api/mpesa/stkpush", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: data.mpesa_phone,
-          amount: data.total_price,
-          bookingId: targetBookingId,
-        }),
+          return {
+            success: Boolean(stkData.success),
+            error: stkData.error ?? null,
+            paymentMayBePending: Boolean(stkData.paymentMayBePending),
+          };
+        },
+        onPaid: async () => {
+          try {
+            await createClient().from("cars").update({ available: false }).eq("id", carId);
+          } catch (carError) {
+            console.error("[BookingModal] Could not mark car unavailable:", carError);
+          }
+          toast.success("M-Pesa payment confirmed.");
+          // Brief success view, then close and refresh the list
+          setTimeout(() => {
+            payment.reset();
+            onSuccess();
+            onOpenChange(false);
+          }, 2500);
+        },
       });
-
-      const stkData = await stkResponse.json();
-
-      if ((!stkResponse.ok || !stkData.success) && !stkData.paymentMayBePending) {
-        channel.unsubscribe();
-        const { error: failureUpdateError } = await supabase
-          .from("bookings")
-          .update({ status: "failed", payment_failure_reason: stkData.error })
-          .eq("id", targetBookingId);
-        if (failureUpdateError) {
-          console.error("[BookingModal] Could not record rejected M-Pesa request:", failureUpdateError);
-        }
-        throw new Error(stkData.error ?? "M-Pesa request failed.");
-      }
-
-      if (stkData.paymentMayBePending) {
-        setPaymentMessage(
-          stkData.error ??
-            "The payment request may have reached M-Pesa. Do not retry if approved; check the booking before sending another prompt.",
-        );
-      }
-
-      setPaymentState("waiting_for_pin");
-
-      // 4. Fallback timeout logic[cite: 3]
-      setTimeout(() => {
-        setPaymentState((current) => {
-          if (current === "waiting_for_pin") {
-            setPaymentMessage(
-              "Still waiting for Safaricom. Check the phone for the prompt; if you approved it, do not retry while we verify the payment.",
-            );
-          }
-          return current;
-        });
-      }, 90_000);
-
     } catch (err: unknown) {
       console.error("Admin STK Error:", err);
-      setPaymentState("failed");
       toast.error(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  useMpesaStatusPolling(
-    "booking",
-    paymentBookingId,
-    paymentState === "waiting_for_pin",
-    async (result) => {
-      if (result.status === "confirmed") {
-        const supabase = createClient();
-        await supabase.from("cars").update({ available: false }).eq("id", watch("car_id"));
-        setPaymentState("success");
-        toast.success("M-Pesa payment confirmed.");
-        channelRef.current?.unsubscribe();
-        onSuccess();
-      } else if (result.status === "failed") {
-        setPaymentState("failed");
-        toast.error(result.reason ?? "M-Pesa could not complete the payment.");
-        channelRef.current?.unsubscribe();
-      }
-    },
-  );
-
   const selectTriggerCls =
     "flex h-11 w-full items-center justify-between rounded-xl border border-input bg-muted/40 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring";
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        // Keep the booking open while an M-Pesa prompt is pending
+        if (!nextOpen && (payment.phase === "processing" || payment.phase === "waiting")) return;
+        onOpenChange(nextOpen);
+      }}
+    >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-xl overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
@@ -355,81 +296,19 @@ export function BookingModal({
             <span className="sr-only">Close</span>
           </Dialog.Close>
 
-          {/* ── STK Push Processing Views ── */}
-          {paymentState !== "idle" ? (
-             <div className="py-8">
-               {/* ... Processing views remain untouched ... */}
-               {paymentState === "processing" && (
-                 <div className="flex flex-col items-center text-center gap-4">
-                   <Loader2 className="w-12 h-12 text-[#25D366] animate-spin" />
-                   <div>
-                     <h2 className="text-xl font-bold text-foreground mb-1">Initiating STK Push</h2>
-                     <p className="text-sm text-muted-foreground">Connecting to Safaricom...</p>
-                   </div>
-                 </div>
-               )}
- 
-               {paymentState === "waiting_for_pin" && (
-                 <div className="flex flex-col items-center text-center gap-5 relative overflow-hidden">
-                   <div className="absolute top-0 left-0 w-full h-1 bg-[#25D366] animate-pulse" />
-                   <div className="relative">
-                     <div className="absolute inset-0 bg-[#25D366]/20 rounded-full animate-ping" />
-                     <div className="relative w-20 h-20 bg-card border border-border rounded-full flex items-center justify-center shadow-inner">
-                       <Smartphone className="w-9 h-9 text-[#25D366]" />
-                       <Wifi className="w-4 h-4 text-[#25D366] absolute -top-1 -right-1 animate-pulse" />
-                     </div>
-                   </div>
-                   <div>
-                     <h2 className="text-xl font-bold text-foreground mb-2">Awaiting PIN</h2>
-                     <p className="text-sm text-muted-foreground">
-                       Prompt sent to the customer&apos;s phone. Waiting for them to enter their M-Pesa PIN.
-                     </p>
-                   </div>
-                   <div className="bg-muted rounded-xl px-4 py-3 w-full flex items-center justify-center gap-3">
-                     <Loader2 className="w-4 h-4 text-muted-foreground animate-spin shrink-0" />
-                     <span className="text-sm text-muted-foreground">Listening for payment callback...</span>
-                   </div>
-                   {paymentMessage && (
-                     <p role="status" className="text-xs text-muted-foreground">
-                       {paymentMessage}
-                     </p>
-                   )}
-                 </div>
-               )}
- 
-               {paymentState === "success" && (
-                 <div className="flex flex-col items-center text-center gap-4">
-                   <div className="w-20 h-20 rounded-full bg-[#25D366]/10 flex items-center justify-center border border-[#25D366]/20">
-                     <CheckCircle className="w-10 h-10 text-[#25D366]" />
-                   </div>
-                   <div>
-                     <h2 className="text-2xl font-bold text-foreground mb-1">Payment Received!</h2>
-                     <p className="text-sm text-muted-foreground">Booking has been secured.</p>
-                   </div>
-                 </div>
-               )}
- 
-               {paymentState === "failed" && (
-                 <div className="flex flex-col items-center text-center gap-5">
-                   <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center border border-destructive/20">
-                     <XCircle className="w-8 h-8 text-destructive" />
-                   </div>
-                   <div>
-                     <h2 className="text-xl font-bold text-foreground mb-2">Payment Failed</h2>
-                     <p role="alert" className="text-sm text-muted-foreground">
-                       {paymentMessage || "M-Pesa could not complete the payment."}
-                     </p>
-                   </div>
-                   <Button
-                     onClick={() => setPaymentState("idle")}
-                     className="w-full bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl"
-                   >
-                     Try Again
-                   </Button>
-                 </div>
-               )}
-             </div>
-          ) : (
+          <MpesaPaymentDialog
+            open={payment.phase !== "idle"}
+            state={payment.phase === "idle" ? "processing" : payment.phase}
+            phone={watch("mpesa_phone")}
+            amount={watch("total_price")}
+            description="car rental"
+            message={payment.message}
+            receiptNumber={payment.outcome.receiptNumber}
+            canDismiss={payment.slow}
+            onClose={payment.reset}
+            onRetry={payment.reset}
+          />
+          {(
             <>
               {/* ── Standard Booking Form ── */}
               <div className="flex items-center gap-2 mb-6">
