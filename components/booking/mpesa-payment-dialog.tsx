@@ -34,8 +34,10 @@ export function MpesaPaymentDialog({
   message,
   receiptNumber,
   canDismiss = false,
+  canResend = false,
   onClose,
   onRetry,
+  onResend,
   supportPhone = MPESA_SUPPORT_NUMBER,
 }: {
   open: boolean;
@@ -46,8 +48,10 @@ export function MpesaPaymentDialog({
   message?: string;
   receiptNumber?: string | null;
   canDismiss?: boolean;
+  canResend?: boolean;
   onClose: () => void;
   onRetry?: () => void;
+  onResend?: () => void;
   supportPhone?: string;
 }) {
   const isPending = state === "processing" || state === "waiting";
@@ -158,6 +162,16 @@ export function MpesaPaymentDialog({
                 </a>
               </p>
 
+              {canResend && onResend && (
+                <button
+                  type="button"
+                  onClick={onResend}
+                  className="w-full rounded-xl border border-border px-5 py-3 font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  Didn&apos;t get a prompt? Send a new one
+                </button>
+              )}
+
               {canDismiss && (
                 <button
                   type="button"
@@ -241,6 +255,15 @@ export function MpesaPaymentDialog({
               </div>
 
               <div className="flex w-full flex-col gap-3">
+                {canResend && onResend && (
+                  <button
+                    type="button"
+                    onClick={onResend}
+                    className="w-full rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+                  >
+                    Send a new M-Pesa prompt
+                  </button>
+                )}
                 {onRetry && (
                   <button
                     type="button"

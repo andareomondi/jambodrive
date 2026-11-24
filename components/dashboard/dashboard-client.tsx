@@ -494,6 +494,7 @@ export function DashboardClient({
 
     weddingPayment.start({
       pollType: "wedding",
+      phone: phone,
       watch: {
         table: "wedding_event_requests",
         id: request.id,
@@ -603,6 +604,8 @@ export function DashboardClient({
   return (
     <div className="min-h-screen bg-background">
       <MpesaPaymentDialog
+        canResend={weddingPayment.canResend}
+        onResend={weddingPayment.resend}
         open={weddingPayment.phase !== "idle"}
         state={weddingPayment.phase === "idle" ? "processing" : weddingPayment.phase}
         phone={weddingPaymentDialogRequest?.mpesa_phone}

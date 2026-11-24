@@ -82,6 +82,7 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
 
     payment.start({
       pollType: "airport",
+      phone: contactPhone,
       watch: {
         table: "airport_pickups",
         id: request.id,
@@ -129,6 +130,8 @@ export function AirportPickupClient({ rates }: AirportPickupClientProps) {
   return (
     <>
     <MpesaPaymentDialog
+      canResend={payment.canResend}
+      onResend={payment.resend}
       open={payment.phase !== "idle"}
       state={payment.phase === "idle" ? "processing" : payment.phase}
       phone={contactPhone}

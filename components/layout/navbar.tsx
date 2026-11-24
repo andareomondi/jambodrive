@@ -16,7 +16,6 @@ import {
   Plane,
   Building,
   PartyPopper,
-  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -138,7 +137,7 @@ export function Navbar() {
   // Close mobile menu on desktop resize
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1280) setIsOpen(false);
+      if (window.innerWidth >= 1024) setIsOpen(false);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -185,7 +184,7 @@ export function Navbar() {
   const isHomePage = pathname === "/";
   const heroOverlay = isHomePage && !scrolled;
   const desktopNavLinkClass = cn(
-    "font-display whitespace-nowrap rounded-full px-3 py-2 text-lg font-semibold tracking-wide text-foreground/85 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+    "font-display rounded-full px-3.5 py-2 text-lg font-semibold tracking-wide text-foreground/85 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
     heroOverlay && "text-white/90 hover:bg-white/10 hover:text-white",
   );
 
@@ -249,7 +248,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden min-w-0 xl:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-1">
             <Link
               href="https://cosmara.co.ke"
               prefetch={true}
@@ -258,6 +257,8 @@ export function Navbar() {
               Home
             </Link>
             {/* Fleet dropdown */}
+            {/* Commenting out this fleet section */}
+            {/*
             <div
               ref={fleetRef}
               className="relative"
@@ -265,11 +266,9 @@ export function Navbar() {
               onMouseLeave={() => setIsFleetOpen(false)}
             >
               <button
-                type="button"
                 className={cn(
-                  "font-display flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-2 text-lg font-semibold tracking-wide text-foreground/85 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
-                  heroOverlay &&
-                    "text-white/90 hover:bg-white/10 hover:text-white",
+                  "font-display flex items-center gap-1.5 rounded-full px-3.5 py-2 text-lg font-semibold tracking-wide text-foreground/85 transition-colors duration-200 hover:bg-white/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                  heroOverlay && "text-white/90 hover:bg-white/10 hover:text-white",
                 )}
                 onClick={() => setIsFleetOpen((v) => !v)}
                 aria-expanded={isFleetOpen}
@@ -278,7 +277,7 @@ export function Navbar() {
                 Fleet
                 <ChevronDown
                   className={cn(
-                    "h-4 w-4 transition-transform duration-200",
+                    "w-4 h-4 transition-transform duration-200",
                     isFleetOpen && "rotate-180",
                   )}
                 />
@@ -289,7 +288,7 @@ export function Navbar() {
                   {CAR_TYPES.map((type) => (
                     <Link
                       key={type.id}
-                      href={`https://cosmara.co.ke/cars/category/${type.id}`}
+                      href={`/cars/category/${type.id}`}
                       className="font-display block rounded-xl px-3.5 py-2.5 text-lg font-medium text-foreground/85 transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                       onClick={closeAll}
                     >
@@ -299,6 +298,7 @@ export function Navbar() {
                 </div>
               )}
             </div>
+            */}
             <Link
               href="https://cosmara.co.ke/cars"
               className={desktopNavLinkClass}
@@ -344,7 +344,7 @@ export function Navbar() {
           </div>
 
           {/* Desktop auth & CTA */}
-          <div className="hidden shrink-0 xl:flex items-center justify-end gap-2">
+          <div className="hidden lg:flex items-center justify-end gap-2">
             {!authReady ? (
               <div aria-hidden className="h-9 w-40" />
             ) : isLoggedIn ? (
@@ -405,7 +405,7 @@ export function Navbar() {
           {/* Mobile toggle */}
           <button
             onClick={() => setIsOpen((v) => !v)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/80 bg-background/55 text-foreground shadow-sm backdrop-blur-lg transition-all duration-200 hover:border-accent/50 hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent xl:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/80 bg-background/55 text-foreground shadow-sm backdrop-blur-lg transition-all duration-200 hover:border-accent/50 hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
             aria-label={isOpen ? "Close menu" : "Open menu"}
             aria-expanded={isOpen}
           >
@@ -415,7 +415,7 @@ export function Navbar() {
 
         {/* Mobile menu */}
         {isOpen && (
-          <div className="border-t border-border/70 pb-5 pt-4 xl:hidden">
+          <div className="border-t border-border/70 pb-5 pt-4 lg:hidden">
             <div className="rounded-3xl border border-border/80 bg-background/85 p-3 shadow-2xl shadow-black/15 backdrop-blur-xl">
               <div className="flex flex-col gap-1">
                 <Link

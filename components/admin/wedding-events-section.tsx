@@ -271,6 +271,7 @@ export function WeddingEventsSection({
 
     weddingPayment.start({
       pollType: "wedding",
+      phone: paymentPhone,
       watch: {
         table: "wedding_event_requests",
         id: requestId,
@@ -397,6 +398,8 @@ export function WeddingEventsSection({
   return (
     <Card className="overflow-hidden border-border shadow-sm">
       <MpesaPaymentDialog
+        canResend={weddingPayment.canResend}
+        onResend={weddingPayment.resend}
         open={weddingPayment.phase !== "idle"}
         state={weddingPayment.phase === "idle" ? "processing" : weddingPayment.phase}
         phone={paymentProgressRequest?.mpesa_phone}

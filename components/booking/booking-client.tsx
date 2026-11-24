@@ -90,6 +90,7 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
       // fails the booking before the prompt is sent.
       payment.start({
         pollType: "booking",
+        phone: data.phone,
         watch: {
           table: "bookings",
           id: newBooking.id,
@@ -220,6 +221,8 @@ export default function BookingClientPage({ car }: { car: Car | null }) {
     <>
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
         <MpesaPaymentDialog
+          canResend={payment.canResend}
+          onResend={payment.resend}
           open={payment.phase !== "idle"}
           state={payment.phase === "idle" ? "processing" : payment.phase}
           phone={bookingData?.phone}

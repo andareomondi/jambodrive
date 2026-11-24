@@ -216,12 +216,9 @@ export function AdminDashboardClient({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
-  const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(
-    null,
-  );
+  const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
-  const [selectedBookingForPayment, setSelectedBookingForPayment] =
-    useState<Booking | null>(null);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<Booking | null>(null);
 
   const totalRevenue = useMemo(
     () =>
@@ -286,9 +283,7 @@ export function AdminDashboardClient({
     async (booking: Booking, status: BookingStatus) => {
       const currentStatus = booking.status ?? "pending";
       if (currentStatus === "cancelled" || currentStatus === "failed") {
-        toast.info(
-          "This booking is already in a terminal state and cannot be changed.",
-        );
+        toast.info("This booking is already in a terminal state and cannot be changed.");
         return;
       }
       if (status === currentStatus) return;
@@ -300,12 +295,13 @@ export function AdminDashboardClient({
         currentStatus === "confirmed" &&
         ["pending", "completed", "confirmed"].includes(status)
       ) {
-        toast.info(
-          "Confirmed bookings cannot be moved back to an earlier status.",
-        );
+        toast.info("Confirmed bookings cannot be moved back to an earlier status.");
         return;
       }
-      if (currentStatus === "pending" && status === "confirmed") {
+      if (
+        currentStatus === "pending" &&
+        status === "confirmed"
+      ) {
         setSelectedBookingForPayment(booking);
         setBookingModalOpen(true);
         return;
@@ -359,25 +355,23 @@ export function AdminDashboardClient({
     };
   }, [refreshBookings, refreshProfiles]);
 
-  const handleRoleChange = useCallback(
-    async (userId: string, role: ProfileRole) => {
-      try {
-        await adminUpdateUserRole(userId, role);
-        setProfiles((prev) =>
-          prev.map((u) => (u.id === userId ? { ...u, role } : u)),
-        );
-        toast.success("User role updated.");
-      } catch (e: unknown) {
-        toast.error(e instanceof Error ? e.message : "Role update failed");
-      }
-    },
-    [],
-  );
+  const handleRoleChange = useCallback(async (userId: string, role: ProfileRole) => {
+    try {
+      await adminUpdateUserRole(userId, role);
+      setProfiles((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, role } : u,
+        ),
+      );
+      toast.success("User role updated.");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Role update failed");
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Clear the navbar, which can be absolutely positioned on this host */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-[6.5rem] pb-8 space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Super Admin Dashboard
@@ -565,9 +559,7 @@ export function AdminDashboardClient({
                     )}
                     <select
                       value={u.role ?? "customer"}
-                      onChange={(e) =>
-                        handleRoleChange(u.id, e.target.value as ProfileRole)
-                      }
+                      onChange={(e) => handleRoleChange(u.id, e.target.value as ProfileRole)}
                       className="text-xs px-2.5 py-1.5 rounded-xl border border-border bg-background"
                     >
                       <option value="customer">Customer</option>
@@ -596,8 +588,7 @@ export function AdminDashboardClient({
                 Booking Management
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Review rental requests, payment outcomes, and update booking
-                status.
+                Review rental requests, payment outcomes, and update booking status.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:w-[560px]">
@@ -631,11 +622,7 @@ export function AdminDashboardClient({
                   ).map(([value, label]) => (
                     <option key={value} value={value}>
                       {label} (
-                      {
-                        bookings.filter((booking) => booking.status === value)
-                          .length
-                      }
-                      )
+                      {bookings.filter((booking) => booking.status === value).length})
                     </option>
                   ))}
                 </select>
@@ -699,25 +686,15 @@ export function AdminDashboardClient({
                           <span>
                             {new Date(booking.pickup_date).toLocaleDateString(
                               "en-KE",
-                              {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              },
+                              { day: "numeric", month: "short", year: "numeric" },
                             )}{" "}
                             →{" "}
                             {new Date(booking.return_date).toLocaleDateString(
                               "en-KE",
-                              {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              },
+                              { day: "numeric", month: "short", year: "numeric" },
                             )}
                           </span>
-                          <span>
-                            Ref: {booking.id.slice(0, 8).toUpperCase()}
-                          </span>
+                          <span>Ref: {booking.id.slice(0, 8).toUpperCase()}</span>
                           <span className="font-semibold text-foreground">
                             KSh {booking.total_price.toLocaleString("en-KE")}
                           </span>
@@ -726,103 +703,99 @@ export function AdminDashboardClient({
                       <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                         {!isLocked && (
                           <>
-                            <label
-                              className="sr-only"
-                              htmlFor={`booking-status-${booking.id}`}
-                            >
-                              Update status for booking {booking.id.slice(0, 8)}
-                            </label>
-                            <select
-                              id={`booking-status-${booking.id}`}
-                              value={status}
+                        <label className="sr-only" htmlFor={`booking-status-${booking.id}`}>
+                          Update status for booking {booking.id.slice(0, 8)}
+                        </label>
+                        <select
+                          id={`booking-status-${booking.id}`}
+                          value={status}
+                          disabled={updating}
+                          onChange={(event) =>
+                            void handleBookingStatusChange(
+                              booking,
+                              event.target.value as BookingStatus,
+                            )
+                          }
+                          className="h-9 min-w-36 rounded-lg border border-input bg-background px-3 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                        >
+                          <option value="pending">Pending payment</option>
+                          <option value="confirmed">Confirmed</option>
+                          <option value="completed">Completed</option>
+                          <option value="cancelled">Cancelled</option>
+                          <option value="failed">Failed</option>
+                        </select>
+                        {status === "pending" && (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="default"
                               disabled={updating}
-                              onChange={(event) =>
+                              onClick={() => {
+                                setSelectedBookingForPayment(booking);
+                                setBookingModalOpen(true);
+                              }}
+                              className="rounded-lg"
+                            >
+                              <Banknote className="mr-1 h-4 w-4" />
+                              Receive payment
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={updating}
+                              onClick={() =>
                                 void handleBookingStatusChange(
                                   booking,
-                                  event.target.value as BookingStatus,
+                                  "cancelled",
                                 )
                               }
-                              className="h-9 min-w-36 rounded-lg border border-input bg-background px-3 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                              className="rounded-lg text-destructive hover:bg-destructive/10"
                             >
-                              <option value="pending">Pending payment</option>
-                              <option value="confirmed">Confirmed</option>
-                              <option value="completed">Completed</option>
-                              <option value="cancelled">Cancelled</option>
-                              <option value="failed">Failed</option>
-                            </select>
-                            {status === "pending" && (
-                              <>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="default"
-                                  disabled={updating}
-                                  onClick={() => {
-                                    setSelectedBookingForPayment(booking);
-                                    setBookingModalOpen(true);
-                                  }}
-                                  className="rounded-lg"
-                                >
-                                  <Banknote className="mr-1 h-4 w-4" />
-                                  Receive payment
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={updating}
-                                  onClick={() =>
-                                    void handleBookingStatusChange(
-                                      booking,
-                                      "cancelled",
-                                    )
-                                  }
-                                  className="rounded-lg text-destructive hover:bg-destructive/10"
-                                >
-                                  <X className="mr-1 h-4 w-4" />
-                                  Reject
-                                </Button>
-                              </>
-                            )}
-                            {status === "confirmed" && (
-                              <>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    const phone =
-                                      booking.profiles?.phone ??
-                                      booking.mpesa_phone;
-                                    if (!phone) {
-                                      toast.error(
-                                        "No phone number is available for this booking.",
-                                      );
-                                      return;
-                                    }
-                                    openWhatsApp(
-                                      phone,
-                                      `Hello, your Cosmara booking is confirmed.\n\nVehicle: ${booking.cars?.name ?? "Vehicle"}\nPickup: ${new Date(booking.pickup_date).toLocaleDateString("en-KE")}\nLocation: ${booking.pickup_location}\nTotal: KES ${booking.total_price.toLocaleString("en-KE")}\n\nPlease contact us if you have any questions.`,
-                                    );
-                                  }}
-                                  className="rounded-lg"
-                                >
-                                  <MessageCircle className="mr-1 h-4 w-4 text-green-600" />
-                                  Notify
-                                </Button>
-                                <Button
-                                  asChild
-                                  size="sm"
-                                  variant="outline"
-                                  className="rounded-lg"
-                                >
-                                  <Link href={surfaceUrl("facilitator")}>
-                                    <ClipboardCheck className="mr-1 h-4 w-4" />
-                                    Return
-                                  </Link>
-                                </Button>
-                              </>
-                            )}
+                              <X className="mr-1 h-4 w-4" />
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                        {status === "confirmed" && (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const phone =
+                                  booking.profiles?.phone ?? booking.mpesa_phone;
+                                if (!phone) {
+                                  toast.error(
+                                    "No phone number is available for this booking.",
+                                  );
+                                  return;
+                                }
+                                openWhatsApp(
+                                  phone,
+                                  `Hello, your Cosmara booking is confirmed.\n\nVehicle: ${booking.cars?.name ?? "Vehicle"}\nPickup: ${new Date(booking.pickup_date).toLocaleDateString("en-KE")}\nLocation: ${booking.pickup_location}\nTotal: KES ${booking.total_price.toLocaleString("en-KE")}\n\nPlease contact us if you have any questions.`,
+                                );
+                              }}
+                              className="rounded-lg"
+                            >
+                              <MessageCircle className="mr-1 h-4 w-4 text-green-600" />
+                              Notify
+                            </Button>
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="outline"
+                              className="rounded-lg"
+                            >
+                              <Link href={surfaceUrl("facilitator")}>
+                                <ClipboardCheck className="mr-1 h-4 w-4" />
+                                Return
+                              </Link>
+                            </Button>
+                          </>
+                        )}
                           </>
                         )}
                         <Button
@@ -852,10 +825,7 @@ export function AdminDashboardClient({
                     </div>
 
                     {updating && (
-                      <p
-                        role="status"
-                        className="flex items-center gap-2 px-5 pb-3 text-xs text-muted-foreground"
-                      >
+                      <p role="status" className="flex items-center gap-2 px-5 pb-3 text-xs text-muted-foreground">
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         Updating booking status…
                       </p>
@@ -931,8 +901,7 @@ export function AdminDashboardClient({
                             <span className="font-medium capitalize text-foreground">
                               {status === "pending"
                                 ? "Pending"
-                                : status === "confirmed" ||
-                                    status === "completed"
+                                : status === "confirmed" || status === "completed"
                                   ? "Paid / confirmed"
                                   : status}
                             </span>
@@ -941,8 +910,7 @@ export function AdminDashboardClient({
                             <p>
                               Amount paid:{" "}
                               <span className="font-medium text-foreground">
-                                KSh{" "}
-                                {booking.paid_amount.toLocaleString("en-KE")}
+                                KSh {booking.paid_amount.toLocaleString("en-KE")}
                               </span>
                             </p>
                           )}
@@ -969,9 +937,7 @@ export function AdminDashboardClient({
                             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                               <Receipt className="h-3.5 w-3.5" />
                               Additional fee: KSh{" "}
-                              {booking.additional_fee_amount.toLocaleString(
-                                "en-KE",
-                              )}
+                              {booking.additional_fee_amount.toLocaleString("en-KE")}
                               {booking.additional_fee_status
                                 ? ` (${booking.additional_fee_status})`
                                 : ""}

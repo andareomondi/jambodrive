@@ -38,8 +38,15 @@ async function getAccessToken(): Promise<string> {
     throw new Error(`Daraja auth failed: ${text}`);
   }
 
-  const data = await res.json();
-  return data.access_token as string;
+  const text = await res.text();
+  let data: { access_token?: string };
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error("Daraja auth returned an unreadable response.");
+  }
+  if (!data.access_token) throw new Error("Daraja auth returned no access token.");
+  return data.access_token;
 }
 
 /** Formats any Kenyan phone number to 2547XXXXXXXX */
@@ -429,7 +436,14 @@ export async function POST(req: NextRequest) {
         }),
         },
       );
-      stkData = await stkRes.json();
+      const stkText = await stkRes.text();
+      try {
+        stkData = JSON.parse(stkText);
+      } catch {
+        throw new Error(
+          "M-Pesa returned an unreadable response. The prompt may still arrive; do not retry if it does.",
+        );
+      }
     } catch (error) {
       const reason =
         error instanceof Error ? error.message : "Could not reach M-Pesa.";

@@ -214,6 +214,7 @@ export function BookingModal({
       // Listen for the callback result and poll as a fallback. Neither blocks the STK push.
       payment.start({
         pollType: "booking",
+        phone: data.mpesa_phone,
         watch: {
           table: "bookings",
           id: bookingId,
@@ -297,6 +298,10 @@ export function BookingModal({
           </Dialog.Close>
 
           <MpesaPaymentDialog
+
+            canResend={payment.canResend}
+
+            onResend={payment.resend}
             open={payment.phase !== "idle"}
             state={payment.phase === "idle" ? "processing" : payment.phase}
             phone={watch("mpesa_phone")}

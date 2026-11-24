@@ -55,6 +55,8 @@ export interface MpesaStartOptions {
   watch: MpesaWatch;
   /** Sends the STK push and records its own database side effects. */
   initiate: () => Promise<MpesaInitiateResult>;
+  /** Customer phone. Needed to send a new prompt from the resend button. */
+  phone?: string | null;
   /** Per-payment callbacks. They override the hook-level ones for this payment only. */
   onPaid?: (outcome: MpesaOutcome) => void | Promise<void>;
   onFailed?: (outcome: MpesaOutcome) => void;
@@ -77,11 +79,14 @@ interface Run {
   channel: RealtimeChannel | null;
   pollTimer: ReturnType<typeof setTimeout> | null;
   slowTimer: ReturnType<typeof setTimeout> | null;
+  resendTimer: ReturnType<typeof setTimeout> | null;
 }
 
 const POLL_INTERVAL_MS = 4_000;
 const MAX_BACKOFF_MS = 15_000;
 const SLOW_NOTICE_MS = 90_000;
+/** The resend button appears after this long without a result. */
+const RESEND_AFTER_MS = 45_000;
 /** After this, we stop auto-checking. The payment still updates in the database. */
 const MAX_POLL_MS = 10 * 60_000;
 
@@ -115,7 +120,10 @@ export function useMpesaPayment(handlers: {
   const [outcome, setOutcome] = useState<MpesaOutcome>(EMPTY_OUTCOME);
   /** True once the payment has waited past SLOW_NOTICE_MS. The dialog may then be closed. */
   const [slow, setSlow] = useState(false);
+  /** True once a resend is allowed: after RESEND_AFTER_MS waiting, or after a failure. */
+  const [canResend, setCanResend] = useState(false);
 
+  const lastOptionsRef = useRef<MpesaStartOptions | null>(null);
   const handlersRef = useRef(handlers);
   handlersRef.current = handlers;
   const runRef = useRef<Run | null>(null);
@@ -128,8 +136,10 @@ export function useMpesaPayment(handlers: {
     run.channel = null;
     if (run.pollTimer) clearTimeout(run.pollTimer);
     if (run.slowTimer) clearTimeout(run.slowTimer);
+    if (run.resendTimer) clearTimeout(run.resendTimer);
     run.pollTimer = null;
     run.slowTimer = null;
+    run.resendTimer = null;
   }, []);
 
   const settle = useCallback(
@@ -138,6 +148,7 @@ export function useMpesaPayment(handlers: {
       teardown(run);
       setOutcome(result);
       setSlow(false);
+      setCanResend(kind === "failed" && Boolean(run.options?.phone));
       if (kind === "paid") {
         setMessage("Your payment was received and verified.");
         setPhase("success");
@@ -165,12 +176,15 @@ export function useMpesaPayment(handlers: {
         channel: null,
         pollTimer: null,
         slowTimer: null,
+        resendTimer: null,
       };
       runRef.current = run;
+      lastOptionsRef.current = options;
 
       setPhase("processing");
       setMessage("");
       setSlow(false);
+      setCanResend(false);
       setOutcome(EMPTY_OUTCOME);
 
       const { watch } = options;
@@ -240,6 +254,13 @@ export function useMpesaPayment(handlers: {
           );
         }, SLOW_NOTICE_MS);
 
+        if (options.phone) {
+          run.resendTimer = setTimeout(() => {
+            if (runRef.current !== run || run.settled) return;
+            setCanResend(true);
+          }, RESEND_AFTER_MS);
+        }
+
         // 3. Poll as the fallback. Pending responses are normal, not failures.
         const check = async (failures: number) => {
           if (runRef.current !== run || run.settled) return;
@@ -307,15 +328,54 @@ export function useMpesaPayment(handlers: {
   const reset = useCallback(() => {
     teardown(runRef.current);
     runRef.current = null;
+    lastOptionsRef.current = null;
     setPhase("idle");
     setMessage("");
     setSlow(false);
+    setCanResend(false);
     setOutcome(EMPTY_OUTCOME);
   }, [teardown]);
+
+  /**
+   * Sends a fresh prompt for the same payment. The server decides whether the
+   * previous prompt has ended. This only restarts the engine with that answer.
+   */
+  const resend = useCallback(() => {
+    const previous = lastOptionsRef.current;
+    if (!previous?.phone) return;
+    start({
+      ...previous,
+      initiate: async () => {
+        try {
+          const response = await fetch("/api/mpesa/resend", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: previous.pollType,
+              id: previous.watch.id,
+              phone: previous.phone,
+            }),
+            cache: "no-store",
+          });
+          const body = (await response.json().catch(() => ({}))) as {
+            state?: string;
+            error?: string;
+          };
+          if (body.state === "sent" || body.state === "paid") return { success: true };
+          if (body.state === "open") {
+            return { success: false, paymentMayBePending: true, error: body.error };
+          }
+          return { success: false, error: body.error ?? "Could not send a new prompt." };
+        } catch {
+          return { success: false, error: "Could not send a new prompt. Check your connection." };
+        }
+      },
+    });
+  }, [start]);
 
   useEffect(() => {
     return () => teardown(runRef.current);
   }, [teardown]);
 
-  return { phase, message, outcome, slow, start, reset };
+  return { phase, message, outcome, slow, canResend, start, resend, reset };
 }
